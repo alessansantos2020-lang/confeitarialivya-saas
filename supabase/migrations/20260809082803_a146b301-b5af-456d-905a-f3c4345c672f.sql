@@ -53,10 +53,10 @@ CREATE POLICY "Allow public read access to products" ON public.products FOR SELE
 CREATE POLICY "Allow public inserts for orders" ON public.orders FOR INSERT TO anon WITH CHECK (true);
 CREATE POLICY "Allow public inserts for order items" ON public.order_items FOR INSERT TO anon WITH CHECK (true);
 
--- User Roles setup
-CREATE TYPE public.app_role AS ENUM ('admin', 'user');
+-- User Roles setup (já criados pelo bootstrap — apenas garante grants e RLS)
+DO $$ BEGIN IF NOT EXISTS (SELECT 1 FROM pg_type WHERE typname = 'app_role') THEN CREATE TYPE public.app_role AS ENUM ('admin', 'user'); END IF; END $$;
 
-CREATE TABLE public.user_roles (
+CREATE TABLE IF NOT EXISTS public.user_roles (
     id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
     user_id uuid REFERENCES auth.users(id) ON DELETE CASCADE NOT NULL,
     role app_role NOT NULL,

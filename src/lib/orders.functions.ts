@@ -27,16 +27,6 @@ export type CreateOrderInput = {
 export const createOrder = createServerFn({ method: "POST" })
   .validator((data: CreateOrderInput) => data)
   .handler(async ({ data }) => {
-    if (!process.env["SUPABASE_URL"]) {
-      console.log("[mock] pedido criado (sem banco):", data);
-      return {
-        id: `mock-${Date.now()}`,
-        ...data,
-        status: "pending",
-        created_at: new Date().toISOString(),
-      };
-    }
-
     const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
     console.log("Server side: creating order", data);
     try {

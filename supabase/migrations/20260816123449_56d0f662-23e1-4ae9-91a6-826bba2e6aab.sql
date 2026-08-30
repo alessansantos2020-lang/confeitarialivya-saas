@@ -1,7 +1,9 @@
 DROP POLICY IF EXISTS "Users can view their own profile" ON public.profiles;
+DROP POLICY IF EXISTS "Staff can view all profiles" ON public.profiles;
 DROP POLICY IF EXISTS "Admins can view all profiles" ON public.profiles;
 DROP POLICY IF EXISTS "Admins can update all profiles" ON public.profiles;
 DROP POLICY IF EXISTS "Users can update their own profile" ON public.profiles;
+DROP POLICY IF EXISTS "Users can insert their own profile" ON public.profiles;
 DROP POLICY IF EXISTS "Enable insert for everyone" ON public.profiles;
 DROP POLICY IF EXISTS "Anyone can insert profiles" ON public.profiles;
 DROP POLICY IF EXISTS "Public can insert profiles" ON public.profiles;

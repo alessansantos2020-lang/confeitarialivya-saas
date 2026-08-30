@@ -24,11 +24,14 @@ export const getDeliveryFees = createServerFn({ method: "GET" }).handler(async (
 });
 
 export const getActiveDeliveryFees = createServerFn({ method: "GET" }).handler(async (): Promise<DeliveryFee[]> => {
-  return [
-    { id: "fee-1", neighborhood: "Centro", fee: 5, status: "active" },
-    { id: "fee-2", neighborhood: "Jardim das Flores", fee: 8, status: "active" },
-    { id: "fee-3", neighborhood: "Vila Nova", fee: 10, status: "active" },
-  ];
+  const { data, error } = await supabase
+    .from("delivery_fees")
+    .select("*")
+    .eq("status", "active")
+    .order("neighborhood", { ascending: true });
+
+  if (error) throw error;
+  return data as DeliveryFee[];
 });
 
 export const createDeliveryFee = createServerFn({ method: "POST" })

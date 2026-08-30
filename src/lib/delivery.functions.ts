@@ -1,4 +1,5 @@
 import { createServerFn } from "@tanstack/react-start";
+import { supabase } from "@/integrations/supabase/client";
 
 export type StoreSettings = {
   name: string;
@@ -18,105 +19,69 @@ export type StoreSettings = {
   whatsapp_template_saida_entrega: string | null;
 };
 
-const MOCK_SETTINGS: StoreSettings = {
-  name: "Confeitaria Livya",
-  description: "Bolos, doces e sobremesas feitas com amor.",
-  logo_url: null,
-  cover_url: null,
-  opening_hours: "Segunda a Sábado: 09:00 - 18:00",
-  is_open: true,
-  phone: "(11) 90000-0000",
-  whatsapp: "5511900000000",
-  instagram: "@confeitarialivya",
-  address: "Rua das Flores, 123 - São Paulo",
-  primary_color: "#db2777",
-  secondary_color: "#fdf2f8",
-  auto_notify_whatsapp: false,
-  whatsapp_template_recebido: null,
-  whatsapp_template_saida_entrega: null,
-};
+export const getStoreSettings = createServerFn({ method: "GET" }).handler(async (): Promise<StoreSettings> => {
+  const { data, error } = await supabase
+    .from("store_settings")
+    .select("*")
+    .maybeSingle();
 
-const MOCK_CATEGORIES = [
-  {
-    id: "cat-1",
-    name: "Bolos",
-    status: "active" as const,
-    sort_order: 1,
-    products: [
-      {
-        id: "prod-1",
-        category_id: "cat-1",
-        name: "Bolo de Chocolate",
-        description: "Bolo de chocolate com cobertura cremosa e granulado.",
-        price: 65.0,
-        image_url: null,
-        is_available: true,
-        category: { name: "Bolos" },
-      },
-      {
-        id: "prod-2",
-        category_id: "cat-1",
-        name: "Bolo de Cenoura",
-        description: "Bolo fofinho de cenoura com cobertura de brigadeiro.",
-        price: 55.0,
-        image_url: null,
-        is_available: true,
-        category: { name: "Bolos" },
-      },
-    ],
-  },
-  {
-    id: "cat-2",
-    name: "Doces",
-    status: "active" as const,
-    sort_order: 2,
-    products: [
-      {
-        id: "prod-3",
-        category_id: "cat-2",
-        name: "Brigadeiro Gourmet (6 un.)",
-        description: "Brigadeiros artesanais em caixinha decorada.",
-        price: 18.0,
-        image_url: null,
-        is_available: true,
-        category: { name: "Doces" },
-      },
-      {
-        id: "prod-4",
-        category_id: "cat-2",
-        name: "Beijinho (6 un.)",
-        description: "Beijinhos de coco cobertos com açúcar cristal.",
-        price: 18.0,
-        image_url: null,
-        is_available: true,
-        category: { name: "Doces" },
-      },
-    ],
-  },
-  {
-    id: "cat-3",
-    name: "Sobremesas",
-    status: "active" as const,
-    sort_order: 3,
-    products: [
-      {
-        id: "prod-5",
-        category_id: "cat-3",
-        name: "Pudim de Leite",
-        description: "Pudim tradicional cremoso com calda de caramelo.",
-        price: 32.0,
-        image_url: null,
-        is_available: true,
-        category: { name: "Sobremesas" },
-      },
-    ],
-  },
-];
+  if (error || !data) {
+    return {
+      name: "Confeitaria Artesanal",
+      description: "Bolos, doces e sobremesas feitas com amor.",
+      logo_url: null,
+      cover_url: null,
+      opening_hours: "Segunda a Sábado: 09:00 - 18:00",
+      is_open: true,
+      phone: null,
+      whatsapp: null,
+      instagram: null,
+      address: null,
+      primary_color: "#db2777",
+      secondary_color: "#fdf2f8",
+      auto_notify_whatsapp: false,
+      whatsapp_template_recebido: null,
+      whatsapp_template_saida_entrega: null,
+    };
+  }
 
-export const getStoreSettings = createServerFn({ method: "GET" }).handler(
-  async (): Promise<StoreSettings> => MOCK_SETTINGS,
-);
+  return {
+    name: data.name,
+    description: data.description,
+    logo_url: data.logo_url,
+    cover_url: data.cover_url,
+    opening_hours: data.opening_hours,
+    is_open: data.is_open ?? true,
+    phone: data.phone,
+    whatsapp: data.whatsapp,
+    instagram: data.instagram,
+    address: data.address,
+    primary_color: data.primary_color,
+    secondary_color: data.secondary_color,
+    auto_notify_whatsapp: data.auto_notify_whatsapp ?? false,
+    whatsapp_template_recebido: (data as any).whatsapp_template_recebido,
+    whatsapp_template_saida_entrega: (data as any).whatsapp_template_saida_entrega,
+  };
+});
 
-export const getCategoriesWithProducts = createServerFn({ method: "GET" }).handler(
-  async () => MOCK_CATEGORIES,
-);
+export const getCategoriesWithProducts = createServerFn({ method: "GET" }).handler(async () => {
+  const { data: categories, error: catError } = await supabase
+    .from("categories")
+    .select("*")
+    .eq("status", "active")
+    .order("sort_order", { ascending: true });
+
+  if (catError) throw catError;
+
+  const { data: products, error: prodError } = await supabase
+    .from("products")
+    .select("*, category:categories(name)")
+    .eq("is_available", true);
+
+  if (prodError) throw prodError;
+
+  return categories.map(category => ({
+    ...category,
+    products: products.filter(p => p.category_id === category.id)
+  }));
+});
