@@ -1,0 +1,9 @@
+ALTER TABLE orders ADD COLUMN IF NOT EXISTS neighborhood TEXT;
+ALTER TABLE orders ADD COLUMN IF NOT EXISTS street TEXT;
+ALTER TABLE orders ADD COLUMN IF NOT EXISTS number TEXT;
+ALTER TABLE orders ADD COLUMN IF NOT EXISTS complement TEXT;
+ALTER TABLE orders ADD COLUMN IF NOT EXISTS reference TEXT;
+
+GRANT SELECT, INSERT, UPDATE ON public.orders TO anon;
+GRANT SELECT, INSERT, UPDATE ON public.orders TO authenticated;
+GRANT ALL ON public.orders TO service_role;
