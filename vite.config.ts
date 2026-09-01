@@ -15,6 +15,7 @@ export default defineConfig(({ command, mode }) => {
     tailwindcss(),
     tsConfigPaths({ projects: ["./tsconfig.json"] }),
     tanstackStart({
+      spa: { enabled: true },
       server: { entry: "server" },
       importProtection: {
         behavior: "error",
