@@ -1,9 +1,9 @@
-import { createServerFn } from "@tanstack/react-start";
 import { supabase } from "@/integrations/supabase/client";
-import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware";
 import { z } from "zod";
-import { assertPermission } from "@/lib/permissions.server";
 
+// Convertido para SPA. A checagem "manage_delivery" foi removida — o RLS
+// do banco decide quem pode gravar. Se um usuário sem permissão tentar
+// escrever, o Supabase retorna erro e o toast exibe.
 
 export type DeliveryFee = {
   id: string;
@@ -13,7 +13,7 @@ export type DeliveryFee = {
   created_at?: string;
 };
 
-export const getDeliveryFees = createServerFn({ method: "GET" }).handler(async (): Promise<DeliveryFee[]> => {
+export const getDeliveryFees = async (): Promise<DeliveryFee[]> => {
   const { data, error } = await supabase
     .from("delivery_fees")
     .select("*")
@@ -21,9 +21,9 @@ export const getDeliveryFees = createServerFn({ method: "GET" }).handler(async (
 
   if (error) throw error;
   return data as DeliveryFee[];
-});
+};
 
-export const getActiveDeliveryFees = createServerFn({ method: "GET" }).handler(async (): Promise<DeliveryFee[]> => {
+export const getActiveDeliveryFees = async (): Promise<DeliveryFee[]> => {
   const { data, error } = await supabase
     .from("delivery_fees")
     .select("*")
@@ -32,60 +32,55 @@ export const getActiveDeliveryFees = createServerFn({ method: "GET" }).handler(a
 
   if (error) throw error;
   return data as DeliveryFee[];
+};
+
+const createSchema = z.object({
+  neighborhood: z.string().min(1),
+  fee: z.number().min(0),
+  status: z.enum(['active', 'inactive']).default('active')
 });
 
-export const createDeliveryFee = createServerFn({ method: "POST" })
-  .middleware([requireSupabaseAuth])
-  .inputValidator((data) => z.object({
-    neighborhood: z.string().min(1),
-    fee: z.number().min(0),
-    status: z.enum(['active', 'inactive']).default('active')
-  }).parse(data))
-  .handler(async ({ context, data }) => {
-    await assertPermission(context.supabase, context.userId, "manage_delivery");
+export const createDeliveryFee = async (input: z.input<typeof createSchema>) => {
+  const data = createSchema.parse(input);
 
-    const { error } = await context.supabase
-      .from("delivery_fees")
-      .insert([data]);
+  const { error } = await supabase
+    .from("delivery_fees")
+    .insert([data]);
 
-    if (error) throw error;
-    return { success: true };
-  });
+  if (error) throw error;
+  return { success: true };
+};
 
-export const updateDeliveryFee = createServerFn({ method: "POST" })
-  .middleware([requireSupabaseAuth])
-  .inputValidator((data) => z.object({
-    id: z.string().uuid(),
-    neighborhood: z.string().min(1),
-    fee: z.number().min(0),
-    status: z.enum(['active', 'inactive'])
-  }).parse(data))
-  .handler(async ({ context, data }) => {
-    await assertPermission(context.supabase, context.userId, "manage_delivery");
+const updateSchema = z.object({
+  id: z.string().uuid(),
+  neighborhood: z.string().min(1),
+  fee: z.number().min(0),
+  status: z.enum(['active', 'inactive'])
+});
 
-    const { id, ...updateData } = data;
-    const { error } = await context.supabase
-      .from("delivery_fees")
-      .update(updateData)
-      .eq("id", id);
+export const updateDeliveryFee = async (input: z.input<typeof updateSchema>) => {
+  const data = updateSchema.parse(input);
 
-    if (error) throw error;
-    return { success: true };
-  });
+  const { id, ...updateData } = data;
+  const { error } = await supabase
+    .from("delivery_fees")
+    .update(updateData)
+    .eq("id", id);
 
-export const deleteDeliveryFee = createServerFn({ method: "POST" })
-  .middleware([requireSupabaseAuth])
-  .inputValidator((data) => z.object({
-    id: z.string().uuid()
-  }).parse(data))
-  .handler(async ({ context, data }) => {
-    await assertPermission(context.supabase, context.userId, "manage_delivery");
+  if (error) throw error;
+  return { success: true };
+};
 
-    const { error } = await context.supabase
-      .from("delivery_fees")
-      .delete()
-      .eq("id", data.id);
+const deleteSchema = z.object({ id: z.string().uuid() });
 
-    if (error) throw error;
-    return { success: true };
-  });
+export const deleteDeliveryFee = async (input: z.input<typeof deleteSchema>) => {
+  const { id } = deleteSchema.parse(input);
+
+  const { error } = await supabase
+    .from("delivery_fees")
+    .delete()
+    .eq("id", id);
+
+  if (error) throw error;
+  return { success: true };
+};

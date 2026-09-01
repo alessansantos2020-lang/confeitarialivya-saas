@@ -2,7 +2,6 @@ import { createFileRoute, redirect } from '@tanstack/react-router';
 import { supabase } from '@/integrations/supabase/client';
 import { useState } from 'react';
 import { useQuery } from '@tanstack/react-query';
-import { useServerFn } from '@tanstack/react-start';
 import { getCustomers, getCustomerHistory } from '@/lib/customers.functions';
 import { format } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
@@ -47,11 +46,10 @@ export const Route = createFileRoute('/admin/customers')({
 
 function CustomersPage() {
   const [searchTerm, setSearchTerm] = useState('');
-  const fetchCustomers = useServerFn(getCustomers);
 
   const { data: customers, isLoading } = useQuery({
     queryKey: ['admin-customers', searchTerm],
-    queryFn: () => fetchCustomers({ data: { search: searchTerm || undefined } }) as any
+    queryFn: () => getCustomers({ search: searchTerm || undefined }) as any
   });
 
   return (
@@ -144,10 +142,9 @@ function CustomersPage() {
 }
 
 function CustomerHistoryDialog({ customer }: { customer: any }) {
-  const fetchHistory = useServerFn(getCustomerHistory);
   const { data: history, isLoading } = useQuery({
     queryKey: ['customer-history', customer.phone],
-    queryFn: () => fetchHistory({ data: { phone: customer.phone } })
+    queryFn: () => getCustomerHistory({ phone: customer.phone })
   });
 
   return (

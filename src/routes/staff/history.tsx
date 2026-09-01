@@ -25,7 +25,6 @@ import {
   DialogTitle,
   DialogTrigger,
 } from "@/components/ui/dialog";
-import { useServerFn } from '@tanstack/react-start';
 import { Card, CardContent } from "@/components/ui/card";
 import { useState } from 'react';
 
@@ -40,11 +39,10 @@ export const Route = createFileRoute('/staff/history')({
 
 function StaffHistoryPage() {
   const [searchTerm, setSearchTerm] = useState('');
-  const fetchOrders = useServerFn(getOrders);
 
   const { data: orders, isLoading } = useQuery({
     queryKey: ['staff-history'],
-    queryFn: () => fetchOrders({ data: { status: undefined, date: undefined } })
+    queryFn: () => getOrders({ status: undefined, date: undefined })
   });
 
   const historyOrders = orders?.filter((order: any) => {

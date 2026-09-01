@@ -53,7 +53,6 @@ import {
   DialogTrigger,
 } from "@/components/ui/dialog";
 import { toast } from "sonner";
-import { useServerFn } from '@tanstack/react-start';
 import { Card, CardContent } from "@/components/ui/card";
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Switch } from "@/components/ui/switch";
@@ -81,14 +80,10 @@ function OrdersPage() {
   const queryClient = useQueryClient();
   const audioRef = useRef<HTMLAudioElement | null>(null);
   const previousOrderIds = useRef<Set<string>>(new Set());
-  
-  const fetchOrders = useServerFn(getOrders);
-  const mutateStatus = useServerFn(updateOrderStatus);
-  const fetchStoreSettings = useServerFn(getStoreSettings);
 
   const { data: orders, isLoading } = useQuery({
     queryKey: ['admin-orders'],
-    queryFn: () => fetchOrders({ data: { status: undefined, date: undefined } })
+    queryFn: () => getOrders({ status: undefined, date: undefined })
   });
 
   // Sound initialization
@@ -136,7 +131,7 @@ function OrdersPage() {
   }, [orders]);
 
   const mutation = useMutation({
-    mutationFn: (variables: { id: string; status: string }) => mutateStatus({ data: variables }),
+    mutationFn: (variables: { id: string; status: string }) => updateOrderStatus(variables),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['admin-orders'] });
       queryClient.invalidateQueries({ queryKey: ['salesReport'] });
@@ -155,7 +150,7 @@ function OrdersPage() {
   }) || [];
 
   const handleNotifyWhatsApp = async (order: any, type: 'accepted' | 'shipping' | 'ready' | 'delivered') => {
-    const settings = await fetchStoreSettings({});
+    const settings = await getStoreSettings();
     const storeName = settings?.name || 'Doce Encanto';
     const orderNumber = order.id.slice(0, 8).toUpperCase();
     

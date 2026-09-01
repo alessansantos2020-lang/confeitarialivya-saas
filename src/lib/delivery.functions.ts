@@ -1,4 +1,3 @@
-import { createServerFn } from "@tanstack/react-start";
 import { supabase } from "@/integrations/supabase/client";
 
 export type StoreSettings = {
@@ -19,7 +18,7 @@ export type StoreSettings = {
   whatsapp_template_saida_entrega: string | null;
 };
 
-export const getStoreSettings = createServerFn({ method: "GET" }).handler(async (): Promise<StoreSettings> => {
+export const getStoreSettings = async (): Promise<StoreSettings> => {
   const { data, error } = await supabase
     .from("store_settings")
     .select("*")
@@ -62,9 +61,9 @@ export const getStoreSettings = createServerFn({ method: "GET" }).handler(async 
     whatsapp_template_recebido: (data as any).whatsapp_template_recebido,
     whatsapp_template_saida_entrega: (data as any).whatsapp_template_saida_entrega,
   };
-});
+};
 
-export const getCategoriesWithProducts = createServerFn({ method: "GET" }).handler(async () => {
+export const getCategoriesWithProducts = async () => {
   const { data: categories, error: catError } = await supabase
     .from("categories")
     .select("*")
@@ -84,4 +83,4 @@ export const getCategoriesWithProducts = createServerFn({ method: "GET" }).handl
     ...category,
     products: products.filter(p => p.category_id === category.id)
   }));
-});
+};

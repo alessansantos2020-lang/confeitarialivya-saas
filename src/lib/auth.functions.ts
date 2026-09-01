@@ -1,73 +1,75 @@
-import { createServerFn } from "@tanstack/react-start";
-import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware";
-import { z } from "zod";
+import { supabase } from "@/integrations/supabase/client";
 
-// Estas funções ficavam quebradas antes: usavam o cliente anônimo do browser
-// dentro de um handler de servidor, que nunca tem sessão anexada (auth.getUser()
-// sempre retornava null). Agora usam o middleware requireSupabaseAuth, que lê o
-// Bearer token enviado pelo cliente (attachSupabaseAuth) e cria um client Supabase
-// autenticado como o usuário que fez a chamada.
+// Convertido para SPA: essas funções eram serverFn com o middleware
+// requireSupabaseAuth. Agora rodam no cliente e obtêm o userId diretamente
+// da sessão do Supabase; RLS continua garantindo a segurança dos dados.
 
-export const getUserRole = createServerFn({ method: "GET" })
-  .middleware([requireSupabaseAuth])
-  .handler(async ({ context }) => {
-    const { data: roleData } = await context.supabase
-      .from("user_roles")
-      .select("role")
-      .eq("user_id", context.userId)
-      .maybeSingle();
+async function getCurrentUserId(): Promise<string | null> {
+  const { data } = await supabase.auth.getUser();
+  return data.user?.id ?? null;
+}
 
-    return roleData?.role || null;
-  });
+export const getUserRole = async () => {
+  const userId = await getCurrentUserId();
+  if (!userId) return null;
 
-export const checkPermission = createServerFn({ method: "GET" })
-  .middleware([requireSupabaseAuth])
-  .inputValidator((data) => z.string().parse(data))
-  .handler(async ({ context, data: permissionId }) => {
-    // A função has_permission foi movida para o schema privado (fora da API),
-    // então a verificação é feita consultando as tabelas diretamente com o
-    // client autenticado do usuário.
-    const { data: roleData } = await context.supabase
-      .from("user_roles")
-      .select("role")
-      .eq("user_id", context.userId)
-      .maybeSingle();
+  const { data: roleData } = await supabase
+    .from("user_roles")
+    .select("role")
+    .eq("user_id", userId)
+    .maybeSingle();
 
-    if (roleData?.role === "admin") return true;
+  return roleData?.role || null;
+};
 
-    const { data: perm, error } = await context.supabase
-      .from("user_permissions")
-      .select("permission_id")
-      .eq("user_id", context.userId)
-      .eq("permission_id", permissionId)
-      .maybeSingle();
+export const checkPermission = async (permissionId: string) => {
+  const userId = await getCurrentUserId();
+  if (!userId) return false;
 
-    if (error) {
-      console.error("Erro ao verificar permissão:", error);
-      return false;
-    }
+  // A função has_permission foi movida para o schema privado (fora da API),
+  // então a verificação é feita consultando as tabelas diretamente.
+  const { data: roleData } = await supabase
+    .from("user_roles")
+    .select("role")
+    .eq("user_id", userId)
+    .maybeSingle();
 
-    return !!perm;
-  });
+  if (roleData?.role === "admin") return true;
 
-export const getMyPermissions = createServerFn({ method: "GET" })
-  .middleware([requireSupabaseAuth])
-  .handler(async ({ context }) => {
-    const { data: roleData } = await context.supabase
-      .from("user_roles")
-      .select("role")
-      .eq("user_id", context.userId)
-      .maybeSingle();
+  const { data: perm, error } = await supabase
+    .from("user_permissions")
+    .select("permission_id")
+    .eq("user_id", userId)
+    .eq("permission_id", permissionId)
+    .maybeSingle();
 
-    // Se for admin, retorna "all" (acesso total)
-    if (roleData?.role === "admin") {
-      return ["all"];
-    }
+  if (error) {
+    console.error("Erro ao verificar permissão:", error);
+    return false;
+  }
 
-    const { data: permissions } = await context.supabase
-      .from("user_permissions")
-      .select("permission_id")
-      .eq("user_id", context.userId);
+  return !!perm;
+};
 
-    return permissions?.map((p) => p.permission_id) || [];
-  });
+export const getMyPermissions = async (): Promise<string[]> => {
+  const userId = await getCurrentUserId();
+  if (!userId) return [];
+
+  const { data: roleData } = await supabase
+    .from("user_roles")
+    .select("role")
+    .eq("user_id", userId)
+    .maybeSingle();
+
+  // Se for admin, retorna "all" (acesso total)
+  if (roleData?.role === "admin") {
+    return ["all"];
+  }
+
+  const { data: permissions } = await supabase
+    .from("user_permissions")
+    .select("permission_id")
+    .eq("user_id", userId);
+
+  return permissions?.map((p) => p.permission_id) || [];
+};

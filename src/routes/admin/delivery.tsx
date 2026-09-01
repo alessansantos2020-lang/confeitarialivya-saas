@@ -46,7 +46,7 @@ function DeliveryAdminPage() {
   const [formData, setFormData] = useState({ neighborhood: '', fee: '', status: 'active' as 'active' | 'inactive' });
 
   const createMutation = useMutation({
-    mutationFn: (data: any) => createDeliveryFee({ data }),
+    mutationFn: (data: any) => createDeliveryFee(data),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['deliveryFees'] });
       setIsAddDialogOpen(false);
@@ -57,7 +57,7 @@ function DeliveryAdminPage() {
   });
 
   const updateMutation = useMutation({
-    mutationFn: (data: any) => updateDeliveryFee({ data }),
+    mutationFn: (data: any) => updateDeliveryFee(data),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['deliveryFees'] });
       setEditingFee(null);
@@ -67,7 +67,7 @@ function DeliveryAdminPage() {
   });
 
   const deleteMutation = useMutation({
-    mutationFn: (id: string) => deleteDeliveryFee({ data: { id } }),
+    mutationFn: (id: string) => deleteDeliveryFee({ id }),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['deliveryFees'] });
       toast.success("Taxa de entrega excluída!");

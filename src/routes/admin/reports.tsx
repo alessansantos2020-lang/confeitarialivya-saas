@@ -51,11 +51,9 @@ function ReportsPage() {
 
   const { data, isLoading, refetch } = useQuery({
     queryKey: ['salesReport', dateRange],
-    queryFn: () => getSalesReport({ 
-      data: {
-        startDate: new Date(dateRange.start).toISOString(), 
-        endDate: new Date(dateRange.end + 'T23:59:59').toISOString() 
-      }
+    queryFn: () => getSalesReport({
+      startDate: new Date(dateRange.start).toISOString(),
+      endDate: new Date(dateRange.end + 'T23:59:59').toISOString()
     }),
   });
 

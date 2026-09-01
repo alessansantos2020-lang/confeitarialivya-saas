@@ -47,7 +47,6 @@ import {
   DialogTrigger,
 } from "@/components/ui/dialog";
 import { toast } from "sonner";
-import { useServerFn } from '@tanstack/react-start';
 import { Card, CardContent } from "@/components/ui/card";
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Switch } from "@/components/ui/switch";
@@ -75,14 +74,10 @@ function StaffOrdersPage() {
   const queryClient = useQueryClient();
   const audioRef = useRef<HTMLAudioElement | null>(null);
   const previousOrderIds = useRef<Set<string>>(new Set());
-  
-  const fetchOrders = useServerFn(getOrders);
-  const mutateStatus = useServerFn(updateOrderStatus);
-  const fetchStoreSettings = useServerFn(getStoreSettings);
 
   const { data: orders, isLoading } = useQuery({
     queryKey: ['staff-orders'],
-    queryFn: () => fetchOrders({ data: { status: undefined, date: undefined } })
+    queryFn: () => getOrders({ status: undefined, date: undefined })
   });
 
   useEffect(() => {
@@ -123,7 +118,7 @@ function StaffOrdersPage() {
   }, [orders]);
 
   const mutation = useMutation({
-    mutationFn: (variables: { id: string; status: string }) => mutateStatus({ data: variables }),
+    mutationFn: (variables: { id: string; status: string }) => updateOrderStatus(variables),
     onSuccess: async (updatedOrder) => {
       queryClient.invalidateQueries({ queryKey: ['staff-orders'] });
       toast.success("Status atualizado!");
@@ -160,7 +155,7 @@ function StaffOrdersPage() {
       return;
     }
 
-    const settings = await fetchStoreSettings({});
+    const settings = await getStoreSettings();
     const storeName = settings?.name || 'Doce Encanto';
     const orderNumber = order.id.slice(0, 8).toUpperCase();
     
