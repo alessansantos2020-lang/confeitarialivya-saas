@@ -24,6 +24,9 @@ dist-ssr
 # Binários do Supabase local (baixados, não versionar)
 .supabase-local/
 
+# Estado temporário do Supabase CLI
+supabase/.temp/
+
 # Wrangler / Cloudflare
 .wrangler/
 .dev.vars
