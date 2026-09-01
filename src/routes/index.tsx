@@ -203,7 +203,7 @@ function DeliveryPage() {
 
       console.log("Submitting order data:", orderData);
 
-      const response = await createOrder({ data: orderData });
+      const response = await createOrder(orderData);
       console.log("Order response success:", response);
       
       setLastCreatedOrder(response);
