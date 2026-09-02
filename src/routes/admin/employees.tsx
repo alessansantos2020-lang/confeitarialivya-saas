@@ -185,7 +185,7 @@ function EmployeesPage() {
   });
 
   const createEmployeeMutation = useMutation({
-    mutationFn: (data: any) => createEmployee({ data }),
+    mutationFn: (data: any) => createEmployee(data),
     onSuccess: (result: any) => {
       if (!result?.success) {
         toast.error(result?.error || 'Erro ao cadastrar funcionário');
@@ -202,8 +202,12 @@ function EmployeesPage() {
   });
 
   const approveMutation = useMutation({
-    mutationFn: (id: string) => approveEmployee({ data: { id } }),
-    onSuccess: () => {
+    mutationFn: (id: string) => approveEmployee(id),
+    onSuccess: (result: any) => {
+      if (!result?.success) {
+        toast.error(result?.error || 'Erro ao aprovar funcionário');
+        return;
+      }
       queryClient.invalidateQueries({ queryKey: ['employees'] });
       toast.success('Funcionário aprovado com sucesso!');
     },
@@ -214,8 +218,12 @@ function EmployeesPage() {
   });
 
   const rejectMutation = useMutation({
-    mutationFn: (id: string) => rejectEmployee({ data: { id } }),
-    onSuccess: () => {
+    mutationFn: (id: string) => rejectEmployee(id),
+    onSuccess: (result: any) => {
+      if (!result?.success) {
+        toast.error(result?.error || 'Erro ao processar solicitação');
+        return;
+      }
       queryClient.invalidateQueries({ queryKey: ['employees'] });
       toast.success('Funcionário recusado.');
     },
@@ -226,8 +234,12 @@ function EmployeesPage() {
   });
 
   const deleteMutation = useMutation({
-    mutationFn: (id: string) => deleteEmployee({ data: { id } }),
-    onSuccess: () => {
+    mutationFn: (id: string) => deleteEmployee(id),
+    onSuccess: (result: any) => {
+      if (!result?.success) {
+        toast.error(result?.error || 'Erro ao remover funcionário');
+        return;
+      }
       queryClient.invalidateQueries({ queryKey: ['employees'] });
       toast.success('Funcionário removido definitivamente do sistema.');
     },
