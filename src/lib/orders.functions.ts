@@ -24,10 +24,13 @@ export type CreateOrderInput = {
 };
 
 export const createOrder = async (data: CreateOrderInput) => {
-  const { data: order, error: orderError } = await supabase
+  const orderId = crypto.randomUUID();
+
+  const { error: orderError } = await supabase
     .from("orders")
     .insert([
       {
+        id: orderId,
         customer_name: data.customer_name,
         customer_phone: data.customer_phone,
         address: data.address,
@@ -42,14 +45,13 @@ export const createOrder = async (data: CreateOrderInput) => {
         payment_method: data.payment_method,
         observation: data.observation || null,
       },
-    ])
-    .select()
-    .single();
+    ]);
 
   if (orderError) throw orderError;
 
   const orderItems = data.items.map((item) => ({
-    order_id: order.id,
+    id: crypto.randomUUID(),
+    order_id: orderId,
     product_id: item.product_id,
     product_name: item.product_name,
     quantity: item.quantity,
@@ -64,5 +66,17 @@ export const createOrder = async (data: CreateOrderInput) => {
 
   if (itemsError) throw itemsError;
 
-  return order;
+  return {
+    id: orderId,
+    customer_name: data.customer_name,
+    customer_phone: data.customer_phone,
+    address: data.address,
+    total_amount: data.total_amount,
+    delivery_fee: data.delivery_fee,
+    payment_method: data.payment_method,
+    observation: data.observation || null,
+    status: "pending",
+    created_at: new Date().toISOString(),
+    order_items: orderItems,
+  };
 };

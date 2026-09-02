@@ -739,12 +739,13 @@ function CartContent({
   const handleSendWhatsApp = () => {
     if (!lastCreatedOrder || !settings.whatsapp) return;
 
-    const itemsText = lastCreatedOrder.order_items.map((item: any) => {
-      const addonsText = item.addons && item.addons.length > 0 
-        ? `\n   + Adicionais: ${item.addons.map((a: any) => a.name).join(', ')}` 
+    const itemsText = (lastCreatedOrder.order_items || []).map((item: any) => {
+      const addons = item.selected_addons || item.addons || [];
+      const addonsText = addons.length > 0
+        ? `\n   + Adicionais: ${addons.map((a: any) => a.name).join(', ')}`
         : '';
       const obsText = item.observation ? `\n   + Obs: ${item.observation}` : '';
-      const prodName = item.products?.name || 'Produto';
+      const prodName = item.product_name || item.products?.name || 'Produto';
       const formattedPrice = new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(item.price_at_time * item.quantity);
       return `* ${item.quantity}x ${prodName} - ${formattedPrice}${addonsText}${obsText}`;
     }).join('\n');
