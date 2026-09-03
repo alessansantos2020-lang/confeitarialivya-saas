@@ -1,7 +1,7 @@
-import { createFileRoute, redirect } from '@tanstack/react-router';
-import { supabase } from '@/integrations/supabase/client';
+import { createFileRoute } from '@tanstack/react-router';
 import { useQuery } from '@tanstack/react-query';
 import { getSalesReport } from '@/lib/reports.functions';
+import { useActiveStore } from '@/lib/active-store';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -44,14 +44,16 @@ export const Route = createFileRoute('/admin/reports')({
 });
 
 function ReportsPage() {
+  const { store, storeId } = useActiveStore();
   const [dateRange, setDateRange] = useState({
     start: format(subDays(new Date(), 30), 'yyyy-MM-dd'),
     end: format(new Date(), 'yyyy-MM-dd')
   });
 
   const { data, isLoading, refetch } = useQuery({
-    queryKey: ['salesReport', dateRange],
+    queryKey: ['salesReport', storeId, dateRange],
     queryFn: () => getSalesReport({
+      storeId,
       startDate: new Date(dateRange.start).toISOString(),
       endDate: new Date(dateRange.end + 'T23:59:59').toISOString()
     }),
@@ -104,7 +106,7 @@ function ReportsPage() {
       case 'canceled': title = "Relatório de Pedidos Cancelados"; break;
     }
 
-    generatePDFReport(title, dateRange, data, type);
+    generatePDFReport(title, dateRange, data, type, store.name);
   };
 
 
@@ -124,7 +126,7 @@ function ReportsPage() {
       <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
         <div>
           <h1 className="text-2xl font-bold text-slate-800">Relatórios de Vendas</h1>
-          <p className="text-slate-500">Análise completa de desempenho da sua confeitaria.</p>
+          <p className="text-slate-500">Análise completa de desempenho da sua loja.</p>
         </div>
         <div className="flex flex-wrap items-center gap-2">
           <Button variant="outline" size="sm" onClick={() => setPeriod('today')}>Hoje</Button>

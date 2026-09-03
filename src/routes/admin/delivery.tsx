@@ -1,6 +1,6 @@
-import { createFileRoute, redirect } from '@tanstack/react-router';
-import { supabase } from '@/integrations/supabase/client';
-import { useSuspenseQuery, useQueryClient, useMutation } from '@tanstack/react-query';
+import { createFileRoute } from '@tanstack/react-router';
+import { useQuery, useQueryClient, useMutation } from '@tanstack/react-query';
+import { useActiveStore } from '@/lib/active-store';
 import { getDeliveryFees, createDeliveryFee, updateDeliveryFee, deleteDeliveryFee, type DeliveryFee } from '@/lib/delivery-fees.functions';
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -22,33 +22,30 @@ import { Badge } from "@/components/ui/badge";
 import { Plus, Edit2, Trash2, Loader2, AlertTriangle } from "lucide-react";
 import { useState } from "react";
 import { toast } from "sonner";
-import { queryOptions } from '@tanstack/react-query';
 import { Switch } from "@/components/ui/switch";
-
-const deliveryFeesOptions = queryOptions({
-  queryKey: ['deliveryFees'],
-  queryFn: () => getDeliveryFees(),
-});
 
 export const Route = createFileRoute('/admin/delivery')({
   beforeLoad: () => {
     return;
   },
   component: DeliveryAdminPage,
-  loader: ({ context }) => context.queryClient.ensureQueryData(deliveryFeesOptions),
 });
 
 function DeliveryAdminPage() {
-  const { data: fees } = useSuspenseQuery(deliveryFeesOptions);
+  const { storeId } = useActiveStore();
+  const { data: fees, isLoading } = useQuery({
+    queryKey: ['deliveryFees', storeId],
+    queryFn: () => getDeliveryFees(storeId),
+  });
   const queryClient = useQueryClient();
   const [isAddDialogOpen, setIsAddDialogOpen] = useState(false);
   const [editingFee, setEditingFee] = useState<DeliveryFee | null>(null);
   const [formData, setFormData] = useState({ neighborhood: '', fee: '', status: 'active' as 'active' | 'inactive' });
 
   const createMutation = useMutation({
-    mutationFn: (data: any) => createDeliveryFee(data),
+    mutationFn: (data: any) => createDeliveryFee({ ...data, store_id: storeId }),
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['deliveryFees'] });
+      queryClient.invalidateQueries({ queryKey: ['deliveryFees', storeId] });
       setIsAddDialogOpen(false);
       setFormData({ neighborhood: '', fee: '', status: 'active' });
       toast.success("Taxa de entrega criada com sucesso!");
@@ -57,9 +54,9 @@ function DeliveryAdminPage() {
   });
 
   const updateMutation = useMutation({
-    mutationFn: (data: any) => updateDeliveryFee(data),
+    mutationFn: (data: any) => updateDeliveryFee({ ...data, store_id: storeId }),
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['deliveryFees'] });
+      queryClient.invalidateQueries({ queryKey: ['deliveryFees', storeId] });
       setEditingFee(null);
       toast.success("Taxa de entrega atualizada!");
     },
@@ -67,9 +64,9 @@ function DeliveryAdminPage() {
   });
 
   const deleteMutation = useMutation({
-    mutationFn: (id: string) => deleteDeliveryFee({ id }),
+    mutationFn: (id: string) => deleteDeliveryFee({ id, store_id: storeId }),
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['deliveryFees'] });
+      queryClient.invalidateQueries({ queryKey: ['deliveryFees', storeId] });
       toast.success("Taxa de entrega excluída!");
     },
     onError: (error) => toast.error("Erro ao excluir taxa: " + error.message)
@@ -105,6 +102,14 @@ function DeliveryAdminPage() {
   const formatCurrency = (value: number) => {
     return new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(value);
   };
+
+  if (isLoading || !fees) {
+    return (
+      <div className="p-12 flex justify-center">
+        <Loader2 className="animate-spin text-pink-600" size={32} />
+      </div>
+    );
+  }
 
   return (
     <div className="space-y-6">

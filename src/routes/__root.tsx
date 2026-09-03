@@ -75,13 +75,13 @@ export const Route = createRootRouteWithContext<{ queryClient: QueryClient }>()(
     meta: [
       { charSet: "utf-8" },
       { name: "viewport", content: "width=device-width, initial-scale=1" },
-      { title: "Cardápio Digital" },
+      { title: "Catálogo Online" },
       { name: "description", content: "Faça seu pedido online de forma rápida e prática." },
-      { property: "og:title", content: "Cardápio Digital" },
+      { property: "og:title", content: "Catálogo Online" },
       { property: "og:description", content: "Faça seu pedido online de forma rápida e prática." },
       { property: "og:type", content: "website" },
       { name: "twitter:card", content: "summary_large_image" },
-      { name: "twitter:title", content: "Cardápio Digital" },
+      { name: "twitter:title", content: "Catálogo Online" },
       { name: "twitter:description", content: "Faça seu pedido online de forma rápida e prática." },
     ],
     links: [

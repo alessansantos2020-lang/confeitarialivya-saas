@@ -1,11 +1,11 @@
-import { createFileRoute, useNavigate } from '@tanstack/react-router'
-import { useState, useEffect } from 'react'
+import { createFileRoute } from '@tanstack/react-router'
+import { useState } from 'react'
 import { supabase } from '@/integrations/supabase/client'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card'
 import { Label } from '@/components/ui/label'
-import { Eye, EyeOff, Lock, Mail, Loader2, User } from 'lucide-react'
+import { Eye, EyeOff, Lock, Mail, Loader2 } from 'lucide-react'
 import { toast } from 'sonner'
 
 export const Route = createFileRoute('/auth')({
@@ -15,18 +15,8 @@ export const Route = createFileRoute('/auth')({
 function AuthPage() {
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
-  const [fullName, setFullName] = useState('')
   const [showPassword, setShowPassword] = useState(false)
   const [isLoading, setIsLoading] = useState(false)
-  const [isSignUp, setIsSignUp] = useState(false)
-  const navigate = useNavigate()
-  const search = Route.useSearch() as any
-
-  useEffect(() => {
-    if (search.signup) {
-      setIsSignUp(true)
-    }
-  }, [search.signup])
 
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault()
@@ -95,10 +85,10 @@ function AuthPage() {
         await new Promise(resolve => setTimeout(resolve, 800))
         
         console.log("DEBUG: Redirecting based on role:", roleData.role);
-        if (roleData.role === 'admin') {
+        if (roleData.role === 'super_admin') {
+          window.location.href = '/super';
+        } else if (roleData.role === 'admin') {
           window.location.href = '/admin';
-        } else if (roleData.role === 'employee') {
-          window.location.href = '/staff';
         } else {
           toast.error('Tipo de usuário não reconhecido.')
           await supabase.auth.signOut()
@@ -106,16 +96,15 @@ function AuthPage() {
         }
 
       } else {
-        // Verificar se o perfil está pendente
+        // Sem papel definido: conta existe no auth mas não foi vinculada a
+        // nenhuma loja pelo admin. Não há auto-cadastro no sistema.
         const { data: profileData } = await supabase
           .from('profiles')
           .select('status')
           .eq('id', user.id)
           .maybeSingle();
 
-        if (profileData?.status === 'pending') {
-          toast.info('Seu cadastro está em análise. Por favor, aguarde a aprovação do administrador.');
-        } else if (profileData?.status === 'blocked') {
+        if (profileData?.status === 'blocked') {
           toast.error('Seu acesso foi bloqueado pelo administrador.');
         } else {
           toast.error('Você não possui permissão para acessar esta área.');
@@ -146,72 +135,22 @@ function AuthPage() {
     }
   }
 
-  const handleSignUp = async (e: React.FormEvent) => {
-    e.preventDefault()
-    if (isLoading) return
-    setIsLoading(true)
-
-    try {
-      const { data, error } = await supabase.auth.signUp({
-        email,
-        password,
-        options: {
-          data: {
-            full_name: fullName,
-          }
-        }
-      })
-
-      if (error) {
-        toast.error(error.message)
-        setIsLoading(false)
-        return
-      }
-
-      toast.success('Cadastro realizado! Por favor, aguarde o Administrador liberar seu acesso.')
-      setIsSignUp(false)
-    } catch (error) {
-      console.error(error)
-      toast.error('Erro ao realizar cadastro.')
-    } finally {
-      setIsLoading(false)
-    }
-  }
-
   return (
     <div className="min-h-screen flex items-center justify-center bg-slate-50 p-4">
       <Card className="w-full max-w-md">
         <CardHeader className="space-y-1 text-center">
           <div className="flex justify-center mb-4">
             <div className="h-12 w-12 rounded-full bg-pink-500 flex items-center justify-center text-white text-xl font-bold">
-              DE
+              <Lock size={22} />
             </div>
           </div>
-          <CardTitle className="text-2xl">{isSignUp ? 'Criar Conta' : 'Acesso Restrito'}</CardTitle>
+          <CardTitle className="text-2xl">Acesso Restrito</CardTitle>
           <CardDescription>
-            {isSignUp 
-              ? 'Preencha os dados para solicitar acesso ao painel' 
-              : 'Entre com suas credenciais para acessar o painel'}
+            Entre com suas credenciais para acessar o painel
           </CardDescription>
         </CardHeader>
-        <form onSubmit={isSignUp ? handleSignUp : handleLogin}>
+        <form onSubmit={handleLogin}>
           <CardContent className="space-y-4">
-            {isSignUp && (
-              <div className="space-y-2">
-                <Label htmlFor="fullName">Nome Completo</Label>
-                <div className="relative">
-                  <User className="absolute left-3 top-3 h-4 w-4 text-slate-400" />
-                  <Input
-                    id="fullName"
-                    placeholder="Seu nome"
-                    className="pl-10"
-                    value={fullName}
-                    onChange={(e) => setFullName(e.target.value)}
-                    required
-                  />
-                </div>
-              </div>
-            )}
             <div className="space-y-2">
               <Label htmlFor="email">E-mail</Label>
               <div className="relative">
@@ -245,7 +184,7 @@ function AuthPage() {
                 <Input
                   id="password"
                   name="password"
-                  autoComplete={isSignUp ? "new-password" : "current-password"}
+                  autoComplete="current-password"
                   type={showPassword ? 'text' : 'password'}
                   className="pl-10 pr-10"
                   value={password}
@@ -263,25 +202,17 @@ function AuthPage() {
               </div>
             </div>
           </CardContent>
-          <CardFooter className="flex flex-col gap-4">
+          <CardFooter>
             <Button className="w-full bg-pink-600 hover:bg-pink-700" type="submit" disabled={isLoading}>
               {isLoading ? (
                 <>
                   <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                  {isSignUp ? 'Criando conta...' : 'Entrando...'}
+                  Entrando...
                 </>
               ) : (
-                isSignUp ? 'Criar Conta' : 'Entrar'
+                'Entrar'
               )}
             </Button>
-            
-            <button
-              type="button"
-              onClick={() => setIsSignUp(!isSignUp)}
-              className="text-sm text-slate-500 hover:text-pink-600 transition-colors"
-            >
-              {isSignUp ? 'Já tem uma conta? Entre aqui' : 'Solicitar acesso de Funcionário'}
-            </button>
           </CardFooter>
         </form>
       </Card>

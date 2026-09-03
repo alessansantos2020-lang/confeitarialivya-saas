@@ -1,6 +1,10 @@
 import { createFileRoute } from '@tanstack/react-router'
 import { supabase } from '@/integrations/supabase/client'
 import { getUserRole } from '@/lib/auth.functions'
+import { resolveActiveStore, type StoreMembership } from '@/lib/store-context'
+import { ActiveStoreProvider } from '@/lib/active-store'
+import { storeThemeVars } from '@/lib/store-theme'
+import type { Store } from '@/lib/delivery.functions'
 
 export const Route = createFileRoute('/staff')({
   ssr: false,
@@ -9,9 +13,10 @@ export const Route = createFileRoute('/staff')({
 
 import { Outlet, Link, useNavigate } from "@tanstack/react-router";
 import { Button } from "@/components/ui/button";
-import { 
-  LogOut, 
-  ShoppingBag, 
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import {
+  LogOut,
+  ShoppingBag,
   History,
   Menu,
   X,
@@ -19,7 +24,8 @@ import {
   ChevronLeft,
   ChevronRight,
   Loader2,
-  Printer
+  Printer,
+  Store as StoreIcon
 } from "lucide-react";
 import { useState, useEffect } from "react";
 import { cn } from "@/lib/utils";
@@ -32,8 +38,14 @@ function StaffLayout() {
   const [userEmail, setUserEmail] = useState<string>("");
   const [isAuthLoading, setIsAuthLoading] = useState(true);
 
-  const [storeName, setStoreName] = useState("Doce Encanto");
+  const [activeStore, setActiveStore] = useState<Store | null>(null);
+  const [memberships, setMemberships] = useState<StoreMembership[]>([]);
+  const [storeName, setStoreName] = useState("");
   const [storeLogo, setStoreLogo] = useState<string | null>(null);
+  const [storeTheme, setStoreTheme] = useState<{ primary: string | null; secondary: string | null }>({
+    primary: null,
+    secondary: null,
+  });
 
   useEffect(() => {
     let cancelled = false;
@@ -49,29 +61,45 @@ function StaffLayout() {
       setUserEmail(session.user.email || "");
 
       try {
-        const [role, settingsResult, profileData] = await Promise.all([
+        const [role, storeResolution, profileData] = await Promise.all([
           getUserRole(),
-          supabase.from('store_settings').select('name, logo_url').maybeSingle(),
+          resolveActiveStore(),
           supabase.from('profiles').select('status').eq('id', session.user.id).maybeSingle()
         ]);
 
         if (cancelled) return;
 
-        if (settingsResult?.data) {
-          setStoreName(settingsResult.data.name || "Doce Encanto");
-          setStoreLogo(settingsResult.data.logo_url);
-        }
+        // Painel de pedidos: dono da loja (admin) ou dono do sistema
+        const isSuperAdmin = role === 'super_admin';
+        const isActiveAdmin = role === 'admin' && profileData?.data?.status === 'active';
 
-        // Bloqueio se não estiver ativo ou não for funcionário/admin
-        if (profileData?.data?.status !== 'active' || !role || (role !== 'admin' && role !== 'employee')) {
+        if (!isSuperAdmin && !isActiveAdmin) {
           console.log("Access denied to Staff panel. Status:", profileData?.data?.status, "Role:", role);
           await supabase.auth.signOut();
           navigate({ to: '/auth' });
           return;
-        } else {
-          setUserRole(role);
         }
-        
+
+        setUserRole(role);
+        setMemberships(storeResolution.memberships);
+
+        if (storeResolution.store) {
+          setActiveStore(storeResolution.store);
+          setStoreName(storeResolution.store.name);
+
+          const { data: settings } = await supabase
+            .from('store_settings')
+            .select('name, logo_url, primary_color, secondary_color')
+            .eq('store_id', storeResolution.store.id)
+            .maybeSingle();
+
+          if (!cancelled && settings) {
+            setStoreName(settings.name || storeResolution.store.name);
+            setStoreLogo(settings.logo_url);
+            setStoreTheme({ primary: settings.primary_color, secondary: settings.secondary_color });
+          }
+        }
+
         setIsAuthLoading(false);
       } catch (e) {
         console.error("Erro ao verificar autenticação:", e);
@@ -81,10 +109,71 @@ function StaffLayout() {
 
     loadAuth();
 
+    const { data: authListener } = supabase.auth.onAuthStateChange((event) => {
+      if (event === 'SIGNED_OUT') {
+        navigate({ to: '/auth' });
+      }
+    });
+
     return () => {
       cancelled = true;
+      authListener.subscription.unsubscribe();
     };
   }, [navigate]);
+
+  useEffect(() => {
+    if (!activeStore) return;
+
+    const channel = supabase
+      .channel(`staff_store_settings_${activeStore.id}`)
+      .on(
+        'postgres_changes',
+        {
+          event: 'UPDATE',
+          schema: 'public',
+          table: 'store_settings',
+          filter: `store_id=eq.${activeStore.id}`,
+        },
+        (payload) => {
+          const newSettings = payload.new as any;
+          if (newSettings) {
+            setStoreName(newSettings['name'] || activeStore.name);
+            setStoreLogo(newSettings['logo_url']);
+            setStoreTheme({
+              primary: newSettings['primary_color'],
+              secondary: newSettings['secondary_color'],
+            });
+          }
+        }
+      )
+      .subscribe();
+
+    return () => {
+      supabase.removeChannel(channel);
+    };
+  }, [activeStore]);
+
+  const handleSwitchStore = async (storeId: string) => {
+    const next = memberships.find((m) => m.store_id === storeId);
+    if (!next) return;
+
+    setActiveStore(next.store);
+    setStoreName(next.store.name);
+    setStoreLogo(null);
+    setStoreTheme({ primary: null, secondary: null });
+
+    const { data: settings } = await supabase
+      .from('store_settings')
+      .select('name, logo_url, primary_color, secondary_color')
+      .eq('store_id', storeId)
+      .maybeSingle();
+
+    if (settings) {
+      setStoreName(settings.name || next.store.name);
+      setStoreLogo(settings.logo_url);
+      setStoreTheme({ primary: settings.primary_color, secondary: settings.secondary_color });
+    }
+  };
 
   const handleLogout = async () => {
     await supabase.auth.signOut();
@@ -107,15 +196,41 @@ function StaffLayout() {
     );
   }
 
+  if (!activeStore) {
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-slate-50 p-4">
+        <div className="max-w-md w-full bg-white rounded-2xl p-8 border text-center space-y-4">
+          <div className="w-16 h-16 bg-amber-50 text-amber-500 rounded-full flex items-center justify-center mx-auto">
+            <StoreIcon className="w-8 h-8" />
+          </div>
+          <h2 className="text-xl font-bold text-slate-900">Nenhuma loja vinculada</h2>
+          <p className="text-slate-500 text-sm">
+            Sua conta não está vinculada a nenhuma loja ativa. Contate o administrador.
+          </p>
+          <Button variant="outline" className="w-full" onClick={handleLogout}>
+            <LogOut size={16} className="mr-2" />
+            Sair
+          </Button>
+        </div>
+      </div>
+    );
+  }
+
   return (
-    <div className="flex min-h-screen bg-slate-50 flex-col md:flex-row">
+    <ActiveStoreProvider store={activeStore} memberships={memberships} onSwitch={handleSwitchStore}>
+    <div
+      className="flex min-h-screen bg-slate-50 flex-col md:flex-row"
+      style={storeThemeVars(storeTheme.primary, storeTheme.secondary)}
+    >
       {/* Mobile Header */}
       <header className="md:hidden flex items-center justify-between p-4 bg-slate-900 text-white sticky top-0 z-50">
         <div className="flex items-center gap-2">
           {storeLogo ? (
             <img src={storeLogo} alt={storeName} className="h-8 w-8 rounded-full object-cover" />
           ) : (
-            <div className="h-8 w-8 rounded-full bg-pink-500 flex items-center justify-center text-xs font-bold">DE</div>
+            <div className="h-8 w-8 rounded-full bg-pink-500 flex items-center justify-center text-xs font-bold">
+              {(storeName || 'L').slice(0, 2).toUpperCase()}
+            </div>
           )}
           <span className="font-bold">{storeName}</span>
         </div>
@@ -138,19 +253,21 @@ function StaffLayout() {
             {storeLogo ? (
               <img src={storeLogo} alt={storeName} className="h-10 w-10 shrink-0 rounded-full object-cover" />
             ) : (
-              <div className="h-10 w-10 shrink-0 rounded-full bg-pink-500 flex items-center justify-center text-lg font-bold">DE</div>
+              <div className="h-10 w-10 shrink-0 rounded-full bg-pink-500 flex items-center justify-center text-lg font-bold">
+                {(storeName || 'L').slice(0, 2).toUpperCase()}
+              </div>
             )}
             {!isSidebarCollapsed && (
               <div className="animate-in fade-in duration-300">
                 <div className="font-bold text-lg leading-tight truncate">{storeName}</div>
                 <div className="text-[10px] text-pink-400 uppercase tracking-wider font-semibold">
-                  Painel do Funcionário
+                  Painel de Pedidos
                 </div>
               </div>
             )}
           </div>
-          
-          <button 
+
+          <button
             onClick={() => setIsSidebarCollapsed(!isSidebarCollapsed)}
             className="absolute -right-3 top-7 bg-pink-600 rounded-full p-1 text-white shadow-lg hidden md:block hover:bg-pink-700 transition-colors z-50"
           >
@@ -160,7 +277,7 @@ function StaffLayout() {
 
         <nav className="flex-1 overflow-y-auto py-6 px-4 space-y-1">
           {navItems.map((item) => (
-            <Link 
+            <Link
               key={item.label}
               to={item.to}
               onClick={() => setIsMobileMenuOpen(false)}
@@ -178,8 +295,8 @@ function StaffLayout() {
         </nav>
 
         <div className="p-4 border-t border-slate-800 space-y-2">
-          <Button 
-            variant="ghost" 
+          <Button
+            variant="ghost"
             className={cn(
               "w-full text-slate-400 hover:text-white hover:bg-slate-800 px-3 transition-all",
               isSidebarCollapsed ? "justify-center" : "justify-start gap-3"
@@ -196,15 +313,32 @@ function StaffLayout() {
       <div className="flex-1 flex flex-col min-h-screen">
         {/* Desktop Header */}
         <header className="hidden md:flex h-16 items-center justify-between px-8 bg-white border-b shadow-sm sticky top-0 z-30">
-          <h1 className="text-xl font-semibold text-slate-800">Operação - {storeName}</h1>
+          <div className="flex items-center gap-4">
+            <h1 className="text-xl font-semibold text-slate-800">Pedidos - {storeName}</h1>
+            {memberships.length > 1 && (
+              <Select value={activeStore.id} onValueChange={handleSwitchStore}>
+                <SelectTrigger className="w-[200px] h-9">
+                  <StoreIcon size={14} className="mr-2 text-pink-500 shrink-0" />
+                  <SelectValue placeholder="Selecione a loja" />
+                </SelectTrigger>
+                <SelectContent>
+                  {memberships.map((m) => (
+                    <SelectItem key={m.store_id} value={m.store_id}>
+                      {m.store.name}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            )}
+          </div>
           <div className="flex items-center gap-4">
             <div className="flex items-center gap-2 text-sm text-slate-600 bg-slate-50 px-3 py-1.5 rounded-full border">
               <User size={16} className="text-pink-500" />
               <span className="max-w-[150px] truncate font-medium">{userEmail}</span>
             </div>
-            <Button 
+            <Button
               size="sm"
-              variant="outline" 
+              variant="outline"
               className="gap-2 text-slate-600"
               onClick={handleLogout}
             >
@@ -222,5 +356,6 @@ function StaffLayout() {
         </main>
       </div>
     </div>
+    </ActiveStoreProvider>
   );
 }

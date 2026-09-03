@@ -1,8 +1,8 @@
-import { createFileRoute, redirect } from '@tanstack/react-router';
-import { supabase } from '@/integrations/supabase/client';
+import { createFileRoute } from '@tanstack/react-router';
 import { useState } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { getCustomers, getCustomerHistory } from '@/lib/customers.functions';
+import { useActiveStore } from '@/lib/active-store';
 import { format } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
 import { 
@@ -45,18 +45,19 @@ export const Route = createFileRoute('/admin/customers')({
 });
 
 function CustomersPage() {
+  const { storeId } = useActiveStore();
   const [searchTerm, setSearchTerm] = useState('');
 
   const { data: customers, isLoading } = useQuery({
-    queryKey: ['admin-customers', searchTerm],
-    queryFn: () => getCustomers({ search: searchTerm || undefined }) as any
+    queryKey: ['admin-customers', storeId, searchTerm],
+    queryFn: () => getCustomers({ search: searchTerm || undefined, storeId }) as any
   });
 
   return (
     <div className="space-y-6">
       <div>
         <h1 className="text-2xl font-bold text-slate-800">Clientes</h1>
-        <p className="text-slate-500">Histórico e gestão de clientes da confeitaria.</p>
+        <p className="text-slate-500">Histórico e gestão de clientes da loja.</p>
       </div>
 
       <div className="bg-white p-4 rounded-xl border border-slate-200 shadow-sm">
@@ -142,9 +143,10 @@ function CustomersPage() {
 }
 
 function CustomerHistoryDialog({ customer }: { customer: any }) {
+  const { storeId } = useActiveStore();
   const { data: history, isLoading } = useQuery({
-    queryKey: ['customer-history', customer.phone],
-    queryFn: () => getCustomerHistory({ phone: customer.phone })
+    queryKey: ['customer-history', storeId, customer.phone],
+    queryFn: () => getCustomerHistory({ phone: customer.phone, storeId })
   });
 
   return (

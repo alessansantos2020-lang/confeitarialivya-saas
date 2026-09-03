@@ -3,17 +3,17 @@ import "jspdf-autotable";
 import { format } from "date-fns";
 import { ptBR } from "date-fns/locale";
 
-export const generatePDFReport = (title: string, dateRange: { start: string; end: string }, data: any, type: 'sales' | 'orders' | 'products' | 'customers' | 'financial' | 'canceled') => {
+export const generatePDFReport = (title: string, dateRange: { start: string; end: string }, data: any, type: 'sales' | 'orders' | 'products' | 'customers' | 'financial' | 'canceled', storeName = "Relatório") => {
   const doc = new jsPDF();
   const now = new Date();
 
   // Helper for currency
-  const formatCurrency = (value: number) => 
+  const formatCurrency = (value: number) =>
     new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(value);
 
   // Header
   doc.setFontSize(18);
-  doc.text("Doce Encanto Confeitaria", 105, 20, { align: "center" });
+  doc.text(storeName, 105, 20, { align: "center" });
   doc.setFontSize(14);
   doc.text(title, 105, 30, { align: "center" });
   

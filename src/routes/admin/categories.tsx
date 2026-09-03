@@ -1,7 +1,8 @@
-import { createFileRoute, redirect } from '@tanstack/react-router'
+import { createFileRoute } from '@tanstack/react-router'
 import { useState } from 'react'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { supabase } from '@/integrations/supabase/client'
+import { useActiveStore } from '@/lib/active-store'
 import { Plus, Pencil, Trash2, GripVertical, Check, X, Loader2, Upload, Image as ImageIcon } from 'lucide-react'
 import { ImageUpload } from '@/components/admin/ImageUpload'
 import { Button } from '@/components/ui/button'
@@ -55,6 +56,7 @@ export const Route = createFileRoute('/admin/categories')({
 })
 
 function CategoriesPage() {
+  const { storeId } = useActiveStore()
   const queryClient = useQueryClient()
   const [isAddOpen, setIsAddOpen] = useState(false)
   const [editingCategory, setEditingCategory] = useState<Category | null>(null)
@@ -64,14 +66,15 @@ function CategoriesPage() {
   const [editCategoryImage, setEditCategoryImage] = useState('')
 
   const { data: categories, isLoading, error: queryError } = useQuery({
-    queryKey: ['categories'],
+    queryKey: ['categories', storeId],
     queryFn: async () => {
       console.log('Fetching categories...');
       const { data, error } = await supabase
         .from('categories')
         .select('*')
+        .eq('store_id', storeId)
         .order('sort_order', { ascending: true })
-      
+
       if (error) {
         console.error('Supabase error fetching categories:', error);
         throw error;
@@ -89,8 +92,9 @@ function CategoriesPage() {
     mutationFn: async (data: { name: string, image_url: string }) => {
       const { error } = await supabase
         .from('categories')
-        .insert([{ 
-          name: data.name, 
+        .insert([{
+          store_id: storeId,
+          name: data.name,
           image_url: data.image_url,
           sort_order: (categories?.length || 0) + 1,
           status: 'active'
@@ -98,7 +102,7 @@ function CategoriesPage() {
       if (error) throw error
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['categories'] })
+      queryClient.invalidateQueries({ queryKey: ['categories', storeId] })
       setIsAddOpen(false)
       setNewName('')
       setNewCategoryImage('')
@@ -113,10 +117,11 @@ function CategoriesPage() {
         .from('categories')
         .update(updates as any)
         .eq('id', updates.id)
+        .eq('store_id', storeId)
       if (error) throw error
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['categories'] })
+      queryClient.invalidateQueries({ queryKey: ['categories', storeId] })
       setEditingCategory(null)
       toast.success('Categoria atualizada!')
     },
@@ -128,18 +133,23 @@ function CategoriesPage() {
       const { count, error: countError } = await supabase
         .from('products')
         .select('*', { count: 'exact', head: true })
+        .eq('store_id', storeId)
         .eq('category_id', id);
-      
+
       if (countError) throw countError;
       if (count && count > 0) {
         throw new Error(`Esta categoria possui ${count} produto(s) vinculado(s) e não pode ser excluída. Remova ou mova os produtos primeiro.`);
       }
 
-      const { error } = await supabase.from('categories').delete().eq('id', id)
+      const { error } = await supabase
+        .from('categories')
+        .delete()
+        .eq('id', id)
+        .eq('store_id', storeId)
       if (error) throw error
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['categories'] })
+      queryClient.invalidateQueries({ queryKey: ['categories', storeId] })
       toast.success('Categoria excluída!')
     },
     onError: (error: any) => toast.error(error.message)
@@ -175,7 +185,7 @@ function CategoriesPage() {
       <div className="flex items-center justify-between">
         <div>
           <h1 className="text-2xl font-bold text-slate-800">Categorias</h1>
-          <p className="text-slate-500 text-sm">Gerencie as categorias do seu cardápio</p>
+          <p className="text-slate-500 text-sm">Gerencie as categorias do seu catálogo</p>
         </div>
         
         <Dialog 
@@ -204,7 +214,7 @@ function CategoriesPage() {
                 <Input 
                   value={newName} 
                   onChange={(e) => setNewName(e.target.value)}
-                  placeholder="Ex: Bolos, Doces, Bebidas..."
+                  placeholder="Ex: Promoções, Mais vendidos, Bebidas..."
                   autoFocus
                 />
               </div>

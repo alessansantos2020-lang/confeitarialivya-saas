@@ -5,6 +5,7 @@ import { useState, useEffect, useRef } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { getOrders, updateOrderStatus, updateOrderNotificationStatus } from '@/lib/orders-admin.functions';
 import { getStoreSettings } from '@/lib/delivery.functions';
+import { useActiveStore } from '@/lib/active-store';
 import { format } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
 import { 
@@ -73,6 +74,7 @@ export const Route = createFileRoute('/admin/orders')({
 });
 
 function OrdersPage() {
+  const { store, storeId } = useActiveStore();
   const [statusFilter, setStatusFilter] = useState('all');
   const [searchTerm, setSearchTerm] = useState('');
   const [soundEnabled, setSoundEnabled] = useState(true);
@@ -82,8 +84,8 @@ function OrdersPage() {
   const previousOrderIds = useRef<Set<string>>(new Set());
 
   const { data: orders, isLoading } = useQuery({
-    queryKey: ['admin-orders'],
-    queryFn: () => getOrders({ status: undefined, date: undefined })
+    queryKey: ['admin-orders', storeId],
+    queryFn: () => getOrders({ status: undefined, date: undefined, storeId })
   });
 
   // Sound initialization
@@ -94,14 +96,14 @@ function OrdersPage() {
   // Real-time subscription
   useEffect(() => {
     const channel = supabase
-      .channel('admin-orders-realtime')
+      .channel(`admin-orders-realtime-${storeId}`)
       .on(
         'postgres_changes',
-        { event: '*', schema: 'public', table: 'orders' },
+        { event: '*', schema: 'public', table: 'orders', filter: `store_id=eq.${storeId}` },
         (payload) => {
           console.log('Realtime update received:', payload);
-          queryClient.invalidateQueries({ queryKey: ['admin-orders'] });
-          
+          queryClient.invalidateQueries({ queryKey: ['admin-orders', storeId] });
+
           if (payload.eventType === 'INSERT') {
             const newOrder = payload.new as any;
             if (!previousOrderIds.current.has(newOrder.id)) {
@@ -121,7 +123,7 @@ function OrdersPage() {
     return () => {
       supabase.removeChannel(channel);
     };
-  }, [queryClient, soundEnabled]);
+  }, [queryClient, soundEnabled, storeId]);
 
   // Sync initial order IDs to avoid alert on first load
   useEffect(() => {
@@ -131,9 +133,9 @@ function OrdersPage() {
   }, [orders]);
 
   const mutation = useMutation({
-    mutationFn: (variables: { id: string; status: string }) => updateOrderStatus(variables),
+    mutationFn: (variables: { id: string; status: string }) => updateOrderStatus({ ...variables, storeId }),
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['admin-orders'] });
+      queryClient.invalidateQueries({ queryKey: ['admin-orders', storeId] });
       queryClient.invalidateQueries({ queryKey: ['salesReport'] });
       toast.success("Status atualizado!");
     },
@@ -144,14 +146,14 @@ function OrdersPage() {
 
   const filteredOrders = orders?.filter((order: any) => {
     const matchesStatus = statusFilter === 'all' || order.status === statusFilter;
-    const matchesSearch = order.customer_name.toLowerCase().includes(searchTerm.toLowerCase()) || 
+    const matchesSearch = order.customer_name.toLowerCase().includes(searchTerm.toLowerCase()) ||
                           order.id.toLowerCase().includes(searchTerm.toLowerCase());
     return matchesStatus && matchesSearch;
   }) || [];
 
   const handleNotifyWhatsApp = async (order: any, type: 'accepted' | 'shipping' | 'ready' | 'delivered') => {
-    const settings = await getStoreSettings();
-    const storeName = settings?.name || 'Doce Encanto';
+    const settings = await getStoreSettings(storeId);
+    const storeName = settings?.name || store.name;
     const orderNumber = order.id.slice(0, 8).toUpperCase();
     
     // Format items list
@@ -447,6 +449,7 @@ function OrderCard({ order, onUpdateStatus, onNotifyWhatsApp, isUpdating }: any)
 }
 
 function OrderDetailsDialog({ order }: { order: any }) {
+  const { store } = useActiveStore();
   const status = statusMap[order.status as keyof typeof statusMap] || statusMap.pending;
   const items = order.order_items || [];
   
@@ -636,7 +639,7 @@ function OrderDetailsDialog({ order }: { order: any }) {
                       </head>
                       <body>
                         <div class="header">
-                          <h1>Doce Encanto</h1>
+                          <h1>${store.name}</h1>
                           <p>Pedido #${order.id.slice(0, 8).toUpperCase()}</p>
                           <p>${format(new Date(order.created_at), "dd/MM/yyyy HH:mm")}</p>
                         </div>

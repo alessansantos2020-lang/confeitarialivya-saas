@@ -1,7 +1,9 @@
 import { supabase } from "@/integrations/supabase/client";
 import { z } from "zod";
+import { DEFAULT_STORE_ID } from "./delivery.functions";
 
 const reportInput = z.object({
+  storeId: z.string().uuid().optional(),
   startDate: z.string().optional(),
   endDate: z.string().optional(),
 });
@@ -10,7 +12,8 @@ const reportInput = z.object({
 // autorizados leiam pedidos; a checagem view_reports foi removida.
 
 export const getSalesReport = async (input: z.input<typeof reportInput>) => {
-  const { startDate, endDate } = reportInput.parse(input);
+  const { startDate, endDate, storeId: rawStoreId } = reportInput.parse(input);
+  const storeId = rawStoreId || DEFAULT_STORE_ID;
 
   let query = supabase
     .from('orders')
@@ -25,7 +28,8 @@ export const getSalesReport = async (input: z.input<typeof reportInput>) => {
           categories (name)
         )
       )
-    `);
+    `)
+    .eq('store_id', storeId);
 
 
   if (startDate) {

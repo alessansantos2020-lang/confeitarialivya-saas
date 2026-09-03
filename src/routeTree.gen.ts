@@ -10,25 +10,32 @@
 
 import { Route as rootRouteImport } from './routes/__root'
 import { Route as IndexRouteImport } from './routes/index'
+import { Route as SlugRouteImport } from './routes/$slug'
 import { Route as AdminRouteRouteImport } from './routes/admin/route'
 import { Route as AuthRouteImport } from './routes/auth'
 import { Route as StaffRouteRouteImport } from './routes/staff/route'
+import { Route as SuperRouteRouteImport } from './routes/super/route'
 import { Route as AdminIndexRouteImport } from './routes/admin/index'
 import { Route as AdminAddOnsRouteImport } from './routes/admin/add-ons'
 import { Route as AdminCategoriesRouteImport } from './routes/admin/categories'
 import { Route as AdminCustomersRouteImport } from './routes/admin/customers'
 import { Route as AdminDeliveryRouteImport } from './routes/admin/delivery'
-import { Route as AdminEmployeesRouteImport } from './routes/admin/employees'
 import { Route as AdminOrdersRouteImport } from './routes/admin/orders'
 import { Route as AdminProductsRouteImport } from './routes/admin/products'
 import { Route as AdminReportsRouteImport } from './routes/admin/reports'
 import { Route as AdminSettingsRouteImport } from './routes/admin/settings'
 import { Route as StaffIndexRouteImport } from './routes/staff/index'
 import { Route as StaffHistoryRouteImport } from './routes/staff/history'
+import { Route as SuperIndexRouteImport } from './routes/super/index'
 
 const IndexRoute = IndexRouteImport.update({
   id: '/',
   path: '/',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const SlugRoute = SlugRouteImport.update({
+  id: '/$slug',
+  path: '/$slug',
   getParentRoute: () => rootRouteImport,
 } as any)
 const AdminRouteRoute = AdminRouteRouteImport.update({
@@ -44,6 +51,11 @@ const AuthRoute = AuthRouteImport.update({
 const StaffRouteRoute = StaffRouteRouteImport.update({
   id: '/staff',
   path: '/staff',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const SuperRouteRoute = SuperRouteRouteImport.update({
+  id: '/super',
+  path: '/super',
   getParentRoute: () => rootRouteImport,
 } as any)
 const AdminIndexRoute = AdminIndexRouteImport.update({
@@ -69,11 +81,6 @@ const AdminCustomersRoute = AdminCustomersRouteImport.update({
 const AdminDeliveryRoute = AdminDeliveryRouteImport.update({
   id: '/delivery',
   path: '/delivery',
-  getParentRoute: () => AdminRouteRoute,
-} as any)
-const AdminEmployeesRoute = AdminEmployeesRouteImport.update({
-  id: '/employees',
-  path: '/employees',
   getParentRoute: () => AdminRouteRoute,
 } as any)
 const AdminOrdersRoute = AdminOrdersRouteImport.update({
@@ -106,17 +113,23 @@ const StaffHistoryRoute = StaffHistoryRouteImport.update({
   path: '/history',
   getParentRoute: () => StaffRouteRoute,
 } as any)
+const SuperIndexRoute = SuperIndexRouteImport.update({
+  id: '/',
+  path: '/',
+  getParentRoute: () => SuperRouteRoute,
+} as any)
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
   '/admin': typeof AdminRouteRouteWithChildren
   '/staff': typeof StaffRouteRouteWithChildren
+  '/super': typeof SuperRouteRouteWithChildren
+  '/$slug': typeof SlugRoute
   '/auth': typeof AuthRoute
   '/admin/add-ons': typeof AdminAddOnsRoute
   '/admin/categories': typeof AdminCategoriesRoute
   '/admin/customers': typeof AdminCustomersRoute
   '/admin/delivery': typeof AdminDeliveryRoute
-  '/admin/employees': typeof AdminEmployeesRoute
   '/admin/orders': typeof AdminOrdersRoute
   '/admin/products': typeof AdminProductsRoute
   '/admin/reports': typeof AdminReportsRoute
@@ -124,15 +137,16 @@ export interface FileRoutesByFullPath {
   '/staff/history': typeof StaffHistoryRoute
   '/admin/': typeof AdminIndexRoute
   '/staff/': typeof StaffIndexRoute
+  '/super/': typeof SuperIndexRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
+  '/$slug': typeof SlugRoute
   '/auth': typeof AuthRoute
   '/admin/add-ons': typeof AdminAddOnsRoute
   '/admin/categories': typeof AdminCategoriesRoute
   '/admin/customers': typeof AdminCustomersRoute
   '/admin/delivery': typeof AdminDeliveryRoute
-  '/admin/employees': typeof AdminEmployeesRoute
   '/admin/orders': typeof AdminOrdersRoute
   '/admin/products': typeof AdminProductsRoute
   '/admin/reports': typeof AdminReportsRoute
@@ -140,18 +154,20 @@ export interface FileRoutesByTo {
   '/staff/history': typeof StaffHistoryRoute
   '/admin': typeof AdminIndexRoute
   '/staff': typeof StaffIndexRoute
+  '/super': typeof SuperIndexRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
   '/': typeof IndexRoute
   '/admin': typeof AdminRouteRouteWithChildren
   '/staff': typeof StaffRouteRouteWithChildren
+  '/super': typeof SuperRouteRouteWithChildren
+  '/$slug': typeof SlugRoute
   '/auth': typeof AuthRoute
   '/admin/add-ons': typeof AdminAddOnsRoute
   '/admin/categories': typeof AdminCategoriesRoute
   '/admin/customers': typeof AdminCustomersRoute
   '/admin/delivery': typeof AdminDeliveryRoute
-  '/admin/employees': typeof AdminEmployeesRoute
   '/admin/orders': typeof AdminOrdersRoute
   '/admin/products': typeof AdminProductsRoute
   '/admin/reports': typeof AdminReportsRoute
@@ -159,6 +175,7 @@ export interface FileRoutesById {
   '/staff/history': typeof StaffHistoryRoute
   '/admin/': typeof AdminIndexRoute
   '/staff/': typeof StaffIndexRoute
+  '/super/': typeof SuperIndexRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
@@ -166,12 +183,13 @@ export interface FileRouteTypes {
     | '/'
     | '/admin'
     | '/staff'
+    | '/super'
+    | '/$slug'
     | '/auth'
     | '/admin/add-ons'
     | '/admin/categories'
     | '/admin/customers'
     | '/admin/delivery'
-    | '/admin/employees'
     | '/admin/orders'
     | '/admin/products'
     | '/admin/reports'
@@ -179,15 +197,16 @@ export interface FileRouteTypes {
     | '/staff/history'
     | '/admin/'
     | '/staff/'
+    | '/super/'
   fileRoutesByTo: FileRoutesByTo
   to:
     | '/'
+    | '/$slug'
     | '/auth'
     | '/admin/add-ons'
     | '/admin/categories'
     | '/admin/customers'
     | '/admin/delivery'
-    | '/admin/employees'
     | '/admin/orders'
     | '/admin/products'
     | '/admin/reports'
@@ -195,17 +214,19 @@ export interface FileRouteTypes {
     | '/staff/history'
     | '/admin'
     | '/staff'
+    | '/super'
   id:
     | '__root__'
     | '/'
     | '/admin'
     | '/staff'
+    | '/super'
+    | '/$slug'
     | '/auth'
     | '/admin/add-ons'
     | '/admin/categories'
     | '/admin/customers'
     | '/admin/delivery'
-    | '/admin/employees'
     | '/admin/orders'
     | '/admin/products'
     | '/admin/reports'
@@ -213,12 +234,15 @@ export interface FileRouteTypes {
     | '/staff/history'
     | '/admin/'
     | '/staff/'
+    | '/super/'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
   AdminRouteRoute: typeof AdminRouteRouteWithChildren
   StaffRouteRoute: typeof StaffRouteRouteWithChildren
+  SuperRouteRoute: typeof SuperRouteRouteWithChildren
+  SlugRoute: typeof SlugRoute
   AuthRoute: typeof AuthRoute
 }
 
@@ -229,6 +253,13 @@ declare module '@tanstack/react-router' {
       path: '/'
       fullPath: '/'
       preLoaderRoute: typeof IndexRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/$slug': {
+      id: '/$slug'
+      path: '/$slug'
+      fullPath: '/$slug'
+      preLoaderRoute: typeof SlugRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/admin': {
@@ -250,6 +281,13 @@ declare module '@tanstack/react-router' {
       path: '/staff'
       fullPath: '/staff'
       preLoaderRoute: typeof StaffRouteRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/super': {
+      id: '/super'
+      path: '/super'
+      fullPath: '/super'
+      preLoaderRoute: typeof SuperRouteRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/admin/': {
@@ -285,13 +323,6 @@ declare module '@tanstack/react-router' {
       path: '/delivery'
       fullPath: '/admin/delivery'
       preLoaderRoute: typeof AdminDeliveryRouteImport
-      parentRoute: typeof AdminRouteRoute
-    }
-    '/admin/employees': {
-      id: '/admin/employees'
-      path: '/employees'
-      fullPath: '/admin/employees'
-      preLoaderRoute: typeof AdminEmployeesRouteImport
       parentRoute: typeof AdminRouteRoute
     }
     '/admin/orders': {
@@ -336,6 +367,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof StaffHistoryRouteImport
       parentRoute: typeof StaffRouteRoute
     }
+    '/super/': {
+      id: '/super/'
+      path: '/'
+      fullPath: '/super/'
+      preLoaderRoute: typeof SuperIndexRouteImport
+      parentRoute: typeof SuperRouteRoute
+    }
   }
 }
 
@@ -344,7 +382,6 @@ interface AdminRouteRouteChildren {
   AdminCategoriesRoute: typeof AdminCategoriesRoute
   AdminCustomersRoute: typeof AdminCustomersRoute
   AdminDeliveryRoute: typeof AdminDeliveryRoute
-  AdminEmployeesRoute: typeof AdminEmployeesRoute
   AdminOrdersRoute: typeof AdminOrdersRoute
   AdminProductsRoute: typeof AdminProductsRoute
   AdminReportsRoute: typeof AdminReportsRoute
@@ -357,7 +394,6 @@ const AdminRouteRouteChildren: AdminRouteRouteChildren = {
   AdminCategoriesRoute: AdminCategoriesRoute,
   AdminCustomersRoute: AdminCustomersRoute,
   AdminDeliveryRoute: AdminDeliveryRoute,
-  AdminEmployeesRoute: AdminEmployeesRoute,
   AdminOrdersRoute: AdminOrdersRoute,
   AdminProductsRoute: AdminProductsRoute,
   AdminReportsRoute: AdminReportsRoute,
@@ -383,10 +419,24 @@ const StaffRouteRouteWithChildren = StaffRouteRoute._addFileChildren(
   StaffRouteRouteChildren,
 )
 
+interface SuperRouteRouteChildren {
+  SuperIndexRoute: typeof SuperIndexRoute
+}
+
+const SuperRouteRouteChildren: SuperRouteRouteChildren = {
+  SuperIndexRoute: SuperIndexRoute,
+}
+
+const SuperRouteRouteWithChildren = SuperRouteRoute._addFileChildren(
+  SuperRouteRouteChildren,
+)
+
 const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
   AdminRouteRoute: AdminRouteRouteWithChildren,
   StaffRouteRoute: StaffRouteRouteWithChildren,
+  SuperRouteRoute: SuperRouteRouteWithChildren,
+  SlugRoute: SlugRoute,
   AuthRoute: AuthRoute,
 }
 export const routeTree = rootRouteImport

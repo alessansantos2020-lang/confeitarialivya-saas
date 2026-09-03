@@ -34,7 +34,7 @@ export const checkPermission = async (permissionId: string) => {
     .eq("user_id", userId)
     .maybeSingle();
 
-  if (roleData?.role === "admin") return true;
+  if (roleData?.role === "admin" || roleData?.role === "super_admin") return true;
 
   const { data: perm, error } = await supabase
     .from("user_permissions")
@@ -61,8 +61,8 @@ export const getMyPermissions = async (): Promise<string[]> => {
     .eq("user_id", userId)
     .maybeSingle();
 
-  // Se for admin, retorna "all" (acesso total)
-  if (roleData?.role === "admin") {
+  // Se for admin ou super_admin, retorna "all" (acesso total)
+  if (roleData?.role === "admin" || roleData?.role === "super_admin") {
     return ["all"];
   }
 

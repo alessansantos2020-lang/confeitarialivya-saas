@@ -2,17 +2,19 @@ import { createFileRoute } from "@tanstack/react-router";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { supabase } from "@/integrations/supabase/client";
 import { useQuery } from "@tanstack/react-query";
-import { 
-  ShoppingBag, 
-  Clock, 
-  ChefHat, 
-  Truck, 
-  CheckCircle2, 
-  XCircle, 
-  DollarSign, 
+import { useActiveStore } from "@/lib/active-store";
+import {
+  ShoppingBag,
+  Clock,
+  PackageOpen,
+  Truck,
+  CheckCircle2,
+  XCircle,
+  DollarSign,
   Users,
   CalendarDays,
-  ArrowRight
+  ArrowRight,
+  Store as StoreIcon
 } from "lucide-react";
 import { format } from "date-fns";
 import { ptBR } from "date-fns/locale";
@@ -28,7 +30,7 @@ export const Route = createFileRoute("/admin/")({
 const statusMap: Record<string, { label: string; color: string; icon: any }> = {
   pending: { label: "Pendente", color: "bg-yellow-100 text-yellow-700 border-yellow-200", icon: Clock },
   confirmed: { label: "Aceito", color: "bg-indigo-100 text-indigo-700 border-indigo-200", icon: CheckCircle2 },
-  preparing: { label: "Em preparo", color: "bg-blue-100 text-blue-700 border-blue-200", icon: ChefHat },
+  preparing: { label: "Em preparo", color: "bg-blue-100 text-blue-700 border-blue-200", icon: PackageOpen },
   ready: { label: "Pronto", color: "bg-green-100 text-green-700 border-green-200", icon: CheckCircle2 },
   out_for_delivery: { label: "Saiu para entrega", color: "bg-purple-100 text-purple-700 border-purple-200", icon: Truck },
   delivered: { label: "Entregue", color: "bg-green-100 text-green-700 border-green-200", icon: CheckCircle2 },
@@ -36,24 +38,27 @@ const statusMap: Record<string, { label: string; color: string; icon: any }> = {
 };
 
 function AdminDashboard() {
+  const { storeId } = useActiveStore();
   const today = new Date();
   today.setHours(0, 0, 0, 0);
 
   const { data: stats, isLoading: statsLoading } = useQuery({
-    queryKey: ["admin-stats"],
+    queryKey: ["admin-stats", storeId],
     queryFn: async () => {
       // Pedidos de hoje e faturamento
       const { data: todayOrders } = await supabase
         .from("orders")
         .select("status, total_amount")
+        .eq("store_id", storeId)
         .gte("created_at", today.toISOString());
 
       // Total de clientes (baseado em nomes/telefones únicos ou usuários se existissem)
       // Por agora, contaremos registros únicos de telefone nos pedidos
       const { data: allOrders } = await supabase
         .from("orders")
-        .select("customer_phone");
-      
+        .select("customer_phone")
+        .eq("store_id", storeId);
+
       const uniqueCustomers = new Set(allOrders?.map(o => o.customer_phone)).size;
 
       const counts = {
@@ -74,11 +79,12 @@ function AdminDashboard() {
   });
 
   const { data: recentOrders, isLoading: ordersLoading } = useQuery({
-    queryKey: ["recent-orders"],
+    queryKey: ["recent-orders", storeId],
     queryFn: async () => {
       const { data, error } = await supabase
         .from("orders")
         .select("*")
+        .eq("store_id", storeId)
         .order("created_at", { ascending: false })
         .limit(5);
       
@@ -150,7 +156,7 @@ function AdminDashboard() {
       <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-4">
         {[
           { label: "Aceitos", value: stats?.confirmed, icon: CheckCircle2, color: "text-indigo-600 bg-indigo-50" },
-          { label: "Em preparo", value: stats?.preparing, icon: ChefHat, color: "text-blue-600 bg-blue-50" },
+          { label: "Em preparo", value: stats?.preparing, icon: PackageOpen, color: "text-blue-600 bg-blue-50" },
           { label: "Prontos", value: stats?.ready, icon: CheckCircle2, color: "text-emerald-600 bg-emerald-50" },
           { label: "Saiu para entrega", value: stats?.out_for_delivery, icon: Truck, color: "text-purple-600 bg-purple-50" },
           { label: "Entregues", value: stats?.delivered, icon: CheckCircle2, color: "text-green-600 bg-green-50" },
@@ -170,22 +176,19 @@ function AdminDashboard() {
 
       <div className="bg-white p-8 rounded-2xl border border-slate-100 text-center shadow-sm">
         <div className="h-16 w-16 bg-pink-100 text-pink-600 rounded-full flex items-center justify-center mx-auto mb-4">
-          <ChefHat size={32} />
+          <StoreIcon size={32} />
         </div>
-        <h3 className="text-xl font-bold text-slate-900 mb-2">Painel Administrativo da Confeitaria</h3>
+        <h3 className="text-xl font-bold text-slate-900 mb-2">Painel Administrativo da Loja</h3>
         <p className="text-slate-500 max-w-md mx-auto mb-6">
-          Bem-vindo ao centro de controle da sua confeitaria. Aqui você gerencia produtos, categorias, equipe e configurações globais.
+          Bem-vindo ao centro de controle da sua loja. Aqui você gerencia produtos, categorias e configurações.
         </p>
         <div className="flex flex-wrap justify-center gap-3">
           <Button asChild className="bg-pink-600 hover:bg-pink-700">
             <Link to="/admin/products">Gerenciar Produtos</Link>
           </Button>
           <Button asChild variant="outline">
-            <Link to="/admin/employees">Gerenciar Equipe</Link>
-          </Button>
-          <Button asChild variant="ghost" className="text-slate-500 hover:text-pink-600">
             <Link to="/staff" className="flex items-center gap-2">
-              Ir para Operação <ArrowRight size={16} />
+              Receber Pedidos <ArrowRight size={16} />
             </Link>
           </Button>
         </div>

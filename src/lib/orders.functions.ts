@@ -1,6 +1,8 @@
 import { supabase } from "@/integrations/supabase/client";
+import { DEFAULT_STORE_ID } from "./delivery.functions";
 
 export type CreateOrderInput = {
+  store_id?: string;
   customer_name: string;
   customer_phone: string;
   address: string;
@@ -25,12 +27,14 @@ export type CreateOrderInput = {
 
 export const createOrder = async (data: CreateOrderInput) => {
   const orderId = crypto.randomUUID();
+  const storeId = data.store_id || DEFAULT_STORE_ID;
 
   const { error: orderError } = await supabase
     .from("orders")
     .insert([
       {
         id: orderId,
+        store_id: storeId,
         customer_name: data.customer_name,
         customer_phone: data.customer_phone,
         address: data.address,
@@ -51,6 +55,7 @@ export const createOrder = async (data: CreateOrderInput) => {
 
   const orderItems = data.items.map((item) => ({
     id: crypto.randomUUID(),
+    store_id: storeId,
     order_id: orderId,
     product_id: item.product_id,
     product_name: item.product_name,
@@ -68,6 +73,7 @@ export const createOrder = async (data: CreateOrderInput) => {
 
   return {
     id: orderId,
+    store_id: storeId,
     customer_name: data.customer_name,
     customer_phone: data.customer_phone,
     address: data.address,

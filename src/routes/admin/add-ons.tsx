@@ -1,7 +1,8 @@
-import { createFileRoute, redirect } from '@tanstack/react-router'
+import { createFileRoute } from '@tanstack/react-router'
 import { useState } from 'react'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { supabase } from '@/integrations/supabase/client'
+import { useActiveStore } from '@/lib/active-store'
 import { 
   Plus, 
   Pencil, 
@@ -73,6 +74,7 @@ export const Route = createFileRoute('/admin/add-ons')({
 })
 
 function AddonsPage() {
+  const { storeId } = useActiveStore()
   const queryClient = useQueryClient()
   const [isAddGroupOpen, setIsAddGroupOpen] = useState(false)
   const [isAddAddonOpen, setIsAddAddonOpen] = useState<{ isOpen: boolean, groupId: string | null }>({ isOpen: false, groupId: null })
@@ -81,13 +83,14 @@ function AddonsPage() {
   const [expandedGroups, setExpandedGroups] = useState<Record<string, boolean>>({})
 
   const { data: groups, isLoading } = useQuery({
-    queryKey: ['addon_groups'],
+    queryKey: ['addon_groups', storeId],
     queryFn: async () => {
       const { data, error } = await supabase
         .from('addon_groups')
         .select('*, addons(*)')
+        .eq('store_id', storeId)
         .order('name')
-      
+
       if (error) throw error
       return data as AddonGroup[]
     },
@@ -97,15 +100,15 @@ function AddonsPage() {
     mutationFn: async (data: any) => {
       const { id, ...payload } = data
       if (id) {
-        const { error } = await supabase.from('addon_groups').update(payload).eq('id', id)
+        const { error } = await supabase.from('addon_groups').update(payload).eq('id', id).eq('store_id', storeId)
         if (error) throw error
       } else {
-        const { error } = await supabase.from('addon_groups').insert([payload])
+        const { error } = await supabase.from('addon_groups').insert([{ ...payload, store_id: storeId }])
         if (error) throw error
       }
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['addon_groups'] })
+      queryClient.invalidateQueries({ queryKey: ['addon_groups', storeId] })
       setIsAddGroupOpen(false)
       setEditingGroup(null)
       toast.success('Grupo salvo com sucesso!')
@@ -117,15 +120,15 @@ function AddonsPage() {
     mutationFn: async (data: any) => {
       const { id, ...payload } = data
       if (id) {
-        const { error } = await supabase.from('addons').update(payload).eq('id', id)
+        const { error } = await supabase.from('addons').update(payload).eq('id', id).eq('store_id', storeId)
         if (error) throw error
       } else {
-        const { error } = await supabase.from('addons').insert([payload])
+        const { error } = await supabase.from('addons').insert([{ ...payload, store_id: storeId }])
         if (error) throw error
       }
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['addon_groups'] })
+      queryClient.invalidateQueries({ queryKey: ['addon_groups', storeId] })
       setIsAddAddonOpen({ isOpen: false, groupId: null })
       setEditingAddon(null)
       toast.success('Adicional salvo!')
@@ -135,11 +138,11 @@ function AddonsPage() {
 
   const deleteGroupMutation = useMutation({
     mutationFn: async (id: string) => {
-      const { error } = await supabase.from('addon_groups').delete().eq('id', id)
+      const { error } = await supabase.from('addon_groups').delete().eq('id', id).eq('store_id', storeId)
       if (error) throw error
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['addon_groups'] })
+      queryClient.invalidateQueries({ queryKey: ['addon_groups', storeId] })
       toast.success('Grupo excluído!')
     },
   })
@@ -149,11 +152,11 @@ function AddonsPage() {
       // Note: Ideally we would check for order_items using this addon,
       // but selected_addons is stored as JSONB in order_items, making it complex to check.
       // We'll proceed with deletion but with a warning in the UI (already added).
-      const { error } = await supabase.from('addons').delete().eq('id', id)
+      const { error } = await supabase.from('addons').delete().eq('id', id).eq('store_id', storeId)
       if (error) throw error
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['addon_groups'] })
+      queryClient.invalidateQueries({ queryKey: ['addon_groups', storeId] })
       toast.success('Adicional excluído!')
     },
     onError: (error: any) => toast.error(`Erro ao excluir adicional: ${error.message}`),

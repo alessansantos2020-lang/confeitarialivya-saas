@@ -1,7 +1,7 @@
 import { createFileRoute } from '@tanstack/react-router';
-import { supabase } from '@/integrations/supabase/client';
 import { useQuery } from '@tanstack/react-query';
 import { getOrders } from '@/lib/orders-admin.functions';
+import { useActiveStore } from '@/lib/active-store';
 import { format } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
 import { 
@@ -38,11 +38,12 @@ export const Route = createFileRoute('/staff/history')({
 });
 
 function StaffHistoryPage() {
+  const { storeId } = useActiveStore();
   const [searchTerm, setSearchTerm] = useState('');
 
   const { data: orders, isLoading } = useQuery({
-    queryKey: ['staff-history'],
-    queryFn: () => getOrders({ status: undefined, date: undefined })
+    queryKey: ['staff-history', storeId],
+    queryFn: () => getOrders({ status: undefined, date: undefined, storeId })
   });
 
   const historyOrders = orders?.filter((order: any) => {

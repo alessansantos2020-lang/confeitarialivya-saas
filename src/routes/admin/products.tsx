@@ -1,7 +1,8 @@
-import { createFileRoute, redirect } from '@tanstack/react-router'
+import { createFileRoute } from '@tanstack/react-router'
 import { useState, useEffect } from 'react'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { supabase } from '@/integrations/supabase/client'
+import { useActiveStore } from '@/lib/active-store'
 import { ensurePublicBucket } from '@/lib/storage-setup'
 import { 
   Plus, 
@@ -83,6 +84,7 @@ export const Route = createFileRoute('/admin/products')({
 })
 
 function ProductsPage() {
+  const { storeId } = useActiveStore()
   const queryClient = useQueryClient()
   const [isAddOpen, setIsAddOpen] = useState(false)
   const [editingProduct, setEditingProduct] = useState<Partial<Product> | null>(null)
@@ -97,13 +99,14 @@ function ProductsPage() {
 
   // Fetch Products
   const { data: products, isLoading: isLoadingProducts } = useQuery({
-    queryKey: ['products'],
+    queryKey: ['products', storeId],
     queryFn: async () => {
       const { data, error } = await supabase
         .from('products')
         .select('*, category:categories(id, name)')
+        .eq('store_id', storeId)
         .order('created_at', { ascending: false })
-      
+
       if (error) throw error
       return data as Product[]
     },
@@ -111,14 +114,15 @@ function ProductsPage() {
 
   // Fetch Categories for the selector
   const { data: categories } = useQuery({
-    queryKey: ['categories'],
+    queryKey: ['categories', storeId],
     queryFn: async () => {
       const { data, error } = await supabase
         .from('categories')
         .select('id, name')
+        .eq('store_id', storeId)
         .eq('status', 'active')
         .order('name')
-      
+
       if (error) throw error
       return data as Category[]
     },
@@ -129,14 +133,14 @@ function ProductsPage() {
       const { category, ...insertData } = newProduct
       const { data, error } = await supabase
         .from('products')
-        .insert([insertData])
+        .insert([{ ...insertData, store_id: storeId }])
         .select('*, category:categories(id, name)')
         .single()
       if (error) throw error
       return data
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['products'] })
+      queryClient.invalidateQueries({ queryKey: ['products', storeId] })
       setIsAddOpen(false)
       toast.success('Produto criado com sucesso!')
     },
@@ -150,13 +154,14 @@ function ProductsPage() {
         .from('products')
         .update(updateData)
         .eq('id', id)
+        .eq('store_id', storeId)
         .select('*, category:categories(id, name)')
         .single()
       if (error) throw error
       return data
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['products'] })
+      queryClient.invalidateQueries({ queryKey: ['products', storeId] })
       setEditingProduct(null)
       toast.success('Produto atualizado!')
     },
@@ -170,17 +175,21 @@ function ProductsPage() {
         .from('order_items')
         .select('*', { count: 'exact', head: true })
         .eq('product_id', id);
-      
+
       if (countError) throw countError;
       if (orderItemsCount && orderItemsCount > 0) {
         throw new Error(`Este produto possui ${orderItemsCount} pedido(s) vinculado(s) e não pode ser excluído. Desative-o em vez disso.`);
       }
 
-      const { error } = await supabase.from('products').delete().eq('id', id)
+      const { error } = await supabase
+        .from('products')
+        .delete()
+        .eq('id', id)
+        .eq('store_id', storeId)
       if (error) throw error
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['products'] })
+      queryClient.invalidateQueries({ queryKey: ['products', storeId] })
       toast.success('Produto excluído!')
     },
     onError: (error: any) => toast.error(error.message)
@@ -263,7 +272,7 @@ function ProductsPage() {
       <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
         <div>
           <h1 className="text-2xl font-bold text-slate-800">Produtos</h1>
-          <p className="text-slate-500 text-sm">Gerencie o cardápio da confeitaria</p>
+          <p className="text-slate-500 text-sm">Gerencie o catálogo da loja</p>
         </div>
         
         <div className="flex items-center gap-3">
@@ -298,7 +307,7 @@ function ProductsPage() {
                 <div className="grid grid-cols-2 gap-4">
                   <div className="col-span-2 space-y-2">
                     <label className="text-sm font-medium">Nome do Produto</label>
-                    <Input name="name" placeholder="Ex: Bolo de Cenoura com Chocolate" required />
+                    <Input name="name" placeholder="Ex: Nome do produto" required />
                   </div>
                   
                   <div className="space-y-2">

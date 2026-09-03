@@ -4,6 +4,7 @@ import { useState, useEffect, useRef } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { getOrders, updateOrderStatus } from '@/lib/orders-admin.functions';
 import { getStoreSettings } from '@/lib/delivery.functions';
+import { useActiveStore } from '@/lib/active-store';
 import { format } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
 import { 
@@ -67,6 +68,7 @@ export const Route = createFileRoute('/staff/')({
 });
 
 function StaffOrdersPage() {
+  const { storeId } = useActiveStore();
   const [statusFilter, setStatusFilter] = useState('active');
   const [searchTerm, setSearchTerm] = useState('');
   const [soundEnabled, setSoundEnabled] = useState(true);
@@ -76,8 +78,8 @@ function StaffOrdersPage() {
   const previousOrderIds = useRef<Set<string>>(new Set());
 
   const { data: orders, isLoading } = useQuery({
-    queryKey: ['staff-orders'],
-    queryFn: () => getOrders({ status: undefined, date: undefined })
+    queryKey: ['staff-orders', storeId],
+    queryFn: () => getOrders({ status: undefined, date: undefined, storeId })
   });
 
   useEffect(() => {
@@ -86,12 +88,12 @@ function StaffOrdersPage() {
 
   useEffect(() => {
     const channel = supabase
-      .channel('staff-orders-realtime')
+      .channel(`staff-orders-realtime-${storeId}`)
       .on(
         'postgres_changes',
-        { event: '*', schema: 'public', table: 'orders' },
+        { event: '*', schema: 'public', table: 'orders', filter: `store_id=eq.${storeId}` },
         (payload) => {
-          queryClient.invalidateQueries({ queryKey: ['staff-orders'] });
+          queryClient.invalidateQueries({ queryKey: ['staff-orders', storeId] });
           if (payload.eventType === 'INSERT') {
             const newOrder = payload.new as any;
             if (!previousOrderIds.current.has(newOrder.id)) {
@@ -109,7 +111,7 @@ function StaffOrdersPage() {
     return () => {
       supabase.removeChannel(channel);
     };
-  }, [queryClient, soundEnabled]);
+  }, [queryClient, soundEnabled, storeId]);
 
   useEffect(() => {
     if (orders && previousOrderIds.current.size === 0) {
@@ -118,9 +120,9 @@ function StaffOrdersPage() {
   }, [orders]);
 
   const mutation = useMutation({
-    mutationFn: (variables: { id: string; status: string }) => updateOrderStatus(variables),
+    mutationFn: (variables: { id: string; status: string }) => updateOrderStatus({ ...variables, storeId }),
     onSuccess: async (updatedOrder) => {
-      queryClient.invalidateQueries({ queryKey: ['staff-orders'] });
+      queryClient.invalidateQueries({ queryKey: ['staff-orders', storeId] });
       toast.success("Status atualizado!");
       
       // Automatic WhatsApp notification on progress
@@ -155,8 +157,8 @@ function StaffOrdersPage() {
       return;
     }
 
-    const settings = await getStoreSettings();
-    const storeName = settings?.name || 'Doce Encanto';
+    const settings = await getStoreSettings(storeId);
+    const storeName = settings?.name || 'Loja';
     const orderNumber = order.id.slice(0, 8).toUpperCase();
     
     const itemsResumo = order.order_items?.map((item: any) => {
@@ -198,10 +200,10 @@ function StaffOrdersPage() {
       <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
         <div>
           <h2 className="text-2xl font-bold text-slate-800 flex items-center gap-2">
-            Operação de Pedidos
+            Pedidos Recebidos
             <span className="flex h-2 w-2 rounded-full bg-green-500 animate-pulse" />
           </h2>
-          <p className="text-slate-500 text-sm">Controle operacional da confeitaria.</p>
+          <p className="text-slate-500 text-sm">Acompanhe e atenda os pedidos da loja em tempo real.</p>
         </div>
         
         <div className="flex items-center gap-4 bg-white p-2 px-4 rounded-lg border border-slate-200 shadow-sm">

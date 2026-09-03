@@ -1,8 +1,8 @@
-import { createFileRoute, redirect } from '@tanstack/react-router';
-import { useSuspenseQuery, useMutation, useQueryClient } from '@tanstack/react-query';
+import { createFileRoute } from '@tanstack/react-router';
+import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { getStoreSettings, type StoreSettings } from '@/lib/delivery.functions';
 import { supabase } from '@/integrations/supabase/client';
-import { queryOptions } from '@tanstack/react-query';
+import { useActiveStore } from '@/lib/active-store';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -11,46 +11,54 @@ import { Switch } from '@/components/ui/switch';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { toast } from 'sonner';
 import { useState, useEffect } from 'react';
-import { Loader2, Save, Phone, Instagram, MapPin, Clock, Layout, Globe, Palette, Upload, Image as ImageIcon, MessageCircle, X } from 'lucide-react';
+import { Loader2, Save, Phone, Instagram, MapPin, Layout, Globe, Palette, MessageCircle } from 'lucide-react';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Copy, Check } from 'lucide-react';
+import { Copy } from 'lucide-react';
 import { ensurePublicBucket } from '@/lib/storage-setup';
 import { ImageUpload } from '@/components/admin/ImageUpload';
-
-const storeSettingsOptions = queryOptions({
-  queryKey: ["storeSettings"],
-  queryFn: () => getStoreSettings(),
-});
 
 export const Route = createFileRoute('/admin/settings')({
   beforeLoad: () => {
     return;
   },
-  loader: ({ context }) => context.queryClient.ensureQueryData(storeSettingsOptions),
   component: AdminSettings,
 });
 
 function AdminSettings() {
   const queryClient = useQueryClient();
-  const { data: initialSettings } = useSuspenseQuery(storeSettingsOptions) as { data: StoreSettings };
-  
-  const [settings, setSettings] = useState<StoreSettings>(initialSettings);
+  const { store, storeId } = useActiveStore();
+
+  const { data: remoteSettings, isLoading } = useQuery({
+    queryKey: ["storeSettings", storeId],
+    queryFn: () => getStoreSettings(storeId),
+  });
+
+  const [settings, setSettings] = useState<StoreSettings | null>(null);
   const [isSaving, setIsSaving] = useState(false);
   const siteOrigin = typeof window !== "undefined" ? window.location.origin : "";
+  const publicStoreUrl = `${siteOrigin}/${store.slug}`;
 
   useEffect(() => {
-    // 1. Ensure storage bucket is configured correctly
-    const setupStorage = async () => {
-      await ensurePublicBucket();
-    };
-    setupStorage();
+    ensurePublicBucket();
+  }, []);
 
-    // 2. Real-time sync for store settings
+  useEffect(() => {
+    if (remoteSettings) {
+      setSettings(remoteSettings);
+    }
+  }, [remoteSettings]);
+
+  useEffect(() => {
     const channel = supabase
-      .channel('settings_sync')
+      .channel(`admin_settings_sync_${storeId}`)
       .on(
         'postgres_changes',
-        { event: 'UPDATE', schema: 'public', table: 'store_settings' },
+        {
+          event: 'UPDATE',
+          schema: 'public',
+          table: 'store_settings',
+          filter: `store_id=eq.${storeId}`,
+        },
         (payload) => {
           if (payload.new) {
             setSettings(payload.new as StoreSettings);
@@ -62,34 +70,33 @@ function AdminSettings() {
     return () => {
       supabase.removeChannel(channel);
     };
-  }, []);
-
-  useEffect(() => {
-    if (initialSettings) {
-      setSettings(initialSettings);
-    }
-  }, [initialSettings]);
+  }, [storeId]);
 
   const updateMutation = useMutation({
     mutationFn: async (newSettings: StoreSettings) => {
-      // First try to find if settings exists
-      const { data: existing } = await supabase.from('store_settings').select('id').maybeSingle();
-      
+      const payload = { ...newSettings, store_id: storeId };
+
+      const { data: existing } = await supabase
+        .from('store_settings')
+        .select('id')
+        .eq('store_id', storeId)
+        .maybeSingle();
+
       if (existing) {
         const { error } = await supabase
           .from('store_settings')
-          .update(newSettings as any)
-          .eq('id', existing.id);
+          .update(payload as any)
+          .eq('store_id', storeId);
         if (error) throw error;
       } else {
         const { error } = await supabase
           .from('store_settings')
-          .insert(newSettings as any);
+          .insert(payload as any);
         if (error) throw error;
       }
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["storeSettings"] });
+      queryClient.invalidateQueries({ queryKey: ["storeSettings", storeId] });
       toast.success("Configurações salvas com sucesso!");
     },
     onError: (error) => {
@@ -101,27 +108,27 @@ function AdminSettings() {
     }
   });
 
-  // handleFileUpload is no longer used, we use ImageUpload component
-  // which uses src/lib/upload.functions.ts
-
-
-  const removeImage = (field: 'logo_url' | 'cover_url') => {
-    setSettings(prev => ({ ...prev, [field]: null }));
-    toast.info("Imagem removida. Não esqueça de salvar as alterações.");
-  };
-
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
+    if (!settings) return;
     setIsSaving(true);
     updateMutation.mutate(settings);
   };
+
+  if (isLoading || !settings) {
+    return (
+      <div className="p-12 flex justify-center">
+        <Loader2 className="animate-spin text-pink-600" size={32} />
+      </div>
+    );
+  }
 
   return (
     <div className="space-y-6 max-w-5xl">
       <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
         <div>
           <h1 className="text-2xl font-bold text-slate-800">Configurações</h1>
-          <p className="text-slate-500">Gerencie as informações públicas e visuais da sua confeitaria.</p>
+          <p className="text-slate-500">Gerencie as informações públicas e visuais da sua loja.</p>
         </div>
         <Button 
           onClick={handleSubmit} 
@@ -177,12 +184,12 @@ function AdminSettings() {
                 <div className="space-y-2">
                   <Label>Link do Delivery (Oficial)</Label>
                   <div className="flex gap-2">
-                    <Input readOnly value={siteOrigin} />
+                    <Input readOnly value={publicStoreUrl} />
                     <Button
                       variant="outline"
                       size="icon"
                       onClick={() => {
-                        navigator.clipboard.writeText(siteOrigin);
+                        navigator.clipboard.writeText(publicStoreUrl);
                         toast.success("Link oficial copiado!");
                       }}
                     >
@@ -230,7 +237,7 @@ function AdminSettings() {
             <CardContent className="space-y-6">
               <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                 <div className="space-y-2">
-                  <Label htmlFor="name">Nome da Confeitaria</Label>
+                  <Label htmlFor="name">Nome da Loja</Label>
                   <Input 
                     id="name" 
                     value={settings.name} 
@@ -256,27 +263,27 @@ function AdminSettings() {
                   value={settings.description || ''} 
                   onChange={(e) => setSettings({ ...settings, description: e.target.value })}
                   rows={3}
-                  placeholder="Conte um pouco sobre a sua confeitaria..."
+                  placeholder="Conte um pouco sobre a sua loja..."
                 />
               </div>
 
               <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                 <div className="space-y-4">
-                  <Label>Logo da Confeitaria</Label>
+                  <Label>Logo da Loja</Label>
                   <ImageUpload 
                     value={settings.logo_url} 
                     onChange={async (url) => {
-                      setSettings(prev => ({ ...prev, logo_url: url }));
+                      setSettings(prev => (prev ? { ...prev, logo_url: url } : prev));
                       // Persist logo change immediately to avoid loss
-                      const { data: existing } = await supabase.from('store_settings').select('id').maybeSingle();
-                      if (existing) {
-                        const { error } = await supabase.from('store_settings').update({ logo_url: url }).eq('id', existing.id);
-                        if (error) {
-                          console.error("Error updating logo:", error);
-                          toast.error("Erro ao salvar logo no banco.");
-                        }
+                      const { error } = await supabase
+                        .from('store_settings')
+                        .update({ logo_url: url })
+                        .eq('store_id', storeId);
+                      if (error) {
+                        console.error("Error updating logo:", error);
+                        toast.error("Erro ao salvar logo no banco.");
                       }
-                      queryClient.invalidateQueries({ queryKey: ["storeSettings"] });
+                      queryClient.invalidateQueries({ queryKey: ["storeSettings", storeId] });
                     }}
                     folder="store"
                   />
@@ -287,17 +294,17 @@ function AdminSettings() {
                   <ImageUpload 
                     value={settings.cover_url} 
                     onChange={async (url) => {
-                      setSettings(prev => ({ ...prev, cover_url: url }));
+                      setSettings(prev => (prev ? { ...prev, cover_url: url } : prev));
                       // Persist cover change immediately to avoid loss
-                      const { data: existing } = await supabase.from('store_settings').select('id').maybeSingle();
-                      if (existing) {
-                        const { error } = await supabase.from('store_settings').update({ cover_url: url }).eq('id', existing.id);
-                        if (error) {
-                          console.error("Error updating cover:", error);
-                          toast.error("Erro ao salvar capa no banco.");
-                        }
+                      const { error } = await supabase
+                        .from('store_settings')
+                        .update({ cover_url: url })
+                        .eq('store_id', storeId);
+                      if (error) {
+                        console.error("Error updating cover:", error);
+                        toast.error("Erro ao salvar capa no banco.");
                       }
-                      queryClient.invalidateQueries({ queryKey: ["storeSettings"] });
+                      queryClient.invalidateQueries({ queryKey: ["storeSettings", storeId] });
                     }}
                     folder="store"
                   />
@@ -307,7 +314,7 @@ function AdminSettings() {
               <div className="flex items-center justify-between p-4 bg-pink-50 rounded-xl border border-pink-100">
                 <div className="space-y-0.5">
                   <Label className="text-base font-bold text-pink-900">Status da Loja</Label>
-                  <CardDescription className="text-pink-700">Define se a confeitaria está aberta para pedidos agora.</CardDescription>
+                  <CardDescription className="text-pink-700">Define se a loja está aberta para pedidos agora.</CardDescription>
                 </div>
                 <div className="flex items-center gap-3">
                   <span className={`text-sm font-bold ${settings.is_open ? 'text-green-600' : 'text-slate-500'}`}>
@@ -366,7 +373,7 @@ function AdminSettings() {
                     id="instagram" 
                     value={settings.instagram || ''} 
                     onChange={(e) => setSettings({ ...settings, instagram: e.target.value })}
-                    placeholder="@suaconfeitaria"
+                    placeholder="@sualoja"
                   />
                 </div>
               </div>
