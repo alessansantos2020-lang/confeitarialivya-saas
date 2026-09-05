@@ -3,6 +3,7 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { getStoreSettings, type StoreSettings } from '@/lib/delivery.functions';
 import { supabase } from '@/integrations/supabase/client';
 import { useActiveStore } from '@/lib/active-store';
+import { logAudit } from '@/lib/audit.functions';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -14,7 +15,6 @@ import { useState, useEffect } from 'react';
 import { Loader2, Save, Phone, Instagram, MapPin, Layout, Globe, Palette, MessageCircle } from 'lucide-react';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Copy } from 'lucide-react';
-import { ensurePublicBucket } from '@/lib/storage-setup';
 import { ImageUpload } from '@/components/admin/ImageUpload';
 
 export const Route = createFileRoute('/admin/settings')({
@@ -37,10 +37,6 @@ function AdminSettings() {
   const [isSaving, setIsSaving] = useState(false);
   const siteOrigin = typeof window !== "undefined" ? window.location.origin : "";
   const publicStoreUrl = `${siteOrigin}/${store.slug}`;
-
-  useEffect(() => {
-    ensurePublicBucket();
-  }, []);
 
   useEffect(() => {
     if (remoteSettings) {
@@ -98,6 +94,12 @@ function AdminSettings() {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["storeSettings", storeId] });
       toast.success("Configurações salvas com sucesso!");
+      logAudit({
+        action: 'settings_updated',
+        module: 'configuracoes',
+        storeId,
+        description: 'Configurações da loja alteradas',
+      });
     },
     onError: (error) => {
       console.error(error);
@@ -214,6 +216,24 @@ function AdminSettings() {
                       <Copy className="h-4 w-4" />
                     </Button>
                   </div>
+                </div>
+
+                <div className="space-y-2">
+                  <Label>Link do Painel de Pedidos</Label>
+                  <div className="flex gap-2">
+                    <Input readOnly value={`${siteOrigin}/staff`} />
+                    <Button
+                      variant="outline"
+                      size="icon"
+                      onClick={() => {
+                        navigator.clipboard.writeText(`${siteOrigin}/staff`);
+                        toast.success("Link do painel de pedidos copiado!");
+                      }}
+                    >
+                      <Copy className="h-4 w-4" />
+                    </Button>
+                  </div>
+                  <p className="text-[10px] text-slate-400">Tela pra sua equipe acompanhar e atualizar os pedidos.</p>
                 </div>
 
               </div>
@@ -410,11 +430,11 @@ function AdminSettings() {
                       id="primary_color" 
                       type="color"
                       className="w-12 h-10 p-1"
-                      value={settings.primary_color || '#db2777'} 
+                      value={settings.primary_color || '#1d4ed8'} 
                       onChange={(e) => setSettings({ ...settings, primary_color: e.target.value })}
                     />
                     <Input 
-                      value={settings.primary_color || '#db2777'} 
+                      value={settings.primary_color || '#1d4ed8'} 
                       onChange={(e) => setSettings({ ...settings, primary_color: e.target.value })}
                       placeholder="#000000"
                     />
@@ -428,11 +448,11 @@ function AdminSettings() {
                       id="secondary_color" 
                       type="color"
                       className="w-12 h-10 p-1"
-                      value={settings.secondary_color || '#fdf2f8'} 
+                      value={settings.secondary_color || '#eff6ff'} 
                       onChange={(e) => setSettings({ ...settings, secondary_color: e.target.value })}
                     />
                     <Input 
-                      value={settings.secondary_color || '#fdf2f8'} 
+                      value={settings.secondary_color || '#eff6ff'} 
                       onChange={(e) => setSettings({ ...settings, secondary_color: e.target.value })}
                       placeholder="#000000"
                     />

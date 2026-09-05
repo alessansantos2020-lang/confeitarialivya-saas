@@ -2,6 +2,10 @@ import { createFileRoute } from '@tanstack/react-router'
 import { supabase } from '@/integrations/supabase/client'
 import { getUserRole, getMyPermissions } from '@/lib/auth.functions'
 import { resolveActiveStore, type StoreMembership } from '@/lib/store-context'
+import { getStoreFeatures, FEATURE_LABEL, type FeatureId } from '@/lib/features.functions'
+import { getSupportSession, endSupportSession, type SupportSession } from '@/lib/support-session'
+import { getActiveAnnouncements, type Announcement } from '@/lib/announcements.functions'
+import { getSaasSettings, SAAS_NAME_FALLBACK, MAINTENANCE_FALLBACK } from '@/lib/saas-settings.functions'
 import { ActiveStoreProvider } from '@/lib/active-store'
 import { storeThemeVars } from '@/lib/store-theme'
 import type { Store } from '@/lib/delivery.functions'
@@ -11,7 +15,7 @@ export const Route = createFileRoute('/admin')({
   component: AdminLayout,
 })
 
-import { Outlet, Link, useNavigate } from "@tanstack/react-router";
+import { Outlet, Link, useNavigate, useLocation } from "@tanstack/react-router";
 import { Button } from "@/components/ui/button";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import {
@@ -31,13 +35,52 @@ import {
   ChevronLeft,
   ChevronRight,
   Loader2,
+  Lock,
+  LifeBuoy,
+  Megaphone,
+  Wrench,
   Store as StoreIcon
 } from "lucide-react";
 import { useState, useEffect } from "react";
+import { useQuery } from "@tanstack/react-query";
 import { cn } from "@/lib/utils";
+
+// Qual funcionalidade cada rota do painel exige. Rota fora dessa lista é livre.
+const ROUTE_FEATURE: Record<string, FeatureId> = {
+  '/admin/products': 'products',
+  '/admin/categories': 'categories',
+  '/admin/add-ons': 'addons',
+  '/admin/customers': 'customers',
+  '/admin/delivery': 'delivery',
+  '/admin/reports': 'reports',
+  '/admin/settings': 'settings',
+  '/admin/orders': 'orders',
+};
+
+// Faixa de aviso: cores por gravidade e ordem de prioridade (só uma aparece
+// por vez — duas faixas empilhadas empurram o painel para baixo demais).
+const SEVERITY_BANNER: Record<string, string> = {
+  info: 'bg-blue-500 text-blue-950',
+  warning: 'bg-amber-500 text-amber-950',
+  critical: 'bg-red-600 text-white',
+};
+
+const SEVERITY_RANK: Record<string, number> = { critical: 3, warning: 2, info: 1 };
+
+const DISMISSED_KEY = 'avisos-dispensados';
+
+const readDismissed = (): string[] => {
+  try {
+    const raw = localStorage.getItem(DISMISSED_KEY);
+    return raw ? (JSON.parse(raw) as string[]) : [];
+  } catch {
+    return [];
+  }
+};
 
 function AdminLayout() {
   const navigate = useNavigate();
+  const { pathname } = useLocation();
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
   const [isSidebarCollapsed, setIsSidebarCollapsed] = useState(false);
 
@@ -52,6 +95,8 @@ function AdminLayout() {
   const [isAuthLoading, setIsAuthLoading] = useState(true);
 
   const [activeStore, setActiveStore] = useState<Store | null>(null);
+  const [storeFeatures, setStoreFeatures] = useState<FeatureId[]>([]);
+  const [supportSession, setSupportSession] = useState<SupportSession | null>(null);
   const [memberships, setMemberships] = useState<StoreMembership[]>([]);
   const [storeName, setStoreName] = useState("");
   const [storeLogo, setStoreLogo] = useState<string | null>(null);
@@ -59,6 +104,39 @@ function AdminLayout() {
     primary: null,
     secondary: null,
   });
+
+  const [dismissedAnnouncements, setDismissedAnnouncements] = useState<string[]>(readDismissed);
+  const [maintenance, setMaintenance] = useState<{ on: boolean; message: string | null }>({
+    on: false,
+    message: null,
+  });
+  const [saasName, setSaasName] = useState(SAAS_NAME_FALLBACK);
+
+  const { data: announcements } = useQuery({
+    queryKey: ['admin-announcements', activeStore?.id],
+    queryFn: () => getActiveAnnouncements(activeStore!.id),
+    enabled: !!activeStore,
+  });
+
+  // O mais grave primeiro; entre iguais, o mais recente.
+  const currentAnnouncement: Announcement | null =
+    (announcements || [])
+      .filter((a) => !dismissedAnnouncements.includes(a.id))
+      .sort(
+        (a, b) =>
+          (SEVERITY_RANK[b.severity] ?? 0) - (SEVERITY_RANK[a.severity] ?? 0) ||
+          b.created_at.localeCompare(a.created_at),
+      )[0] ?? null;
+
+  const dismissAnnouncement = (id: string) => {
+    const next = [...dismissedAnnouncements, id];
+    setDismissedAnnouncements(next);
+    try {
+      localStorage.setItem(DISMISSED_KEY, JSON.stringify(next));
+    } catch {
+      // Navegador sem localStorage: a faixa volta no próximo carregamento.
+    }
+  };
 
 
   useEffect(() => {
@@ -96,11 +174,12 @@ function AdminLayout() {
       setUserEmail(session.user.email || "");
 
       try {
-        const [role, permissions, storeResolution, profileData] = await Promise.all([
+        const [role, permissions, storeResolution, profileData, saas] = await Promise.all([
           getUserRole(),
           getMyPermissions(),
           resolveActiveStore(),
-          supabase.from('profiles').select('status').eq('id', session.user.id).maybeSingle()
+          supabase.from('profiles').select('status').eq('id', session.user.id).maybeSingle(),
+          getSaasSettings().catch(() => null)
         ]);
 
         if (cancelled) return;
@@ -115,24 +194,47 @@ function AdminLayout() {
           return;
         }
 
+        if (saas) {
+          setSaasName(saas.name || SAAS_NAME_FALLBACK);
+          // Manutenção nunca alcança o dono do sistema: senão ele se trancaria
+          // fora e não teria como desligar o modo.
+          setMaintenance({
+            on: saas.maintenance_mode && !isSuperAdmin,
+            message: saas.maintenance_message,
+          });
+        }
+
         setUserRole(role);
         setUserPermissions(permissions as string[]);
         setMemberships(storeResolution.memberships);
+
+        // Modo suporte só vale para super_admin; qualquer outro caso o marcador
+        // é descartado (o RLS já bloquearia, isso só limpa a tela).
+        const support = getSupportSession();
+        setSupportSession(isSuperAdmin ? support : null);
+        if (support && !isSuperAdmin) await endSupportSession();
 
         if (storeResolution.store) {
           setActiveStore(storeResolution.store);
           setStoreName(storeResolution.store.name);
 
-          const { data: settings } = await supabase
-            .from('store_settings')
-            .select('name, logo_url, primary_color, secondary_color')
-            .eq('store_id', storeResolution.store.id)
-            .maybeSingle();
+          const [settingsRes, features] = await Promise.all([
+            supabase
+              .from('store_settings')
+              .select('name, logo_url, primary_color, secondary_color')
+              .eq('store_id', storeResolution.store.id)
+              .maybeSingle(),
+            getStoreFeatures(storeResolution.store.id),
+          ]);
 
-          if (!cancelled && settings) {
-            setStoreName(settings.name || storeResolution.store.name);
-            setStoreLogo(settings.logo_url);
-            setStoreTheme({ primary: settings.primary_color, secondary: settings.secondary_color });
+          if (!cancelled) {
+            setStoreFeatures(features);
+            const settings = settingsRes.data;
+            if (settings) {
+              setStoreName(settings.name || storeResolution.store.name);
+              setStoreLogo(settings.logo_url);
+              setStoreTheme({ primary: settings.primary_color, secondary: settings.secondary_color });
+            }
           }
         }
 
@@ -190,6 +292,12 @@ function AdminLayout() {
     };
   }, [activeStore]);
 
+  const handleEndSupport = async () => {
+    await endSupportSession();
+    setSupportSession(null);
+    navigate({ to: '/super' as any });
+  };
+
   const handleSwitchStore = async (storeId: string) => {
     const next = memberships.find((m) => m.store_id === storeId);
     if (!next) return;
@@ -198,13 +306,20 @@ function AdminLayout() {
     setStoreName(next.store.name);
     setStoreLogo(null);
     setStoreTheme({ primary: null, secondary: null });
+    setStoreFeatures([]);
 
-    const { data: settings } = await supabase
-      .from('store_settings')
-      .select('name, logo_url, primary_color, secondary_color')
-      .eq('store_id', storeId)
-      .maybeSingle();
+    const [settingsRes, features] = await Promise.all([
+      supabase
+        .from('store_settings')
+        .select('name, logo_url, primary_color, secondary_color')
+        .eq('store_id', storeId)
+        .maybeSingle(),
+      getStoreFeatures(storeId),
+    ]);
 
+    setStoreFeatures(features);
+
+    const settings = settingsRes.data;
     if (settings) {
       setStoreName(settings.name || next.store.name);
       setStoreLogo(settings.logo_url);
@@ -227,7 +342,24 @@ function AdminLayout() {
     { label: "Taxas de Entrega", to: "/admin/delivery", icon: Truck, permission: "manage_delivery" },
     { label: "Relatórios Financeiros", to: "/admin/reports", icon: BarChart3, permission: "view_reports" },
     { label: "Configurações", to: "/admin/settings", icon: Settings, permission: "manage_settings" },
-  ].filter(item => hasPermission(item.permission));
+  ].filter((item) => {
+    if (!hasPermission(item.permission)) return false;
+    // Fora do plano, fora do menu. storeFeatures vazio = ainda carregando.
+    const feature = ROUTE_FEATURE[item.to];
+    if (!feature || userRole === 'super_admin' || storeFeatures.length === 0) return true;
+    return storeFeatures.includes(feature);
+  });
+
+  // Bloqueio real por plano: rota atual exige feature que a loja não tem.
+  // super_admin passa direto (suporte). storeFeatures vazio = ainda carregando.
+  const requiredFeature = ROUTE_FEATURE[pathname];
+  const blockedFeature =
+    userRole !== 'super_admin' &&
+    requiredFeature &&
+    storeFeatures.length > 0 &&
+    !storeFeatures.includes(requiredFeature)
+      ? requiredFeature
+      : null;
 
   if (isAuthLoading) {
     return (
@@ -235,6 +367,27 @@ function AdminLayout() {
         <div className="text-center space-y-4">
           <Loader2 className="h-10 w-10 animate-spin text-pink-600 mx-auto" />
           <p className="text-slate-500 font-medium">Verificando acesso...</p>
+        </div>
+      </div>
+    );
+  }
+
+  if (maintenance.on) {
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-slate-50 p-4">
+        <div className="max-w-md w-full bg-white rounded-2xl p-8 border text-center space-y-4">
+          <div className="w-16 h-16 bg-amber-50 text-amber-500 rounded-full flex items-center justify-center mx-auto">
+            <Wrench className="w-8 h-8" />
+          </div>
+          <h2 className="text-xl font-bold text-slate-900">Sistema em manutenção</h2>
+          <p className="text-slate-500 text-sm">{maintenance.message || MAINTENANCE_FALLBACK}</p>
+          <p className="text-slate-400 text-xs">
+            Seu catálogo continua no ar e recebendo pedidos normalmente.
+          </p>
+          <Button variant="outline" className="w-full" onClick={handleLogout}>
+            <LogOut size={16} className="mr-2" />
+            Sair
+          </Button>
         </div>
       </div>
     );
@@ -261,7 +414,7 @@ function AdminLayout() {
   }
 
   return (
-    <ActiveStoreProvider store={activeStore} memberships={memberships} onSwitch={handleSwitchStore}>
+    <ActiveStoreProvider store={activeStore} memberships={memberships} features={storeFeatures} onSwitch={handleSwitchStore}>
     <div
       className="flex min-h-screen bg-slate-50 flex-col md:flex-row"
       style={storeThemeVars(storeTheme.primary, storeTheme.secondary)}
@@ -359,6 +512,53 @@ function AdminLayout() {
 
       {/* Main Content Area */}
       <div className="flex-1 flex flex-col min-h-screen">
+        {supportSession && (
+          <div className="flex flex-wrap items-center justify-between gap-3 bg-amber-500 px-4 md:px-8 py-2.5 text-sm text-amber-950">
+            <div className="flex items-center gap-2 font-medium">
+              <LifeBuoy size={16} className="shrink-0" />
+              <span>
+                Modo suporte: você está vendo o painel de <b>{supportSession.storeName}</b> como Dono
+                do Sistema. Tudo que fizer aqui é registrado.
+              </span>
+            </div>
+            <Button
+              size="sm"
+              variant="outline"
+              className="gap-2 border-amber-800/40 bg-amber-100 text-amber-950 hover:bg-white"
+              onClick={handleEndSupport}
+            >
+              <LogOut size={14} />
+              Sair do modo suporte
+            </Button>
+          </div>
+        )}
+
+        {currentAnnouncement && (
+          <div
+            className={cn(
+              'flex flex-wrap items-start justify-between gap-3 px-4 md:px-8 py-2.5 text-sm',
+              SEVERITY_BANNER[currentAnnouncement.severity] || SEVERITY_BANNER['info'],
+            )}
+          >
+            <div className="flex items-start gap-2 min-w-0">
+              <Megaphone size={16} className="shrink-0 mt-0.5" />
+              <span>
+                <b>{currentAnnouncement.title}</b>
+                <span className="mx-1.5">—</span>
+                {currentAnnouncement.body}
+              </span>
+            </div>
+            <button
+              type="button"
+              onClick={() => dismissAnnouncement(currentAnnouncement.id)}
+              className="shrink-0 rounded p-1 opacity-70 hover:opacity-100 focus:outline-none focus:ring-2 focus:ring-current"
+              aria-label="Fechar aviso"
+            >
+              <X size={16} />
+            </button>
+          </div>
+        )}
+
         {/* Desktop Header */}
         <header className="hidden md:flex h-16 items-center justify-between px-8 bg-white border-b shadow-sm sticky top-0 z-30">
           <div className="flex items-center gap-4">
@@ -385,10 +585,10 @@ function AdminLayout() {
                 size="sm"
                 variant="ghost"
                 className="gap-2 text-pink-600 hover:text-pink-700"
-                onClick={() => navigate({ to: '/super' as any })}
+                onClick={() => (supportSession ? handleEndSupport() : navigate({ to: '/super' as any }))}
               >
                 <StoreIcon size={16} />
-                Painel do Dono
+                {saasName}
               </Button>
             )}
             <div className="flex items-center gap-2 text-sm text-slate-600 bg-slate-50 px-3 py-1.5 rounded-full border">
@@ -419,7 +619,25 @@ function AdminLayout() {
         {/* Content */}
         <main className="flex-1 p-4 md:p-8">
           <div className="max-w-7xl mx-auto">
-            <Outlet />
+            {blockedFeature ? (
+              <div className="max-w-md mx-auto bg-white rounded-2xl p-8 border text-center space-y-4 mt-8">
+                <div className="w-16 h-16 bg-amber-50 text-amber-500 rounded-full flex items-center justify-center mx-auto">
+                  <Lock className="w-8 h-8" />
+                </div>
+                <h2 className="text-xl font-bold text-slate-900">
+                  Esta funcionalidade não está disponível no seu plano.
+                </h2>
+                <p className="text-slate-500 text-sm">
+                  {FEATURE_LABEL[blockedFeature]} faz parte de um plano superior. Fale com o
+                  administrador do sistema para liberar.
+                </p>
+                <Button variant="outline" className="w-full" onClick={() => navigate({ to: '/admin' })}>
+                  Voltar ao painel
+                </Button>
+              </div>
+            ) : (
+              <Outlet />
+            )}
           </div>
         </main>
       </div>

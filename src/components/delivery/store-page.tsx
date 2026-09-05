@@ -2,9 +2,10 @@ import { useSuspenseQuery, useQueryClient } from "@tanstack/react-query";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent } from "@/components/ui/card";
-import { Clock, ShoppingBag, Plus, Minus, X, Trash2, ArrowLeft, CheckCircle2, Loader2, AlertCircle, Phone, MapPin, Instagram, Heart, Star } from "lucide-react";
+import { Clock, ShoppingBag, Plus, Minus, X, Trash2, ArrowLeft, CheckCircle2, Loader2, AlertCircle, Phone, MapPin, Instagram, Heart, Star, Flame } from "lucide-react";
 
 import { getStoreSettings, getCategoriesWithProducts, type StoreSettings } from "@/lib/delivery.functions";
+import { getCatalogPricing } from "@/lib/promotions";
 import { createOrder } from "@/lib/orders.functions";
 import { getActiveDeliveryFees } from "@/lib/delivery-fees.functions";
 import { useCart } from "@/lib/cart.store";
@@ -95,8 +96,8 @@ export function StorePage({ storeId }: { storeId: string }) {
   useEffect(() => {
     if (settings) {
       const root = document.documentElement;
-      root.style.setProperty('--primary-color', settings.primary_color || '#db2777');
-      root.style.setProperty('--secondary-color', settings.secondary_color || '#fdf2f8');
+      root.style.setProperty('--primary-color', settings.primary_color || '#1d4ed8');
+      root.style.setProperty('--secondary-color', settings.secondary_color || '#eff6ff');
     }
   }, [settings?.primary_color, settings?.secondary_color]);
   
@@ -319,9 +320,11 @@ export function StorePage({ storeId }: { storeId: string }) {
             </h2>
             
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-2 gap-4">
-              {category.products.map((product) => (
-                <Card 
-                  key={product.id} 
+              {category.products.map((product) => {
+                const pricing = getCatalogPricing(product);
+                return (
+                <Card
+                  key={product.id}
                   className="group relative overflow-hidden rounded-2xl border-slate-100 bg-white hover:border-[var(--primary-color)]/20 transition-all duration-300 cursor-pointer flex p-3 md:p-4 gap-4"
                   onClick={() => setSelectedProduct(product)}
                 >
@@ -334,6 +337,11 @@ export function StorePage({ storeId }: { storeId: string }) {
                         {product.is_featured && (
                           <Star className="w-3.5 h-3.5 fill-amber-400 text-amber-400 shrink-0" />
                         )}
+                        {pricing.onSale && (
+                          <Badge className="bg-rose-500 text-white border-none font-black text-[9px] px-1.5 py-0 gap-0.5 shrink-0">
+                            <Flame className="w-2.5 h-2.5" /> OFERTA
+                          </Badge>
+                        )}
                       </div>
                       <p className="text-slate-400 text-xs md:text-sm font-medium line-clamp-2 md:line-clamp-3">
                         {product.description}
@@ -341,10 +349,22 @@ export function StorePage({ storeId }: { storeId: string }) {
                     </div>
 
                     <div className="flex items-center justify-between mt-4">
-                      <span className="text-base md:text-lg font-black text-[var(--primary-color)] tracking-tight">
-                        {formatCurrency(product.price)}
-                      </span>
-                      <Button 
+                      <div className="flex items-baseline gap-1.5">
+                        {pricing.onSale && (
+                          <span className="text-xs text-slate-400 line-through font-medium">
+                            {formatCurrency(pricing.fullPrice)}
+                          </span>
+                        )}
+                        <span className="text-base md:text-lg font-black text-[var(--primary-color)] tracking-tight">
+                          {formatCurrency(pricing.price)}
+                        </span>
+                        {pricing.onSale && (
+                          <span className="text-[10px] font-black text-rose-500">
+                            -{pricing.discountPercent}%
+                          </span>
+                        )}
+                      </div>
+                      <Button
                         size="sm"
                         className="h-8 w-8 md:h-10 md:w-10 rounded-xl text-white transition-all active:scale-90 hover:text-white hover:brightness-110"
                         style={{ backgroundColor: 'var(--primary-color)' }}
@@ -356,10 +376,10 @@ export function StorePage({ storeId }: { storeId: string }) {
 
                   <div className="relative w-28 h-28 md:w-36 md:h-36 rounded-xl overflow-hidden bg-slate-50 shrink-0 shadow-sm">
                     {product.image_url ? (
-                      <img 
-                        src={product.image_url} 
-                        alt={product.name} 
-                        className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-105" 
+                      <img
+                        src={product.image_url}
+                        alt={product.name}
+                        className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-105"
                         onError={(e) => {
                           (e.target as HTMLImageElement).src = 'https://placehold.co/400x400?text=Imagem';
                         }}
@@ -371,7 +391,8 @@ export function StorePage({ storeId }: { storeId: string }) {
                     )}
                   </div>
                 </Card>
-              ))}
+                );
+              })}
             </div>
           </section>
         ))}
@@ -509,25 +530,24 @@ export function StorePage({ storeId }: { storeId: string }) {
               <div className="flex-1 overflow-visible">
                 <div className="relative w-full overflow-hidden bg-slate-100 shrink-0">
                   {selectedProduct.image_url ? (
-                    <img 
-                      src={selectedProduct.image_url} 
-                      alt={selectedProduct.name} 
-                      className="w-full h-auto max-h-[70vh] object-contain mx-auto" 
+                    <img
+                      src={selectedProduct.image_url}
+                      alt={selectedProduct.name}
+                      className="w-full h-44 sm:h-52 md:h-60 object-cover"
                     />
                   ) : (
-                    <div className="w-full h-full bg-[var(--secondary-color)] flex items-center justify-center">
-                      <ShoppingBag className="w-20 h-20 text-[var(--primary-color)]/30" />
+                    <div className="w-full h-44 sm:h-52 md:h-60 bg-[var(--secondary-color)] flex items-center justify-center">
+                      <ShoppingBag className="w-16 h-16 text-[var(--primary-color)]/30" />
                     </div>
                   )}
-                  {/* Close button handled by Dialog primitive but we can add a visual one if needed */}
                 </div>
 
-                <div className="p-6 md:p-8">
-                  <DialogHeader className="space-y-4">
-                    <div className="flex flex-col md:flex-row md:items-start justify-between gap-4">
-                      <div className="flex-1 space-y-2">
-                        <div className="flex items-center gap-3">
-                          <DialogTitle className="text-2xl md:text-3xl font-black text-slate-900 tracking-tight">
+                <div className="p-4 sm:p-6">
+                  <DialogHeader className="space-y-3">
+                    <div className="flex flex-col sm:flex-row sm:items-start justify-between gap-3">
+                      <div className="flex-1 space-y-1.5">
+                        <div className="flex flex-wrap items-center gap-2">
+                          <DialogTitle className="text-xl md:text-2xl font-black text-slate-900 tracking-tight">
                             {selectedProduct.name}
                           </DialogTitle>
                           {selectedProduct.is_featured && (
@@ -535,22 +555,37 @@ export function StorePage({ storeId }: { storeId: string }) {
                               DESTAQUE
                             </Badge>
                           )}
+                          {getCatalogPricing(selectedProduct).onSale && (
+                            <Badge className="bg-rose-500 text-white border-none font-black text-[10px] px-2 py-0.5 gap-1">
+                              <Flame className="w-3 h-3" /> OFERTA
+                            </Badge>
+                          )}
                         </div>
-                        <p className="text-slate-500 font-medium leading-relaxed">
+                        <p className="text-sm text-slate-500 font-medium leading-relaxed">
                           {selectedProduct.description}
                         </p>
                       </div>
-                      <div className="bg-slate-100 px-4 py-2 rounded-2xl border border-slate-200 shrink-0">
-                        <span className="text-xs font-black text-slate-400 uppercase tracking-widest block">Preço Base</span>
-                        <span className="text-2xl font-black text-slate-900 tracking-tight">
-                          {formatCurrency(selectedProduct.price)}
-                        </span>
+                      <div className="shrink-0">
+                        {getCatalogPricing(selectedProduct).onSale ? (
+                          <div className="flex items-baseline gap-2">
+                            <span className="text-sm text-slate-400 line-through font-medium">
+                              {formatCurrency(getCatalogPricing(selectedProduct).fullPrice)}
+                            </span>
+                            <span className="text-2xl font-black text-rose-500 tracking-tight">
+                              {formatCurrency(getCatalogPricing(selectedProduct).price)}
+                            </span>
+                          </div>
+                        ) : (
+                          <span className="text-2xl font-black text-slate-900 tracking-tight">
+                            {formatCurrency(selectedProduct.price)}
+                          </span>
+                        )}
                       </div>
                     </div>
                   </DialogHeader>
-                  
+
                   {/* Add-ons groups */}
-                  <div className="mt-8 space-y-8">
+                  <div className="mt-5 space-y-6">
 
                     {selectedProduct.addons?.map((addonGroupRelation: any) => {
                       const group = addonGroupRelation.group;
@@ -654,7 +689,7 @@ export function StorePage({ storeId }: { storeId: string }) {
                     // Validation
                     const missingRequired = selectedProduct.addons?.some((rel: any) => {
                       const group = rel.group;
-                      if (!group || !group.is_required) return false;
+                      if (!group || group.status !== 'active' || !group.is_required) return false;
                       const selectedCount = (selectedAddons[group.id] || []).length;
                       return selectedCount < group.min_quantity;
                     });
@@ -677,7 +712,7 @@ export function StorePage({ storeId }: { storeId: string }) {
                     addItem({
                       product_id: selectedProduct.id,
                       name: selectedProduct.name,
-                      price: selectedProduct.price,
+                      price: getCatalogPricing(selectedProduct).price,
                       quantity: 1,
                       image_url: selectedProduct.image_url,
                       observation: productObservation,

@@ -131,6 +131,100 @@ export type Database = {
           },
         ]
       }
+      announcements: {
+        Row: {
+          body: string
+          created_at: string
+          created_by: string | null
+          ends_at: string | null
+          id: string
+          is_active: boolean
+          severity: string
+          starts_at: string
+          store_id: string | null
+          title: string
+          updated_at: string
+        }
+        Insert: {
+          body: string
+          created_at?: string
+          created_by?: string | null
+          ends_at?: string | null
+          id?: string
+          is_active?: boolean
+          severity?: string
+          starts_at?: string
+          store_id?: string | null
+          title: string
+          updated_at?: string
+        }
+        Update: {
+          body?: string
+          created_at?: string
+          created_by?: string | null
+          ends_at?: string | null
+          id?: string
+          is_active?: boolean
+          severity?: string
+          starts_at?: string
+          store_id?: string | null
+          title?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "announcements_store_id_fkey"
+            columns: ["store_id"]
+            isOneToOne: false
+            referencedRelation: "stores"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      audit_logs: {
+        Row: {
+          action: string
+          actor_email: string | null
+          actor_id: string | null
+          created_at: string
+          description: string | null
+          id: string
+          metadata: Json | null
+          module: string
+          store_id: string | null
+        }
+        Insert: {
+          action: string
+          actor_email?: string | null
+          actor_id?: string | null
+          created_at?: string
+          description?: string | null
+          id?: string
+          metadata?: Json | null
+          module: string
+          store_id?: string | null
+        }
+        Update: {
+          action?: string
+          actor_email?: string | null
+          actor_id?: string | null
+          created_at?: string
+          description?: string | null
+          id?: string
+          metadata?: Json | null
+          module?: string
+          store_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "audit_logs_store_id_fkey"
+            columns: ["store_id"]
+            isOneToOne: false
+            referencedRelation: "stores"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       categories: {
         Row: {
           created_at: string | null
@@ -209,6 +303,36 @@ export type Database = {
             referencedColumns: ["id"]
           },
         ]
+      }
+      features: {
+        Row: {
+          created_at: string
+          description: string | null
+          id: string
+          is_core: boolean
+          module: string
+          name: string
+          sort_order: number
+        }
+        Insert: {
+          created_at?: string
+          description?: string | null
+          id: string
+          is_core?: boolean
+          module?: string
+          name: string
+          sort_order?: number
+        }
+        Update: {
+          created_at?: string
+          description?: string | null
+          id?: string
+          is_core?: boolean
+          module?: string
+          name?: string
+          sort_order?: number
+        }
+        Relationships: []
       }
       order_items: {
         Row: {
@@ -357,6 +481,75 @@ export type Database = {
         }
         Relationships: []
       }
+      plan_features: {
+        Row: {
+          feature_id: string
+          plan_id: string
+        }
+        Insert: {
+          feature_id: string
+          plan_id: string
+        }
+        Update: {
+          feature_id?: string
+          plan_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "plan_features_feature_id_fkey"
+            columns: ["feature_id"]
+            isOneToOne: false
+            referencedRelation: "features"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "plan_features_plan_id_fkey"
+            columns: ["plan_id"]
+            isOneToOne: false
+            referencedRelation: "plans"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      plans: {
+        Row: {
+          billing_period: string
+          created_at: string
+          description: string | null
+          id: string
+          is_active: boolean
+          name: string
+          price_cents: number
+          slug: string
+          sort_order: number
+          updated_at: string
+        }
+        Insert: {
+          billing_period?: string
+          created_at?: string
+          description?: string | null
+          id?: string
+          is_active?: boolean
+          name: string
+          price_cents?: number
+          slug: string
+          sort_order?: number
+          updated_at?: string
+        }
+        Update: {
+          billing_period?: string
+          created_at?: string
+          description?: string | null
+          id?: string
+          is_active?: boolean
+          name?: string
+          price_cents?: number
+          slug?: string
+          sort_order?: number
+          updated_at?: string
+        }
+        Relationships: []
+      }
       product_addon_groups: {
         Row: {
           group_id: string
@@ -407,8 +600,12 @@ export type Database = {
           image_url: string | null
           is_available: boolean | null
           is_featured: boolean | null
+          is_on_sale: boolean
           name: string
           price: number
+          sale_end_at: string | null
+          sale_price: number | null
+          sale_start_at: string | null
           store_id: string
           updated_at: string | null
         }
@@ -421,8 +618,12 @@ export type Database = {
           image_url?: string | null
           is_available?: boolean | null
           is_featured?: boolean | null
+          is_on_sale?: boolean
           name: string
           price: number
+          sale_end_at?: string | null
+          sale_price?: number | null
+          sale_start_at?: string | null
           store_id?: string
           updated_at?: string | null
         }
@@ -435,8 +636,12 @@ export type Database = {
           image_url?: string | null
           is_available?: boolean | null
           is_featured?: boolean | null
+          is_on_sale?: boolean
           name?: string
           price?: number
+          sale_end_at?: string | null
+          sale_price?: number | null
+          sale_start_at?: string | null
           store_id?: string
           updated_at?: string | null
         }
@@ -478,6 +683,51 @@ export type Database = {
           id?: string
           status?: string | null
           updated_at?: string | null
+        }
+        Relationships: []
+      }
+      saas_settings: {
+        Row: {
+          contact_email: string | null
+          contact_phone: string | null
+          created_at: string
+          id: string
+          logo_url: string | null
+          maintenance_message: string | null
+          maintenance_mode: boolean
+          name: string
+          primary_color: string
+          singleton: boolean
+          support_info: string | null
+          updated_at: string
+        }
+        Insert: {
+          contact_email?: string | null
+          contact_phone?: string | null
+          created_at?: string
+          id?: string
+          logo_url?: string | null
+          maintenance_message?: string | null
+          maintenance_mode?: boolean
+          name?: string
+          primary_color?: string
+          singleton?: boolean
+          support_info?: string | null
+          updated_at?: string
+        }
+        Update: {
+          contact_email?: string | null
+          contact_phone?: string | null
+          created_at?: string
+          id?: string
+          logo_url?: string | null
+          maintenance_message?: string | null
+          maintenance_mode?: boolean
+          name?: string
+          primary_color?: string
+          singleton?: boolean
+          support_info?: string | null
+          updated_at?: string
         }
         Relationships: []
       }
@@ -596,6 +846,7 @@ export type Database = {
           id: string
           name: string
           owner_id: string | null
+          plan_id: string | null
           slug: string
           status: string
           updated_at: string
@@ -605,6 +856,7 @@ export type Database = {
           id?: string
           name: string
           owner_id?: string | null
+          plan_id?: string | null
           slug: string
           status?: string
           updated_at?: string
@@ -614,11 +866,20 @@ export type Database = {
           id?: string
           name?: string
           owner_id?: string | null
+          plan_id?: string | null
           slug?: string
           status?: string
           updated_at?: string
         }
-        Relationships: []
+        Relationships: [
+          {
+            foreignKeyName: "stores_plan_id_fkey"
+            columns: ["plan_id"]
+            isOneToOne: false
+            referencedRelation: "plans"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       user_permissions: {
         Row: {
@@ -672,7 +933,24 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
-      [_ in never]: never
+      effective_price: {
+        Args: { product: Database["public"]["Tables"]["products"]["Row"] }
+        Returns: number
+      }
+      my_store_features: { Args: { _store_id: string }; Returns: string[] }
+      super_admin_users: {
+        Args: never
+        Returns: {
+          created_at: string
+          email: string
+          full_name: string
+          id: string
+          last_sign_in_at: string
+          role: Database["public"]["Enums"]["app_role"]
+          status: string
+          stores: Json
+        }[]
+      }
     }
     Enums: {
       app_role: "admin" | "user" | "employee" | "super_admin"

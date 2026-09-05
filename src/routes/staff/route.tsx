@@ -2,6 +2,8 @@ import { createFileRoute } from '@tanstack/react-router'
 import { supabase } from '@/integrations/supabase/client'
 import { getUserRole } from '@/lib/auth.functions'
 import { resolveActiveStore, type StoreMembership } from '@/lib/store-context'
+import { getStoreFeatures, FEATURE_LABEL, type FeatureId } from '@/lib/features.functions'
+import { getSaasSettings, MAINTENANCE_FALLBACK } from '@/lib/saas-settings.functions'
 import { ActiveStoreProvider } from '@/lib/active-store'
 import { storeThemeVars } from '@/lib/store-theme'
 import type { Store } from '@/lib/delivery.functions'
@@ -25,6 +27,8 @@ import {
   ChevronRight,
   Loader2,
   Printer,
+  Lock,
+  Wrench,
   Store as StoreIcon
 } from "lucide-react";
 import { useState, useEffect } from "react";
@@ -39,6 +43,11 @@ function StaffLayout() {
   const [isAuthLoading, setIsAuthLoading] = useState(true);
 
   const [activeStore, setActiveStore] = useState<Store | null>(null);
+  const [storeFeatures, setStoreFeatures] = useState<FeatureId[]>([]);
+  const [maintenance, setMaintenance] = useState<{ on: boolean; message: string | null }>({
+    on: false,
+    message: null,
+  });
   const [memberships, setMemberships] = useState<StoreMembership[]>([]);
   const [storeName, setStoreName] = useState("");
   const [storeLogo, setStoreLogo] = useState<string | null>(null);
@@ -61,10 +70,11 @@ function StaffLayout() {
       setUserEmail(session.user.email || "");
 
       try {
-        const [role, storeResolution, profileData] = await Promise.all([
+        const [role, storeResolution, profileData, saas] = await Promise.all([
           getUserRole(),
           resolveActiveStore(),
-          supabase.from('profiles').select('status').eq('id', session.user.id).maybeSingle()
+          supabase.from('profiles').select('status').eq('id', session.user.id).maybeSingle(),
+          getSaasSettings().catch(() => null)
         ]);
 
         if (cancelled) return;
@@ -80,6 +90,14 @@ function StaffLayout() {
           return;
         }
 
+        // Manutenção nunca alcança o dono do sistema.
+        if (saas) {
+          setMaintenance({
+            on: saas.maintenance_mode && !isSuperAdmin,
+            message: saas.maintenance_message,
+          });
+        }
+
         setUserRole(role);
         setMemberships(storeResolution.memberships);
 
@@ -87,11 +105,16 @@ function StaffLayout() {
           setActiveStore(storeResolution.store);
           setStoreName(storeResolution.store.name);
 
-          const { data: settings } = await supabase
-            .from('store_settings')
-            .select('name, logo_url, primary_color, secondary_color')
-            .eq('store_id', storeResolution.store.id)
-            .maybeSingle();
+          const [{ data: settings }, features] = await Promise.all([
+            supabase
+              .from('store_settings')
+              .select('name, logo_url, primary_color, secondary_color')
+              .eq('store_id', storeResolution.store.id)
+              .maybeSingle(),
+            getStoreFeatures(storeResolution.store.id),
+          ]);
+
+          if (!cancelled) setStoreFeatures(features);
 
           if (!cancelled && settings) {
             setStoreName(settings.name || storeResolution.store.name);
@@ -173,6 +196,8 @@ function StaffLayout() {
       setStoreLogo(settings.logo_url);
       setStoreTheme({ primary: settings.primary_color, secondary: settings.secondary_color });
     }
+
+    setStoreFeatures(await getStoreFeatures(storeId));
   };
 
   const handleLogout = async () => {
@@ -191,6 +216,27 @@ function StaffLayout() {
         <div className="text-center space-y-4">
           <Loader2 className="h-10 w-10 animate-spin text-pink-600 mx-auto" />
           <p className="text-slate-500 font-medium">Verificando acesso...</p>
+        </div>
+      </div>
+    );
+  }
+
+  if (maintenance.on) {
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-slate-50 p-4">
+        <div className="max-w-md w-full bg-white rounded-2xl p-8 border text-center space-y-4">
+          <div className="w-16 h-16 bg-amber-50 text-amber-500 rounded-full flex items-center justify-center mx-auto">
+            <Wrench className="w-8 h-8" />
+          </div>
+          <h2 className="text-xl font-bold text-slate-900">Sistema em manutenção</h2>
+          <p className="text-slate-500 text-sm">{maintenance.message || MAINTENANCE_FALLBACK}</p>
+          <p className="text-slate-400 text-xs">
+            Seu catálogo continua no ar e recebendo pedidos normalmente.
+          </p>
+          <Button variant="outline" className="w-full" onClick={handleLogout}>
+            <LogOut size={16} className="mr-2" />
+            Sair
+          </Button>
         </div>
       </div>
     );
@@ -216,8 +262,42 @@ function StaffLayout() {
     );
   }
 
+  // Central de Pedidos é funcionalidade de plano. Bloqueia o painel inteiro, não
+  // só o menu. super_admin passa direto (suporte); lista vazia = ainda carregando.
+  const blockedByPlan =
+    userRole !== 'super_admin' &&
+    storeFeatures.length > 0 &&
+    !storeFeatures.includes('order_hub');
+
+  if (blockedByPlan) {
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-slate-50 p-4">
+        <div className="max-w-md w-full bg-white rounded-2xl p-8 border text-center space-y-4">
+          <div className="w-16 h-16 bg-amber-50 text-amber-500 rounded-full flex items-center justify-center mx-auto">
+            <Lock className="w-8 h-8" />
+          </div>
+          <h2 className="text-xl font-bold text-slate-900">
+            Esta funcionalidade não está disponível no seu plano.
+          </h2>
+          <p className="text-slate-500 text-sm">
+            {FEATURE_LABEL['order_hub']} faz parte de um plano superior. Fale com o
+            administrador do sistema para liberar.
+          </p>
+          <Button variant="outline" className="w-full" onClick={() => navigate({ to: '/admin' })}>
+            Voltar ao painel
+          </Button>
+        </div>
+      </div>
+    );
+  }
+
   return (
-    <ActiveStoreProvider store={activeStore} memberships={memberships} onSwitch={handleSwitchStore}>
+    <ActiveStoreProvider
+      store={activeStore}
+      memberships={memberships}
+      features={storeFeatures}
+      onSwitch={handleSwitchStore}
+    >
     <div
       className="flex min-h-screen bg-slate-50 flex-col md:flex-row"
       style={storeThemeVars(storeTheme.primary, storeTheme.secondary)}

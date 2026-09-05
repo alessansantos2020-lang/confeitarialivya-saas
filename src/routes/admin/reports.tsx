@@ -111,7 +111,7 @@ function ReportsPage() {
 
 
 
-  const COLORS = ['#db2777', '#ec4899', '#f472b6', '#fbcfe8', '#fdf2f8'];
+  const COLORS = ['#1d4ed8', '#2563eb', '#60a5fa', '#bfdbfe', '#eff6ff'];
 
   if (isLoading) {
     return (
@@ -262,9 +262,9 @@ function ReportsPage() {
                 <Line 
                   type="monotone" 
                   dataKey="value" 
-                  stroke="#db2777" 
+                  stroke="#1d4ed8" 
                   strokeWidth={3} 
-                  dot={{ r: 4, fill: '#db2777', strokeWidth: 2, stroke: '#fff' }}
+                  dot={{ r: 4, fill: '#1d4ed8', strokeWidth: 2, stroke: '#fff' }}
                   activeDot={{ r: 6, strokeWidth: 0 }}
                 />
               </LineChart>
@@ -295,9 +295,9 @@ function ReportsPage() {
                   cursor={{ fill: '#f8fafc' }}
                   contentStyle={{ borderRadius: '12px', border: 'none', boxShadow: '0 10px 15px -3px rgb(0 0 0 / 0.1)' }}
                 />
-                <Bar dataKey="quantity" fill="#db2777" radius={[0, 4, 4, 0]} barSize={30}>
+                <Bar dataKey="quantity" fill="#1d4ed8" radius={[0, 4, 4, 0]} barSize={30}>
                   {data?.topProducts.map((_, index) => (
-                    <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length] || '#db2777'} />
+                    <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length] || '#1d4ed8'} />
                   ))}
                 </Bar>
               </BarChart>

@@ -27,6 +27,13 @@ import { Route as AdminSettingsRouteImport } from './routes/admin/settings'
 import { Route as StaffIndexRouteImport } from './routes/staff/index'
 import { Route as StaffHistoryRouteImport } from './routes/staff/history'
 import { Route as SuperIndexRouteImport } from './routes/super/index'
+import { Route as SuperAvisosRouteImport } from './routes/super/avisos'
+import { Route as SuperConfiguracoesRouteImport } from './routes/super/configuracoes'
+import { Route as SuperDashboardRouteImport } from './routes/super/dashboard'
+import { Route as SuperLogsRouteImport } from './routes/super/logs'
+import { Route as SuperMonitoramentoRouteImport } from './routes/super/monitoramento'
+import { Route as SuperPlanosRouteImport } from './routes/super/planos'
+import { Route as SuperUsuariosRouteImport } from './routes/super/usuarios'
 
 const IndexRoute = IndexRouteImport.update({
   id: '/',
@@ -118,6 +125,41 @@ const SuperIndexRoute = SuperIndexRouteImport.update({
   path: '/',
   getParentRoute: () => SuperRouteRoute,
 } as any)
+const SuperAvisosRoute = SuperAvisosRouteImport.update({
+  id: '/avisos',
+  path: '/avisos',
+  getParentRoute: () => SuperRouteRoute,
+} as any)
+const SuperConfiguracoesRoute = SuperConfiguracoesRouteImport.update({
+  id: '/configuracoes',
+  path: '/configuracoes',
+  getParentRoute: () => SuperRouteRoute,
+} as any)
+const SuperDashboardRoute = SuperDashboardRouteImport.update({
+  id: '/dashboard',
+  path: '/dashboard',
+  getParentRoute: () => SuperRouteRoute,
+} as any)
+const SuperLogsRoute = SuperLogsRouteImport.update({
+  id: '/logs',
+  path: '/logs',
+  getParentRoute: () => SuperRouteRoute,
+} as any)
+const SuperMonitoramentoRoute = SuperMonitoramentoRouteImport.update({
+  id: '/monitoramento',
+  path: '/monitoramento',
+  getParentRoute: () => SuperRouteRoute,
+} as any)
+const SuperPlanosRoute = SuperPlanosRouteImport.update({
+  id: '/planos',
+  path: '/planos',
+  getParentRoute: () => SuperRouteRoute,
+} as any)
+const SuperUsuariosRoute = SuperUsuariosRouteImport.update({
+  id: '/usuarios',
+  path: '/usuarios',
+  getParentRoute: () => SuperRouteRoute,
+} as any)
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
@@ -135,6 +177,13 @@ export interface FileRoutesByFullPath {
   '/admin/reports': typeof AdminReportsRoute
   '/admin/settings': typeof AdminSettingsRoute
   '/staff/history': typeof StaffHistoryRoute
+  '/super/avisos': typeof SuperAvisosRoute
+  '/super/configuracoes': typeof SuperConfiguracoesRoute
+  '/super/dashboard': typeof SuperDashboardRoute
+  '/super/logs': typeof SuperLogsRoute
+  '/super/monitoramento': typeof SuperMonitoramentoRoute
+  '/super/planos': typeof SuperPlanosRoute
+  '/super/usuarios': typeof SuperUsuariosRoute
   '/admin/': typeof AdminIndexRoute
   '/staff/': typeof StaffIndexRoute
   '/super/': typeof SuperIndexRoute
@@ -152,6 +201,13 @@ export interface FileRoutesByTo {
   '/admin/reports': typeof AdminReportsRoute
   '/admin/settings': typeof AdminSettingsRoute
   '/staff/history': typeof StaffHistoryRoute
+  '/super/avisos': typeof SuperAvisosRoute
+  '/super/configuracoes': typeof SuperConfiguracoesRoute
+  '/super/dashboard': typeof SuperDashboardRoute
+  '/super/logs': typeof SuperLogsRoute
+  '/super/monitoramento': typeof SuperMonitoramentoRoute
+  '/super/planos': typeof SuperPlanosRoute
+  '/super/usuarios': typeof SuperUsuariosRoute
   '/admin': typeof AdminIndexRoute
   '/staff': typeof StaffIndexRoute
   '/super': typeof SuperIndexRoute
@@ -173,6 +229,13 @@ export interface FileRoutesById {
   '/admin/reports': typeof AdminReportsRoute
   '/admin/settings': typeof AdminSettingsRoute
   '/staff/history': typeof StaffHistoryRoute
+  '/super/avisos': typeof SuperAvisosRoute
+  '/super/configuracoes': typeof SuperConfiguracoesRoute
+  '/super/dashboard': typeof SuperDashboardRoute
+  '/super/logs': typeof SuperLogsRoute
+  '/super/monitoramento': typeof SuperMonitoramentoRoute
+  '/super/planos': typeof SuperPlanosRoute
+  '/super/usuarios': typeof SuperUsuariosRoute
   '/admin/': typeof AdminIndexRoute
   '/staff/': typeof StaffIndexRoute
   '/super/': typeof SuperIndexRoute
@@ -195,6 +258,13 @@ export interface FileRouteTypes {
     | '/admin/reports'
     | '/admin/settings'
     | '/staff/history'
+    | '/super/avisos'
+    | '/super/configuracoes'
+    | '/super/dashboard'
+    | '/super/logs'
+    | '/super/monitoramento'
+    | '/super/planos'
+    | '/super/usuarios'
     | '/admin/'
     | '/staff/'
     | '/super/'
@@ -212,6 +282,13 @@ export interface FileRouteTypes {
     | '/admin/reports'
     | '/admin/settings'
     | '/staff/history'
+    | '/super/avisos'
+    | '/super/configuracoes'
+    | '/super/dashboard'
+    | '/super/logs'
+    | '/super/monitoramento'
+    | '/super/planos'
+    | '/super/usuarios'
     | '/admin'
     | '/staff'
     | '/super'
@@ -232,6 +309,13 @@ export interface FileRouteTypes {
     | '/admin/reports'
     | '/admin/settings'
     | '/staff/history'
+    | '/super/avisos'
+    | '/super/configuracoes'
+    | '/super/dashboard'
+    | '/super/logs'
+    | '/super/monitoramento'
+    | '/super/planos'
+    | '/super/usuarios'
     | '/admin/'
     | '/staff/'
     | '/super/'
@@ -374,6 +458,55 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof SuperIndexRouteImport
       parentRoute: typeof SuperRouteRoute
     }
+    '/super/avisos': {
+      id: '/super/avisos'
+      path: '/avisos'
+      fullPath: '/super/avisos'
+      preLoaderRoute: typeof SuperAvisosRouteImport
+      parentRoute: typeof SuperRouteRoute
+    }
+    '/super/configuracoes': {
+      id: '/super/configuracoes'
+      path: '/configuracoes'
+      fullPath: '/super/configuracoes'
+      preLoaderRoute: typeof SuperConfiguracoesRouteImport
+      parentRoute: typeof SuperRouteRoute
+    }
+    '/super/dashboard': {
+      id: '/super/dashboard'
+      path: '/dashboard'
+      fullPath: '/super/dashboard'
+      preLoaderRoute: typeof SuperDashboardRouteImport
+      parentRoute: typeof SuperRouteRoute
+    }
+    '/super/logs': {
+      id: '/super/logs'
+      path: '/logs'
+      fullPath: '/super/logs'
+      preLoaderRoute: typeof SuperLogsRouteImport
+      parentRoute: typeof SuperRouteRoute
+    }
+    '/super/monitoramento': {
+      id: '/super/monitoramento'
+      path: '/monitoramento'
+      fullPath: '/super/monitoramento'
+      preLoaderRoute: typeof SuperMonitoramentoRouteImport
+      parentRoute: typeof SuperRouteRoute
+    }
+    '/super/planos': {
+      id: '/super/planos'
+      path: '/planos'
+      fullPath: '/super/planos'
+      preLoaderRoute: typeof SuperPlanosRouteImport
+      parentRoute: typeof SuperRouteRoute
+    }
+    '/super/usuarios': {
+      id: '/super/usuarios'
+      path: '/usuarios'
+      fullPath: '/super/usuarios'
+      preLoaderRoute: typeof SuperUsuariosRouteImport
+      parentRoute: typeof SuperRouteRoute
+    }
   }
 }
 
@@ -420,10 +553,24 @@ const StaffRouteRouteWithChildren = StaffRouteRoute._addFileChildren(
 )
 
 interface SuperRouteRouteChildren {
+  SuperAvisosRoute: typeof SuperAvisosRoute
+  SuperConfiguracoesRoute: typeof SuperConfiguracoesRoute
+  SuperDashboardRoute: typeof SuperDashboardRoute
+  SuperLogsRoute: typeof SuperLogsRoute
+  SuperMonitoramentoRoute: typeof SuperMonitoramentoRoute
+  SuperPlanosRoute: typeof SuperPlanosRoute
+  SuperUsuariosRoute: typeof SuperUsuariosRoute
   SuperIndexRoute: typeof SuperIndexRoute
 }
 
 const SuperRouteRouteChildren: SuperRouteRouteChildren = {
+  SuperAvisosRoute: SuperAvisosRoute,
+  SuperConfiguracoesRoute: SuperConfiguracoesRoute,
+  SuperDashboardRoute: SuperDashboardRoute,
+  SuperLogsRoute: SuperLogsRoute,
+  SuperMonitoramentoRoute: SuperMonitoramentoRoute,
+  SuperPlanosRoute: SuperPlanosRoute,
+  SuperUsuariosRoute: SuperUsuariosRoute,
   SuperIndexRoute: SuperIndexRoute,
 }
 

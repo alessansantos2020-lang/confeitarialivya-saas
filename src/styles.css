@@ -5,6 +5,42 @@
 @custom-variant dark (&:is(.dark *));
 
 /*
+ * PALETA DO SISTEMA: azul sóbrio.
+ *
+ * O projeto foi escrito com classes `pink-*` e `rose-*` (174 usos em ~20
+ * telas). Em vez de reescrever cada classe, os tons da paleta são
+ * redefinidos aqui: o Tailwind v4 emite `bg-pink-600` como
+ * `var(--color-pink-600)`, então trocar o valor recolore admin, staff,
+ * /super, login e cardápio de uma vez.
+ *
+ * Os valores são os azuis do próprio Tailwind, deslocados para um tom mais
+ * escuro e menos saturado que o rosa original — o destaque principal
+ * (`pink-600`, 49 usos) virou #1d4ed8.
+ *
+ * O tema por loja (src/lib/store-theme.ts) sobrescreve estas mesmas
+ * variáveis no container de /admin e /staff, então uma loja que escolher
+ * sua própria cor continua funcionando por cima disto.
+ */
+@theme {
+  --color-pink-50: #eff6ff;
+  --color-pink-100: #dbeafe;
+  --color-pink-200: #bfdbfe;
+  --color-pink-300: #93c5fd;
+  --color-pink-400: #60a5fa;
+  --color-pink-500: #2563eb;
+  --color-pink-600: #1d4ed8;
+  --color-pink-700: #1e40af;
+  --color-pink-900: #172554;
+  --color-rose-50: #eff6ff;
+  --color-rose-100: #dbeafe;
+  --color-rose-200: #bfdbfe;
+  --color-rose-300: #93c5fd;
+  --color-rose-500: #1d4ed8;
+  --color-rose-600: #1e40af;
+  --color-rose-700: #172554;
+}
+
+/*
  * Design system definition.
  *
  * The @theme inline block maps CSS custom properties to Tailwind utility

@@ -64,15 +64,24 @@ function AuthPage() {
     try {
       console.log("DEBUG: Login success for:", user.email);
 
-      // Verificar role imediatamente
-      const { data: roleData, error: roleError } = await supabase
-        .from('user_roles')
-        .select('role')
-        .eq('user_id', user.id)
-        .maybeSingle()
+      // Papel e status juntos: conta bloqueada é recusada aqui, antes de
+      // qualquer redirecionamento, em vez de piscar o painel e ser expulsa.
+      const [roleRes, profileRes] = await Promise.all([
+        supabase.from('user_roles').select('role').eq('user_id', user.id).maybeSingle(),
+        supabase.from('profiles').select('status').eq('id', user.id).maybeSingle(),
+      ])
+
+      const { data: roleData, error: roleError } = roleRes
 
       if (roleError) {
         console.error('Erro ao verificar permissões:', roleError)
+      }
+
+      if (profileRes.data?.status === 'blocked') {
+        toast.error('Seu acesso foi bloqueado pelo administrador.')
+        await supabase.auth.signOut()
+        setIsLoading(false)
+        return
       }
 
       if (roleData) {
@@ -98,17 +107,7 @@ function AuthPage() {
       } else {
         // Sem papel definido: conta existe no auth mas não foi vinculada a
         // nenhuma loja pelo admin. Não há auto-cadastro no sistema.
-        const { data: profileData } = await supabase
-          .from('profiles')
-          .select('status')
-          .eq('id', user.id)
-          .maybeSingle();
-
-        if (profileData?.status === 'blocked') {
-          toast.error('Seu acesso foi bloqueado pelo administrador.');
-        } else {
-          toast.error('Você não possui permissão para acessar esta área.');
-        }
+        toast.error('Você não possui permissão para acessar esta área.')
         await supabase.auth.signOut()
         setIsLoading(false)
       }

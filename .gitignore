@@ -41,3 +41,6 @@ supabase/.temp/
 *.njsproj
 *.sln
 *.sw?
+
+# Relatorio de teste: tem senhas reais, fica so na maquina
+RELATORIO-E-TESTE.md

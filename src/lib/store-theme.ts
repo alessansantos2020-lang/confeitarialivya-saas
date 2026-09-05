@@ -1,7 +1,7 @@
 import type { CSSProperties } from "react";
 
-const DEFAULT_PRIMARY = "#db2777";
-const DEFAULT_SECONDARY = "#fdf2f8";
+const DEFAULT_PRIMARY = "#1d4ed8";
+const DEFAULT_SECONDARY = "#eff6ff";
 
 /**
  * Gera as variáveis de tema da loja para aplicar no container do painel.
