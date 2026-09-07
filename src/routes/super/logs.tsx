@@ -61,6 +61,9 @@ const ACTION_LABEL: Record<string, string> = {
   announcement_deleted: 'Aviso excluído',
   support_access_start: 'Entrou como suporte',
   support_access_end: 'Saiu do modo suporte',
+  order_canceled: 'Pedido cancelado',
+  order_reopened: 'Pedido reaberto',
+  order_status_changed: 'Status do pedido alterado',
 }
 
 const MODULE_LABEL: Record<string, string> = {
@@ -70,6 +73,7 @@ const MODULE_LABEL: Record<string, string> = {
   avisos: 'Avisos',
   suporte: 'Suporte',
   configuracoes: 'Configurações',
+  pedidos: 'Pedidos',
 }
 
 const MODULE_CLASS: Record<string, string> = {
@@ -79,6 +83,7 @@ const MODULE_CLASS: Record<string, string> = {
   avisos: 'bg-amber-500/15 text-amber-300 border-amber-500/30',
   suporte: 'bg-orange-500/15 text-orange-300 border-orange-500/30',
   configuracoes: 'bg-slate-500/15 text-slate-300 border-slate-500/30',
+  pedidos: 'bg-rose-500/15 text-rose-300 border-rose-500/30',
 }
 
 const PERIODS = [

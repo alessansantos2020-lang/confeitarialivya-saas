@@ -25,6 +25,7 @@ import {
 } from 'lucide-react'
 import { format } from 'date-fns'
 import { ptBR } from 'date-fns/locale'
+import { ORDER_STATUS_LABEL, ORDER_STATUS_STYLE_DARK } from '@/lib/order-status'
 
 export const Route = createFileRoute('/super/monitoramento')({
   component: SuperMonitoringPage,
@@ -36,27 +37,6 @@ const PERIODS: { value: MonitoringPeriod; label: string }[] = [
   { value: 30, label: '30 dias' },
 ]
 
-// Mesmos rótulos do painel da loja (src/routes/admin/orders.tsx:62), em cores
-// que funcionam no tema escuro do /super.
-const STATUS_LABEL: Record<string, string> = {
-  pending: 'Novo Pedido',
-  confirmed: 'Aceito',
-  preparing: 'Em Preparo',
-  ready: 'Pronto',
-  out_for_delivery: 'Saiu para Entrega',
-  delivered: 'Entregue',
-  canceled: 'Cancelado',
-}
-
-const STATUS_CLASS: Record<string, string> = {
-  pending: 'bg-blue-500/15 text-blue-300 border-blue-500/30',
-  confirmed: 'bg-indigo-500/15 text-indigo-300 border-indigo-500/30',
-  preparing: 'bg-orange-500/15 text-orange-300 border-orange-500/30',
-  ready: 'bg-green-500/15 text-green-300 border-green-500/30',
-  out_for_delivery: 'bg-purple-500/15 text-purple-300 border-purple-500/30',
-  delivered: 'bg-emerald-500/15 text-emerald-300 border-emerald-500/30',
-  canceled: 'bg-red-500/15 text-red-300 border-red-500/30',
-}
 
 const money = (v: number) =>
   v.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })
@@ -261,9 +241,9 @@ function SuperMonitoringPage() {
                       <TableCell>
                         <Badge
                           variant="outline"
-                          className={STATUS_CLASS[order.status] || STATUS_CLASS['pending']}
+                          className={ORDER_STATUS_STYLE_DARK[order.status as keyof typeof ORDER_STATUS_STYLE_DARK] || ORDER_STATUS_STYLE_DARK.pending}
                         >
-                          {STATUS_LABEL[order.status] || order.status}
+                          {ORDER_STATUS_LABEL[order.status as keyof typeof ORDER_STATUS_LABEL] || order.status}
                         </Badge>
                       </TableCell>
                       <TableCell className="text-right text-slate-300 tabular-nums">

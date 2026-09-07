@@ -407,7 +407,7 @@ export type Database = {
           observation: string | null
           payment_method: string | null
           reference: string | null
-          status: string | null
+          status: "pending" | "confirmed" | "preparing" | "ready" | "out_for_delivery" | "delivered" | "canceled"
           store_id: string
           street: string | null
           total_amount: number
@@ -426,7 +426,7 @@ export type Database = {
           observation?: string | null
           payment_method?: string | null
           reference?: string | null
-          status?: string | null
+          status?: "pending" | "confirmed" | "preparing" | "ready" | "out_for_delivery" | "delivered" | "canceled"
           store_id?: string
           street?: string | null
           total_amount: number
@@ -445,7 +445,7 @@ export type Database = {
           observation?: string | null
           payment_method?: string | null
           reference?: string | null
-          status?: string | null
+          status?: "pending" | "confirmed" | "preparing" | "ready" | "out_for_delivery" | "delivered" | "canceled"
           store_id?: string
           street?: string | null
           total_amount?: number

@@ -3,9 +3,20 @@ import { cn } from '@/lib/utils';
 import { supabase } from '@/integrations/supabase/client';
 import { useState, useEffect, useRef } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { getOrders, updateOrderStatus, updateOrderNotificationStatus } from '@/lib/orders-admin.functions';
+import { getOrders, updateOrderStatus, type OrderWithItems } from '@/lib/orders-admin.functions';
 import { getStoreSettings } from '@/lib/delivery.functions';
 import { useActiveStore } from '@/lib/active-store';
+import { 
+  ORDER_STATUS, 
+  ORDER_STATUS_LABEL, 
+  ORDER_STATUS_STYLE, 
+  paymentMethodLabel, 
+  nextStatus, 
+  type OrderStatus 
+} from '@/lib/order-status';
+import { notifyOrderWhatsApp, notifyResultMessage, type NotifyEvent } from '@/lib/order-notify';
+import { printOrder } from '@/lib/order-print';
+import { logAudit } from '@/lib/audit.functions';
 import { format } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
 import { 
@@ -13,36 +24,23 @@ import {
   Package, 
   Truck, 
   CheckCircle, 
-  XCircle,
-  Loader2,
-  Phone,
-  MapPin,
-  Calendar,
-  Eye,
-  CheckCircle2,
-  Printer,
-  Copy,
-  MessageCircle,
-  Hammer,
-  Send,
-  Check,
-  Ban,
-  Bell,
-  BellOff,
-  Search,
-  Filter,
-  ArrowRight,
-  ChevronDown,
-  ChevronRight
+  XCircle, 
+  Loader2, 
+  Phone, 
+  MapPin, 
+  Calendar, 
+  Eye, 
+  CheckCircle2, 
+  Printer, 
+  Copy, 
+  MessageCircle, 
+  Bell, 
+  BellOff, 
+  Search, 
+  ArrowRight, 
+  ChevronDown, 
+  ChevronRight 
 } from 'lucide-react';
-import {
-  Table,
-  TableBody,
-  TableCell,
-  TableHead,
-  TableHeader,
-  TableRow,
-} from "@/components/ui/table";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -59,19 +57,17 @@ import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Switch } from "@/components/ui/switch";
 import { Label } from "@/components/ui/label";
 
-const statusMap = {
-  pending: { label: 'Novo Pedido', color: 'bg-blue-500 text-white', icon: Clock, next: 'confirmed', nextLabel: 'Aceitar Pedido' },
-  confirmed: { label: 'Aceito', color: 'bg-indigo-500 text-white', icon: CheckCircle2, next: 'preparing', nextLabel: 'Iniciar Preparo' },
-  preparing: { label: 'Em Preparo', color: 'bg-orange-500 text-white', icon: Loader2, next: 'ready', nextLabel: 'Pedido Pronto' },
-  ready: { label: 'Pronto', color: 'bg-green-600 text-white', icon: CheckCircle2, next: 'out_for_delivery', nextLabel: 'Sair para Entrega' },
-  out_for_delivery: { label: 'Saiu para Entrega', color: 'bg-purple-600 text-white', icon: Truck, next: 'delivered', nextLabel: 'Confirmar Entrega' },
-  delivered: { label: 'Entregue', color: 'bg-green-700 text-white', icon: CheckCircle, next: null, nextLabel: null },
-  canceled: { label: 'Cancelado', color: 'bg-red-500 text-white', icon: XCircle, next: null, nextLabel: null },
-};
-
 export const Route = createFileRoute('/admin/orders')({
   component: OrdersPage
 });
+
+const STATUS_TO_NOTIFY_EVENT: Partial<Record<OrderStatus, NotifyEvent>> = {
+  confirmed: 'accepted',
+  preparing: 'preparing',
+  ready: 'ready',
+  out_for_delivery: 'shipping',
+  delivered: 'delivered',
+};
 
 function OrdersPage() {
   const { store, storeId } = useActiveStore();
@@ -83,9 +79,14 @@ function OrdersPage() {
   const audioRef = useRef<HTMLAudioElement | null>(null);
   const previousOrderIds = useRef<Set<string>>(new Set());
 
+  const { data: storeSettings } = useQuery({
+    queryKey: ['store-settings', storeId],
+    queryFn: () => getStoreSettings(storeId),
+  });
+
   const { data: orders, isLoading } = useQuery({
     queryKey: ['admin-orders', storeId],
-    queryFn: () => getOrders({ status: undefined, date: undefined, storeId })
+    queryFn: () => getOrders({ status: undefined, date: undefined, storeId, limit: 200 })
   });
 
   // Sound initialization
@@ -101,17 +102,18 @@ function OrdersPage() {
         'postgres_changes',
         { event: '*', schema: 'public', table: 'orders', filter: `store_id=eq.${storeId}` },
         (payload) => {
-          console.log('Realtime update received:', payload);
           queryClient.invalidateQueries({ queryKey: ['admin-orders', storeId] });
+          queryClient.invalidateQueries({ queryKey: ['staff-orders', storeId] });
+          queryClient.invalidateQueries({ queryKey: ['salesReport'] });
 
           if (payload.eventType === 'INSERT') {
-            const newOrder = payload.new as any;
+            const newOrder = payload.new as { id: string };
             if (!previousOrderIds.current.has(newOrder.id)) {
               if (soundEnabled && audioRef.current) {
                 audioRef.current.play().catch(e => console.error("Erro ao tocar som:", e));
               }
               toast.info(`Novo pedido recebido: #${newOrder.id.slice(0, 8).toUpperCase()}`, {
-                icon: <Bell className="w-4 h-4" />,
+                icon: <Bell className="w-4 h-4 text-pink-500" />,
               });
               previousOrderIds.current.add(newOrder.id);
             }
@@ -128,110 +130,63 @@ function OrdersPage() {
   // Sync initial order IDs to avoid alert on first load
   useEffect(() => {
     if (orders && previousOrderIds.current.size === 0) {
-      orders.forEach((o: any) => previousOrderIds.current.add(o.id));
+      orders.forEach((o) => previousOrderIds.current.add(o.id));
     }
   }, [orders]);
 
   const mutation = useMutation({
-    mutationFn: (variables: { id: string; status: string }) => updateOrderStatus({ ...variables, storeId }),
-    onSuccess: () => {
+    mutationFn: async (variables: { id: string; status: OrderStatus }) => {
+      const updated = await updateOrderStatus({ ...variables, storeId });
+      await logAudit({
+        action: 'order_status_changed',
+        module: 'pedidos',
+        storeId,
+        description: `Pedido #${variables.id.slice(0, 8).toUpperCase()} atualizado para ${ORDER_STATUS_LABEL[variables.status]}.`
+      });
+      return updated;
+    },
+    onSuccess: (updated) => {
       queryClient.invalidateQueries({ queryKey: ['admin-orders', storeId] });
+      queryClient.invalidateQueries({ queryKey: ['staff-orders', storeId] });
       queryClient.invalidateQueries({ queryKey: ['salesReport'] });
-      toast.success("Status atualizado!");
+      toast.success(`Status atualizado para ${ORDER_STATUS_LABEL[updated.status]}!`);
     },
     onError: (error: any) => {
       toast.error(error.message || "Erro ao atualizar status.");
     }
   });
 
-  const filteredOrders = orders?.filter((order: any) => {
+  const filteredOrders = (orders || []).filter((order) => {
     const matchesStatus = statusFilter === 'all' || order.status === statusFilter;
-    const matchesSearch = order.customer_name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-                          order.id.toLowerCase().includes(searchTerm.toLowerCase());
+    const matchesSearch = 
+      order.customer_name.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      order.id.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      (order.customer_phone && order.customer_phone.includes(searchTerm));
     return matchesStatus && matchesSearch;
-  }) || [];
+  });
 
-  const handleNotifyWhatsApp = async (order: any, type: 'accepted' | 'shipping' | 'ready' | 'delivered') => {
-    const settings = await getStoreSettings(storeId);
-    const storeName = settings?.name || store.name;
-    const orderNumber = order.id.slice(0, 8).toUpperCase();
-    
-    // Format items list
-    const itemsResumo = order.order_items?.map((item: any) => {
-      let text = `✅ ${item.quantity}x ${item.product?.name}`;
-      if (item.selected_addons) {
-        const addons = typeof item.selected_addons === 'string' 
-          ? JSON.parse(item.selected_addons) 
-          : item.selected_addons;
-        
-        if (Array.isArray(addons) && addons.length > 0) {
-          const addonsText = addons.map((a: any) => a.name).join(', ');
-          text += ` (${addonsText})`;
-        }
-      }
-      return text;
-    }).join('\n');
-
-    const total = new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(order.total_amount);
-    const subtotal = new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(order.total_amount - (order.delivery_fee || 0));
-    const fee = new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(order.delivery_fee || 0);
-    
-    const paymentMap: Record<string, string> = { 'pix': 'PIX', 'card': 'Cartão', 'cash': 'Dinheiro' };
-    const paymentMethod = paymentMap[order.payment_method] || order.payment_method;
-
-    let message = '';
-
-    if (type === 'accepted') {
-      message = `Olá, *${order.customer_name}*! 👋
-
-Seu pedido foi *ACEITO* com sucesso! ✅
-
-📦 *PEDIDO #${orderNumber}*
-
-🛍️ *Itens do pedido:*
-${itemsResumo}
-
-💰 *Resumo:*
-Subtotal: ${subtotal}
-Taxa de entrega: ${fee}
-*Total: ${total}*
-
-📍 *Endereço de entrega:*
-${order.address}
-
-💳 *Forma de pagamento:*
-${paymentMethod}
-
-Seu pedido já foi aceito e será preparado pela nossa equipe. 👨‍🍳
-
-Obrigado pela preferência! ❤️`;
-    } else if (type === 'ready') {
-      message = `Olá, *${order.customer_name}*! 🧁
-      
-Seu pedido *#${orderNumber}* já está *PRONTO*! ✅
-
-Aguarde, em breve sairá para entrega ou poderá ser retirado.
-
-Obrigado! ❤️`;
-    } else if (type === 'shipping') {
-      message = `Olá, *${order.customer_name}*! 🛵💨
-      
-Seu pedido acabou de sair para entrega! 📦
-      
-O entregador já está a caminho. 🚀`;
-    } else if (type === 'delivered') {
-      message = `Olá, *${order.customer_name}*! 👋
-
-Seu pedido foi *ENTREGUE*! ✅
-
-Esperamos que você goste. Se puder nos avaliar, ficaremos muito felizes! ❤️
-
-Bom apetite! 🧁`;
+  const handleNotifyWhatsApp = async (order: OrderWithItems, type?: NotifyEvent) => {
+    const settings = storeSettings || await getStoreSettings(storeId);
+    if (!settings) {
+      toast.error("Configurações da loja não encontradas.");
+      return;
     }
 
-    const encodedMessage = encodeURIComponent(message);
-    const whatsappUrl = `https://wa.me/55${order.customer_phone.replace(/\D/g, '')}?text=${encodedMessage}`;
-    window.open(whatsappUrl, '_blank');
+    const event = type || STATUS_TO_NOTIFY_EVENT[order.status] || 'received';
+    const res = await notifyOrderWhatsApp(order, settings, event, 'manual', storeId);
+    const msg = notifyResultMessage(res);
+    if (msg) {
+      if (res.sent) toast.success(msg);
+      else toast.error(msg);
+    }
+  };
+
+  const handlePrint = (order: OrderWithItems) => {
+    const storeName = storeSettings?.name || store.name || 'Loja';
+    const ok = printOrder(order, storeName);
+    if (!ok) {
+      toast.error("Não foi possível abrir a impressão. Verifique bloqueador de pop-ups.");
+    }
   };
 
   return (
@@ -264,7 +219,7 @@ Bom apetite! 🧁`;
         <div className="flex-1 relative">
           <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
           <Input 
-            placeholder="Buscar por nome do cliente ou #pedido..." 
+            placeholder="Buscar por nome do cliente, telefone ou #pedido..." 
             className="pl-10 h-12 bg-white"
             value={searchTerm}
             onChange={(e) => setSearchTerm(e.target.value)}
@@ -274,12 +229,14 @@ Bom apetite! 🧁`;
         <div className="overflow-x-auto pb-2 lg:pb-0">
           <Tabs value={statusFilter} onValueChange={setStatusFilter} className="w-fit">
             <TabsList className="bg-white border border-slate-200 h-12 p-1">
-              <TabsTrigger value="all" className="px-4 hover:bg-transparent hover:text-inherit">Todos</TabsTrigger>
-              <TabsTrigger value="pending" className="px-4 hover:bg-transparent hover:text-inherit">Novos</TabsTrigger>
-              <TabsTrigger value="confirmed" className="px-4 hover:bg-transparent hover:text-inherit">Aceitos</TabsTrigger>
-              <TabsTrigger value="preparing" className="px-4 hover:bg-transparent hover:text-inherit">Em Preparo</TabsTrigger>
-              <TabsTrigger value="out_for_delivery" className="px-4 hover:bg-transparent hover:text-inherit">Em Rota</TabsTrigger>
-              <TabsTrigger value="delivered" className="px-4 hover:bg-transparent hover:text-inherit">Entregues</TabsTrigger>
+              <TabsTrigger value="all" className="px-4">Todos</TabsTrigger>
+              <TabsTrigger value="pending" className="px-4">Novos</TabsTrigger>
+              <TabsTrigger value="confirmed" className="px-4">Aceitos</TabsTrigger>
+              <TabsTrigger value="preparing" className="px-4">Em Preparo</TabsTrigger>
+              <TabsTrigger value="ready" className="px-4">Prontos</TabsTrigger>
+              <TabsTrigger value="out_for_delivery" className="px-4">Em Rota</TabsTrigger>
+              <TabsTrigger value="delivered" className="px-4">Entregues</TabsTrigger>
+              <TabsTrigger value="canceled" className="px-4">Cancelados</TabsTrigger>
             </TabsList>
           </Tabs>
         </div>
@@ -300,8 +257,8 @@ Bom apetite! 🧁`;
           </div>
         ) : (
           (() => {
-            const grouped = filteredOrders.reduce((acc: any, order: any) => {
-              const dateKey = format(new Date(order.created_at), 'yyyy-MM-dd');
+            const grouped = filteredOrders.reduce((acc: Record<string, OrderWithItems[]>, order) => {
+              const dateKey = order.created_at ? format(new Date(order.created_at), 'yyyy-MM-dd') : 'outros';
               if (!acc[dateKey]) acc[dateKey] = [];
               acc[dateKey].push(order);
               return acc;
@@ -310,9 +267,11 @@ Bom apetite! 🧁`;
             const sortedDates = Object.keys(grouped).sort((a, b) => b.localeCompare(a));
 
             return sortedDates.map(dateKey => {
-              const orders = grouped[dateKey];
+              const ordersList = grouped[dateKey] || [];
               const isExpanded = expandedDates[dateKey] !== false; // Default to expanded
-              const dateLabel = format(new Date(dateKey + 'T12:00:00'), "dd 'de' MMMM 'de' yyyy", { locale: ptBR });
+              const dateLabel = dateKey !== 'outros'
+                ? format(new Date(dateKey + 'T12:00:00'), "dd 'de' MMMM 'de' yyyy", { locale: ptBR })
+                : 'Data não informada';
 
               return (
                 <div key={dateKey} className="space-y-4">
@@ -330,7 +289,7 @@ Bom apetite! 🧁`;
                     <h3 className="text-lg font-bold text-slate-700">
                       {dateLabel} 
                       <span className="ml-2 text-sm font-medium text-slate-400">
-                        ({orders.length} {orders.length === 1 ? 'pedido' : 'pedidos'})
+                        ({ordersList.length} {ordersList.length === 1 ? 'pedido' : 'pedidos'})
                       </span>
                     </h3>
                     <div className="flex-1 h-px bg-slate-200 ml-4"></div>
@@ -338,12 +297,13 @@ Bom apetite! 🧁`;
 
                   {isExpanded && (
                     <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 animate-in fade-in slide-in-from-top-2 duration-300">
-                      {orders.map((order: any) => (
+                      {ordersList.map((order) => (
                         <OrderCard 
                           key={order.id} 
                           order={order} 
-                          onUpdateStatus={(id: string, status: string) => mutation.mutate({ id, status })}
+                          onUpdateStatus={(id: string, status: OrderStatus) => mutation.mutate({ id, status })}
                           onNotifyWhatsApp={handleNotifyWhatsApp}
+                          onPrint={handlePrint}
                           isUpdating={mutation.isPending && mutation.variables?.id === order.id}
                         />
                       ))}
@@ -358,21 +318,34 @@ Bom apetite! 🧁`;
     </div>
   );
 }
-function OrderCard({ order, onUpdateStatus, onNotifyWhatsApp, isUpdating }: any) {
-  const status = statusMap[order.status as keyof typeof statusMap] || statusMap.pending;
+
+function OrderCard({ 
+  order, 
+  onUpdateStatus, 
+  onNotifyWhatsApp, 
+  onPrint,
+  isUpdating 
+}: {
+  order: OrderWithItems;
+  onUpdateStatus: (id: string, status: OrderStatus) => void;
+  onNotifyWhatsApp: (order: OrderWithItems, type?: NotifyEvent) => void;
+  onPrint: (order: OrderWithItems) => void;
+  isUpdating: boolean;
+}) {
+  const statusMeta = ORDER_STATUS_STYLE[order.status] || ORDER_STATUS_STYLE.pending;
   const isNew = order.status === 'pending';
+  const next = nextStatus(order.status);
 
   return (
     <Card className={`overflow-hidden border ${isNew ? 'border-blue-500 ring-2 ring-blue-100 animate-in fade-in zoom-in duration-300' : 'border-slate-200'}`}>
-
-      <div className={`p-2 flex justify-between items-center ${isNew ? 'bg-blue-500 text-white' : 'bg-slate-50 border-b border-slate-200'}`}>
+      <div className={`p-2 px-3 flex justify-between items-center ${isNew ? 'bg-blue-500 text-white' : 'bg-slate-50 border-b border-slate-200'}`}>
         <div className="flex items-center gap-2">
           <span className="font-mono font-bold text-xs">#{order.id.slice(0, 8).toUpperCase()}</span>
-          {isNew && <Badge className="h-5 px-1 bg-white text-blue-600 text-[9px] animate-pulse">NOVO</Badge>}
+          {isNew && <Badge className="h-5 px-1 bg-white text-blue-600 text-[9px] animate-pulse font-bold">NOVO</Badge>}
         </div>
         <span className="text-[10px] font-medium flex items-center gap-1">
           <Clock className="w-2.5 h-2.5" />
-          {format(new Date(order.created_at), "HH:mm", { locale: ptBR })}
+          {order.created_at ? format(new Date(order.created_at), "HH:mm", { locale: ptBR }) : '--:--'}
         </span>
       </div>
 
@@ -385,53 +358,45 @@ function OrderCard({ order, onUpdateStatus, onNotifyWhatsApp, isUpdating }: any)
               <span className="truncate">{order.neighborhood || "Bairro não informado"}</span>
             </div>
           </div>
-          <Badge className={`${status.color} text-[9px] h-5 px-1.5 uppercase font-bold shrink-0`}>
-            {status.label}
+          <Badge className={`${statusMeta.color} text-[9px] h-5 px-1.5 uppercase font-bold shrink-0`}>
+            {statusMeta.label}
           </Badge>
         </div>
 
         <div className="flex items-center justify-between pt-1 border-t border-slate-100">
           <div className="text-[11px] font-bold text-pink-600">
-            {new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(order.total_amount)}
+            {new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(order.total_amount || 0)}
           </div>
           <div className="text-[10px] text-slate-400 uppercase font-bold">
-            {order.payment_method === 'pix' ? 'PIX' : 
-             order.payment_method === 'card' ? 'Cartão' : 
-             order.payment_method === 'cash' ? 'Dinheiro' : order.payment_method}
+            {paymentMethodLabel(order.payment_method)}
           </div>
         </div>
 
         <div className="pt-1 flex flex-col gap-1.5">
           <div className="grid grid-cols-2 gap-1.5">
-            <OrderDetailsDialog order={order} />
+            <OrderDetailsDialog order={order} onPrint={onPrint} />
             
-            {['confirmed', 'in_preparation', 'ready', 'out_for_delivery', 'delivered'].includes(order.status) && (
+            {['confirmed', 'preparing', 'ready', 'out_for_delivery', 'delivered'].includes(order.status) && (
               <Button 
                 variant="outline" 
                 size="sm" 
                 className="h-8 text-[11px] border-green-600 text-green-600 gap-1"
-                onClick={() => {
-                  let type: 'accepted' | 'ready' | 'shipping' | 'delivered' = 'accepted';
-                  if (order.status === 'ready') type = 'ready';
-                  else if (order.status === 'out_for_delivery') type = 'shipping';
-                  else if (order.status === 'delivered') type = 'delivered';
-                  onNotifyWhatsApp(order, type);
-                }}
+                onClick={() => onNotifyWhatsApp(order)}
               >
                 <MessageCircle className="w-3 h-3" /> Avisar
               </Button>
             )}
           </div>
 
-          {status.next && (
+          {next && (
             <Button 
-              className={cn("w-full h-8 text-[11px] font-bold gap-1", status.color, status.color.split(' ').map(c => `hover:${c}`).join(' '))}
-              onClick={() => onUpdateStatus(order.id, status.next)}
+              className={cn("w-full h-8 text-[11px] font-bold gap-1 text-white", statusMeta.color)}
+              onClick={() => onUpdateStatus(order.id, next)}
               disabled={isUpdating}
             >
               {isUpdating ? "..." : (
                 <>
-                  {status.nextLabel} <ArrowRight className="w-3 h-3" />
+                  {statusMeta.nextLabel} <ArrowRight className="w-3 h-3" />
                 </>
               )}
             </Button>
@@ -442,33 +407,40 @@ function OrderCard({ order, onUpdateStatus, onNotifyWhatsApp, isUpdating }: any)
               <CheckCircle className="w-3 h-3" /> ENTREGUE
             </div>
           )}
+
+          {order.status === 'canceled' && (
+            <div className="bg-red-50 text-red-700 h-8 rounded flex items-center justify-center gap-1 text-[10px] font-bold">
+              <XCircle className="w-3 h-3" /> CANCELADO
+            </div>
+          )}
         </div>
       </CardContent>
     </Card>
   );
 }
 
-function OrderDetailsDialog({ order }: { order: any }) {
-  const { store } = useActiveStore();
-  const status = statusMap[order.status as keyof typeof statusMap] || statusMap.pending;
+function OrderDetailsDialog({ order, onPrint }: { order: OrderWithItems; onPrint: (order: OrderWithItems) => void }) {
+  const statusMeta = ORDER_STATUS_STYLE[order.status] || ORDER_STATUS_STYLE.pending;
   const items = order.order_items || [];
   
   return (
     <Dialog>
       <DialogTrigger asChild>
-        <Button variant="outline" size="sm" className="w-full gap-1.5 hover:bg-background hover:text-foreground">
-          <Eye className="w-4 h-4" /> Detalhes
+        <Button variant="outline" size="sm" className="w-full gap-1.5 text-xs">
+          <Eye className="w-3.5 h-3.5" /> Detalhes
         </Button>
       </DialogTrigger>
       <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto p-0">
-        <div className={`p-6 text-white ${status.color}`}>
+        <div className={`p-6 text-white ${statusMeta.color}`}>
           <div className="flex items-center justify-between mb-2">
             <h2 className="text-2xl font-bold">Pedido #{order.id.slice(0, 8).toUpperCase()}</h2>
             <Badge variant="outline" className="text-white border-white/40 uppercase font-bold">
-              {status.label}
+              {statusMeta.label}
             </Badge>
           </div>
-          <p className="text-white/80 text-sm">Realizado em {format(new Date(order.created_at), "dd/MM/yyyy 'às' HH:mm", { locale: ptBR })}</p>
+          <p className="text-white/80 text-sm">
+            Realizado em {order.created_at ? format(new Date(order.created_at), "dd/MM/yyyy 'às' HH:mm", { locale: ptBR }) : ''}
+          </p>
         </div>
 
         <div className="p-6 space-y-6">
@@ -479,11 +451,11 @@ function OrderDetailsDialog({ order }: { order: any }) {
                 <div className="bg-slate-50 p-4 rounded-xl space-y-3">
                   <div className="flex items-center gap-3">
                     <div className="w-10 h-10 rounded-full bg-pink-100 flex items-center justify-center text-pink-600 font-bold">
-                      {order.customer_name.charAt(0)}
+                      {order.customer_name ? order.customer_name.charAt(0).toUpperCase() : 'C'}
                     </div>
                     <div>
                       <p className="font-bold text-slate-900">{order.customer_name}</p>
-                      <p className="text-sm text-slate-500">{order.customer_phone}</p>
+                      <p className="text-sm text-slate-500">{order.customer_phone || 'Sem telefone'}</p>
                     </div>
                   </div>
                 </div>
@@ -515,10 +487,6 @@ function OrderDetailsDialog({ order }: { order: any }) {
                         <p className="text-[10px] text-slate-400 uppercase font-bold">Referência</p>
                         <p className="font-medium text-slate-900">{order.reference || "Nenhuma"}</p>
                       </div>
-                      <div>
-                        <p className="text-[10px] text-slate-400 uppercase font-bold">Cidade</p>
-                        <p className="font-medium text-slate-900">Teresina</p>
-                      </div>
                     </div>
                     <div className="pt-2 border-t border-slate-200 mt-2">
                       <p className="text-[10px] text-slate-400 uppercase font-bold">Endereço Completo</p>
@@ -533,7 +501,7 @@ function OrderDetailsDialog({ order }: { order: any }) {
               <div>
                 <h3 className="text-xs font-bold text-slate-400 uppercase tracking-wider mb-2">Produtos e Itens</h3>
                 <div className="bg-white border border-slate-200 rounded-xl overflow-hidden">
-                  {items.map((item: any, idx: number) => (
+                  {items.map((item, idx) => (
                     <div key={idx} className={`p-4 ${idx !== items.length - 1 ? 'border-b border-slate-100' : ''}`}>
                       <div className="flex justify-between items-start mb-1">
                         <div className="flex gap-2">
@@ -541,7 +509,7 @@ function OrderDetailsDialog({ order }: { order: any }) {
                           <span className="font-bold text-slate-900">{item.product_name || item.product?.name || "Produto"}</span>
                         </div>
                         <span className="font-bold text-slate-700">
-                          {new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(item.price_at_time * item.quantity)}
+                          {new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(Number(item.price_at_time) * item.quantity)}
                         </span>
                       </div>
                       
@@ -549,13 +517,13 @@ function OrderDetailsDialog({ order }: { order: any }) {
                         <div className="ml-7 text-xs text-slate-500">
                           {(() => {
                             const addons = typeof item.selected_addons === 'string' 
-                              ? JSON.parse(item.selected_addons) 
-                              : item.selected_addons;
+                              ? (() => { try { return JSON.parse(item.selected_addons); } catch { return []; } })()
+                              : Array.isArray(item.selected_addons) ? item.selected_addons : [];
                             
-                            return Array.isArray(addons) ? addons.map((a: any) => (
-                              <div key={a.id} className="flex justify-between mt-0.5 italic">
+                            return Array.isArray(addons) ? addons.map((a: any, i: number) => (
+                              <div key={i} className="flex justify-between mt-0.5 italic">
                                 <span>+ {a.name}</span>
-                                <span>{new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(a.price || 0)}</span>
+                                {a.price ? <span>{new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(a.price)}</span> : null}
                               </div>
                             )) : null;
                           })()}
@@ -581,27 +549,23 @@ function OrderDetailsDialog({ order }: { order: any }) {
             </div>
           </div>
 
-          <div id={`printable-order-${order.id}`} className="bg-slate-900 text-white p-6 rounded-2xl">
-            <div className="space-y-2 mb-4">
-              <div className="flex justify-between text-sm text-slate-400">
-                <span>Subtotal dos produtos</span>
-                <span>{new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(order.total_amount - (order.delivery_fee || 0))}</span>
-              </div>
-              <div className="flex justify-between text-sm text-slate-400">
-                <span>Frete</span>
-                <span>{new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(order.delivery_fee || 0)}</span>
-              </div>
-              <div className="flex justify-between text-sm text-slate-400 pt-2 border-t border-white/10">
-                <span>Forma de Pagamento</span>
-                <span className="uppercase font-bold text-white">{order.payment_method === 'pix' ? 'PIX' : 
-                                                                order.payment_method === 'card' ? 'Cartão' : 
-                                                                order.payment_method === 'cash' ? 'Dinheiro' : order.payment_method}</span>
-              </div>
+          <div className="bg-slate-900 text-white p-6 rounded-2xl space-y-2">
+            <div className="flex justify-between text-sm text-slate-400">
+              <span>Subtotal dos produtos</span>
+              <span>{new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format((order.total_amount || 0) - Number(order.delivery_fee || 0))}</span>
+            </div>
+            <div className="flex justify-between text-sm text-slate-400">
+              <span>Frete</span>
+              <span>{new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(Number(order.delivery_fee || 0))}</span>
+            </div>
+            <div className="flex justify-between text-sm text-slate-400 pt-2 border-t border-white/10">
+              <span>Forma de Pagamento</span>
+              <span className="uppercase font-bold text-white">{paymentMethodLabel(order.payment_method)}</span>
             </div>
             <div className="flex justify-between items-end pt-2 border-t border-white/20">
               <span className="text-lg font-medium text-slate-300">Total</span>
               <span className="text-3xl font-black text-pink-400">
-                {new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(order.total_amount)}
+                {new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(order.total_amount || 0)}
               </span>
             </div>
           </div>
@@ -609,103 +573,21 @@ function OrderDetailsDialog({ order }: { order: any }) {
           <div className="flex gap-3">
             <Button 
               variant="outline" 
-              className="flex-1 gap-2 bg-slate-900 text-white" 
-              onClick={() => {
-                const printContent = document.getElementById(`printable-order-${order.id}`);
-                const itemsContent = document.querySelector('.products-print-section');
-                const customerContent = document.querySelector('.customer-print-section');
-                
-                const win = window.open('', '_blank');
-                if (win) {
-                  win.document.write(`
-                    <html>
-                      <head>
-                        <title>Pedido #${order.id.slice(0, 8).toUpperCase()}</title>
-                        <style>
-                          body { font-family: sans-serif; padding: 20px; line-height: 1.4; color: #333; }
-                          .header { text-align: center; border-bottom: 2px dashed #ccc; padding-bottom: 10px; margin-bottom: 20px; }
-                          .order-info { margin-bottom: 20px; font-size: 14px; }
-                          .section-title { font-weight: bold; text-transform: uppercase; font-size: 12px; margin-top: 15px; border-bottom: 1px solid #eee; padding-bottom: 5px; }
-                          .item { display: flex; justify-between: space-between; margin-bottom: 8px; border-bottom: 1px dotted #eee; padding-bottom: 5px; }
-                          .item-qty { font-weight: bold; margin-right: 10px; }
-                          .item-name { flex: 1; font-weight: bold; }
-                          .addon { font-size: 11px; margin-left: 25px; color: #666; font-style: italic; }
-                          .obs { background: #f9f9f9; padding: 8px; font-size: 12px; margin-top: 5px; border-left: 3px solid #ff4d94; }
-                          .total-section { margin-top: 20px; border-top: 2px solid #333; padding-top: 10px; }
-                          .total-row { display: flex; justify-content: space-between; margin-bottom: 5px; }
-                          .final-total { font-size: 20px; font-weight: 900; margin-top: 10px; text-align: right; }
-                          @media print { .no-print { display: none; } }
-                        </style>
-                      </head>
-                      <body>
-                        <div class="header">
-                          <h1>${store.name}</h1>
-                          <p>Pedido #${order.id.slice(0, 8).toUpperCase()}</p>
-                          <p>${format(new Date(order.created_at), "dd/MM/yyyy HH:mm")}</p>
-                        </div>
-                        
-                        <div class="order-info">
-                          <strong>Cliente:</strong> ${order.customer_name}<br>
-                          <strong>Tel:</strong> ${order.customer_phone}<br>
-                          <strong>Endereço:</strong> ${order.street}, ${order.number}${order.complement ? ` - ${order.complement}` : ''}<br>
-                          <strong>Bairro:</strong> ${order.neighborhood}<br>
-                          ${order.reference ? `<strong>Ref:</strong> ${order.reference}` : ''}
-                        </div>
-
-                        <div class="section-title">Itens do Pedido</div>
-                        ${items.map((item: any) => `
-                          <div style="margin-bottom: 15px;">
-                            <div class="item">
-                              <span class="item-qty">${item.quantity}x</span>
-                              <span class="item-name">${item.product_name || item.product?.name || "Produto"}</span>
-                            </div>
-                            ${item.selected_addons ? (() => {
-                              const addons = typeof item.selected_addons === 'string' ? JSON.parse(item.selected_addons) : item.selected_addons;
-                              return Array.isArray(addons) ? addons.map((a: any) => `<div class="addon">+ ${a.name}</div>`).join('') : '';
-                            })() : ''}
-                            ${item.observation ? `<div class="obs">Obs: ${item.observation}</div>` : ''}
-                          </div>
-                        `).join('')}
-
-                        ${order.observation ? `
-                          <div class="section-title">Observação Geral</div>
-                          <div class="obs">${order.observation}</div>
-                        ` : ''}
-
-                        <div class="total-section">
-                          <div class="total-row">
-                            <span>Subtotal dos produtos:</span>
-                            <span>${new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(order.total_amount - (order.delivery_fee || 0))}</span>
-                          </div>
-                          <div class="total-row">
-                            <span>Frete:</span>
-                            <span>${new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(order.delivery_fee || 0)}</span>
-                          </div>
-                          <div class="total-row">
-                            <span>Pagamento:</span>
-                            <span style="text-transform: uppercase;">${order.payment_method}</span>
-                          </div>
-                          <div class="final-total">
-                            TOTAL: ${new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(order.total_amount)}
-                          </div>
-                        </div>
-
-                        <script>
-                          window.onload = function() { window.print(); window.close(); }
-                        </script>
-                      </body>
-                    </html>
-                  `);
-                  win.document.close();
-                }
-              }}
+              className="flex-1 gap-2 bg-slate-900 text-white hover:bg-slate-800" 
+              onClick={() => onPrint(order)}
             >
               <Printer className="w-4 h-4" /> Imprimir Pedido
             </Button>
-            <Button variant="outline" className="flex-1 gap-2 hover:bg-background hover:text-foreground" onClick={() => {
-              navigator.clipboard.writeText(order.address);
-              toast.success("Endereço copiado!");
-            }}>
+            <Button 
+              variant="outline" 
+              className="flex-1 gap-2" 
+              onClick={() => {
+                if (order.address) {
+                  navigator.clipboard.writeText(order.address);
+                  toast.success("Endereço copiado!");
+                }
+              }}
+            >
               <Copy className="w-4 h-4" /> Copiar Endereço
             </Button>
           </div>

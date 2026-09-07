@@ -1,7 +1,18 @@
-import { createFileRoute } from '@tanstack/react-router';
-import { useQuery } from '@tanstack/react-query';
-import { getOrders } from '@/lib/orders-admin.functions';
+import { createFileRoute, Link } from '@tanstack/react-router';
+import { useState } from 'react';
+import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
+import { getOrders, updateOrderStatus, type OrderWithItems } from '@/lib/orders-admin.functions';
 import { useActiveStore } from '@/lib/active-store';
+import { getStoreSettings } from '@/lib/delivery.functions';
+import { 
+  ORDER_STATUS_LABEL, 
+  ORDER_STATUS_STYLE, 
+  previousStatus, 
+  paymentMethodLabel,
+  type OrderStatus 
+} from '@/lib/order-status';
+import { printOrder } from '@/lib/order-print';
+import { logAudit } from '@/lib/audit.functions';
 import { format } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
 import { 
@@ -10,9 +21,12 @@ import {
   Eye, 
   MapPin, 
   Calendar,
-  CheckCircle2,
-  XCircle,
-  Clock
+  RotateCcw,
+  Printer,
+  AlertTriangle,
+  RefreshCw,
+  ArrowLeft,
+  Phone
 } from 'lucide-react';
 
 import { Badge } from "@/components/ui/badge";
@@ -26,52 +40,153 @@ import {
   DialogTrigger,
 } from "@/components/ui/dialog";
 import { Card, CardContent } from "@/components/ui/card";
-import { useState } from 'react';
-
-const statusMap = {
-  delivered: { label: 'Entregue', color: 'bg-green-700 text-white', icon: CheckCircle2 },
-  canceled: { label: 'Cancelado', color: 'bg-red-500 text-white', icon: XCircle },
-};
+import { toast } from "sonner";
 
 export const Route = createFileRoute('/staff/history')({
   component: StaffHistoryPage
 });
 
 function StaffHistoryPage() {
-  const { storeId } = useActiveStore();
+  const { store, storeId } = useActiveStore();
   const [searchTerm, setSearchTerm] = useState('');
+  const queryClient = useQueryClient();
 
-  const { data: orders, isLoading } = useQuery({
-    queryKey: ['staff-history', storeId],
-    queryFn: () => getOrders({ status: undefined, date: undefined, storeId })
+  const { data: storeSettings } = useQuery({
+    queryKey: ['store-settings', storeId],
+    queryFn: () => getStoreSettings(storeId),
   });
 
-  const historyOrders = orders?.filter((order: any) => {
-    const isFinished = ['delivered', 'canceled'].includes(order.status);
-    const matchesSearch = order.customer_name.toLowerCase().includes(searchTerm.toLowerCase()) || 
-                          order.id.toLowerCase().includes(searchTerm.toLowerCase());
-    return isFinished && matchesSearch;
-  }) || [];
+  const { 
+    data: orders, 
+    isLoading, 
+    isError, 
+    error, 
+    refetch, 
+    isFetching 
+  } = useQuery({
+    queryKey: ['staff-history', storeId],
+    queryFn: () => getOrders({ 
+      statuses: ['delivered', 'canceled'], 
+      storeId, 
+      limit: 150 
+    })
+  });
+
+  const undoMutation = useMutation({
+    mutationFn: async ({ order, prevStatus }: { order: OrderWithItems; prevStatus: OrderStatus }) => {
+      const updated = await updateOrderStatus({
+        id: order.id,
+        status: prevStatus,
+        storeId
+      });
+
+      if (order.status === 'canceled') {
+        await logAudit({
+          action: 'order_reopened',
+          module: 'pedidos',
+          storeId,
+          description: `Pedido #${order.id.slice(0, 8).toUpperCase()} reaberto do histórico para ${ORDER_STATUS_LABEL[prevStatus]}.`
+        });
+      } else {
+        await logAudit({
+          action: 'order_status_changed',
+          module: 'pedidos',
+          storeId,
+          description: `Pedido #${order.id.slice(0, 8).toUpperCase()} desfeito no histórico para ${ORDER_STATUS_LABEL[prevStatus]}.`
+        });
+      }
+
+      return updated;
+    },
+    onSuccess: (updated) => {
+      queryClient.invalidateQueries({ queryKey: ['staff-history', storeId] });
+      queryClient.invalidateQueries({ queryKey: ['staff-orders', storeId] });
+      queryClient.invalidateQueries({ queryKey: ['salesReport'] });
+      queryClient.invalidateQueries({ queryKey: ['admin-orders', storeId] });
+
+      toast.success(`Pedido #${updated.id.slice(0, 8).toUpperCase()} alterado para ${ORDER_STATUS_LABEL[updated.status]}!`);
+    },
+    onError: (err: any) => {
+      toast.error(err.message || "Erro ao desfazer status.");
+    }
+  });
+
+  const historyOrders = (orders || []).filter((order) => {
+    if (!searchTerm.trim()) return true;
+    const term = searchTerm.toLowerCase();
+    return (
+      order.customer_name?.toLowerCase().includes(term) ||
+      order.id.toLowerCase().includes(term) ||
+      (order.customer_phone && order.customer_phone.includes(term))
+    );
+  });
+
+  const handlePrint = (order: OrderWithItems) => {
+    const storeName = storeSettings?.name || store?.name || 'Loja';
+    const ok = printOrder(order, storeName);
+    if (!ok) {
+      toast.error("Não foi possível abrir a impressão. Verifique bloqueador de pop-ups.");
+    }
+  };
+
+  const handleUndo = (order: OrderWithItems) => {
+    const prev = previousStatus(order.status);
+    if (!prev) return;
+    undoMutation.mutate({ order, prevStatus: prev });
+  };
 
   return (
     <div className="space-y-6">
-      <div>
-        <h2 className="text-2xl font-bold text-slate-800 flex items-center gap-2">
-          Histórico de Pedidos
-          <History className="w-6 h-6 text-slate-400" />
-        </h2>
-        <p className="text-slate-500 text-sm">Consulte pedidos finalizados e cancelados.</p>
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+        <div>
+          <h2 className="text-2xl font-bold text-slate-800 flex items-center gap-2">
+            Histórico de Pedidos
+            <History className="w-6 h-6 text-slate-400" />
+          </h2>
+          <p className="text-slate-500 text-sm">Consulte pedidos finalizados e cancelados da loja.</p>
+        </div>
+
+        <div className="flex items-center gap-2">
+          <Link to="/staff">
+            <Button variant="outline" size="sm" className="gap-1.5 text-xs text-slate-700">
+              <ArrowLeft className="w-3.5 h-3.5" />
+              Voltar ao Kanban
+            </Button>
+          </Link>
+          <Button 
+            variant="outline" 
+            size="sm" 
+            onClick={() => refetch()} 
+            disabled={isFetching}
+            className="gap-1.5 text-xs text-slate-700"
+          >
+            <RefreshCw className={`w-3.5 h-3.5 ${isFetching ? 'animate-spin' : ''}`} />
+            Atualizar
+          </Button>
+        </div>
       </div>
 
       <div className="relative">
         <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
         <Input 
-          placeholder="Buscar no histórico por cliente ou pedido..." 
-          className="pl-10 h-12 bg-white"
+          placeholder="Buscar no histórico por cliente, telefone ou pedido..." 
+          className="pl-10 h-12 bg-white border-slate-200"
           value={searchTerm}
           onChange={(e) => setSearchTerm(e.target.value)}
         />
       </div>
+
+      {isError && (
+        <div className="p-4 bg-red-50 border border-red-200 rounded-xl flex items-center justify-between text-red-800">
+          <div className="flex items-center gap-2 text-sm font-medium">
+            <AlertTriangle className="w-5 h-5 text-red-600" />
+            <span>Erro ao carregar histórico: {(error as Error)?.message || 'Erro desconhecido.'}</span>
+          </div>
+          <Button variant="outline" size="sm" onClick={() => refetch()} className="border-red-300 text-red-700 hover:bg-red-100">
+            Tentar novamente
+          </Button>
+        </div>
+      )}
 
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
         {isLoading ? (
@@ -82,8 +197,14 @@ function StaffHistoryPage() {
             <p>Nenhum pedido finalizado encontrado.</p>
           </div>
         ) : (
-          historyOrders.map((order: any) => (
-            <HistoryCard key={order.id} order={order} />
+          historyOrders.map((order) => (
+            <HistoryCard 
+              key={order.id} 
+              order={order} 
+              onPrint={handlePrint}
+              onUndo={handleUndo}
+              isUndoing={undoMutation.isPending && undoMutation.variables?.order.id === order.id}
+            />
           ))
         )}
       </div>
@@ -91,64 +212,122 @@ function StaffHistoryPage() {
   );
 }
 
-function HistoryCard({ order }: any) {
-  const status = statusMap[order.status as keyof typeof statusMap] || { label: order.status, color: 'bg-slate-500 text-white', icon: Clock };
+function HistoryCard({ 
+  order, 
+  onPrint, 
+  onUndo, 
+  isUndoing 
+}: { 
+  order: OrderWithItems;
+  onPrint: (order: OrderWithItems) => void;
+  onUndo: (order: OrderWithItems) => void;
+  isUndoing: boolean;
+}) {
+  const statusMeta = ORDER_STATUS_STYLE[order.status];
+  const prev = previousStatus(order.status);
   
   return (
     <Card className="overflow-hidden border border-slate-200 hover:shadow-md transition-all">
-      <div className="bg-slate-50 p-2 flex justify-between items-center border-b border-slate-200">
+      <div className="bg-slate-50 p-2 px-3 flex justify-between items-center border-b border-slate-200">
         <span className="font-mono font-bold text-xs">#{order.id.slice(0, 8).toUpperCase()}</span>
         <span className="text-[10px] text-slate-500 font-medium">
-          {format(new Date(order.created_at), "dd/MM/yy HH:mm")}
+          {order.created_at ? format(new Date(order.created_at), "dd/MM/yy HH:mm", { locale: ptBR }) : ''}
         </span>
       </div>
       <CardContent className="p-4 space-y-3">
         <div className="flex justify-between items-start">
           <div>
-            <h3 className="font-bold text-slate-900 truncate max-w-[150px]">{order.customer_name}</h3>
-            <div className="text-[11px] font-bold text-pink-600 mt-1">
-              {new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(order.total_amount)}
+            <h3 className="font-bold text-slate-900 truncate max-w-[170px]" title={order.customer_name}>
+              {order.customer_name}
+            </h3>
+            <div className="text-[11px] font-bold text-pink-600 mt-0.5">
+              {new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(order.total_amount || 0)}
             </div>
           </div>
-          <Badge className={`${status.color} text-[9px] uppercase font-bold shrink-0`}>
-            {status.label}
+          <Badge className={`${statusMeta.color} text-[9px] uppercase font-bold shrink-0`}>
+            {statusMeta.label}
           </Badge>
         </div>
         
-        <Dialog>
-          <DialogTrigger asChild>
-            <Button variant="outline" size="sm" className="w-full h-8 text-[11px] gap-1.5">
-              <Eye className="w-3 h-3" /> Ver Detalhes
+        <div className="flex items-center gap-1.5 pt-1">
+          <Dialog>
+            <DialogTrigger asChild>
+              <Button variant="outline" size="sm" className="flex-1 h-8 text-[11px] gap-1.5">
+                <Eye className="w-3.5 h-3.5" /> Detalhes
+              </Button>
+            </DialogTrigger>
+            <DialogContent className="max-w-md max-h-[90vh] overflow-y-auto">
+              <DialogHeader>
+                <div className="flex items-center justify-between">
+                  <DialogTitle>Pedido #{order.id.slice(0, 8).toUpperCase()}</DialogTitle>
+                  <Badge className={`${statusMeta.color} text-[9px] uppercase font-bold`}>
+                    {statusMeta.label}
+                  </Badge>
+                </div>
+              </DialogHeader>
+              <div className="space-y-4 py-3 text-sm">
+                <div className="bg-slate-50 p-3 rounded-lg space-y-1.5 text-xs">
+                  <p><strong>Status:</strong> <span className="uppercase font-bold">{statusMeta.label}</span></p>
+                  <p><strong>Data:</strong> {order.created_at ? format(new Date(order.created_at), "dd/MM/yyyy 'às' HH:mm", { locale: ptBR }) : ''}</p>
+                  <p><strong>Cliente:</strong> {order.customer_name}</p>
+                  <p><strong>Telefone:</strong> {order.customer_phone || 'Não informado'}</p>
+                  <p><strong>Endereço:</strong> {order.address || 'Não informado'}</p>
+                  <p><strong>Pagamento:</strong> {paymentMethodLabel(order.payment_method)}</p>
+                </div>
+
+                <div className="space-y-2">
+                  <h4 className="font-bold text-xs uppercase tracking-wider text-slate-500 border-b pb-1">Itens do Pedido</h4>
+                  {order.order_items?.map((item) => (
+                    <div key={item.id} className="flex justify-between text-xs">
+                      <span>{item.quantity}x {item.product_name || item.product?.name || 'Produto'}</span>
+                      <span className="font-medium">{new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(Number(item.price_at_time) * item.quantity)}</span>
+                    </div>
+                  ))}
+                </div>
+
+                <div className="flex justify-between font-bold border-t pt-2 text-sm">
+                  <span>Total</span>
+                  <span className="text-pink-600">{new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(order.total_amount || 0)}</span>
+                </div>
+
+                <div className="pt-2">
+                  <Button 
+                    variant="outline" 
+                    size="sm" 
+                    className="w-full gap-1.5 text-xs" 
+                    onClick={() => onPrint(order)}
+                  >
+                    <Printer className="w-3.5 h-3.5" /> Imprimir Comanda
+                  </Button>
+                </div>
+              </div>
+            </DialogContent>
+          </Dialog>
+
+          <Button 
+            variant="outline" 
+            size="sm" 
+            className="h-8 px-2 text-slate-600 hover:text-slate-900" 
+            title="Imprimir comanda"
+            onClick={() => onPrint(order)}
+          >
+            <Printer className="w-3.5 h-3.5" />
+          </Button>
+
+          {prev && (
+            <Button 
+              variant="outline" 
+              size="sm" 
+              className="h-8 px-2 text-amber-600 hover:text-amber-700 hover:bg-amber-50 gap-1 text-[11px]" 
+              title={order.status === 'canceled' ? 'Reabrir pedido para Novo' : `Desfazer para ${ORDER_STATUS_LABEL[prev]}`}
+              onClick={() => onUndo(order)}
+              disabled={isUndoing}
+            >
+              <RotateCcw className="w-3.5 h-3.5" />
+              <span>Desfazer</span>
             </Button>
-          </DialogTrigger>
-          <DialogContent className="max-w-md">
-            <DialogHeader>
-              <DialogTitle>Pedido #{order.id.slice(0, 8).toUpperCase()}</DialogTitle>
-            </DialogHeader>
-            <div className="space-y-4 py-4 text-sm">
-               <div className="bg-slate-50 p-3 rounded-lg space-y-1">
-                <p><strong>Status:</strong> <span className="uppercase font-bold">{status.label}</span></p>
-                <p><strong>Data:</strong> {format(new Date(order.created_at), "dd/MM/yyyy 'às' HH:mm")}</p>
-                <p><strong>Cliente:</strong> {order.customer_name}</p>
-                <p><strong>Telefone:</strong> {order.customer_phone}</p>
-                <p><strong>Endereço:</strong> {order.address}</p>
-              </div>
-              <div className="space-y-2">
-                <h4 className="font-bold border-b pb-1">Produtos</h4>
-                {order.order_items?.map((item: any) => (
-                  <div key={item.id} className="flex justify-between">
-                    <span>{item.quantity}x {item.product?.name}</span>
-                    <span>{new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(item.price_at_time * item.quantity)}</span>
-                  </div>
-                ))}
-              </div>
-              <div className="flex justify-between font-bold border-t pt-2">
-                <span>Total</span>
-                <span>{new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(order.total_amount)}</span>
-              </div>
-            </div>
-          </DialogContent>
-        </Dialog>
+          )}
+        </div>
       </CardContent>
     </Card>
   );
