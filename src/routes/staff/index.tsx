@@ -371,7 +371,7 @@ function StaffOrdersKanbanPage() {
             </div>
           </div>
           <p className="text-slate-500 text-sm mt-0.5">
-            Quadro Kanban com 7 etapas de atendimento e produção da loja.
+            Acompanhe cada pedido em todas as etapas do atendimento.
           </p>
         </div>
 
