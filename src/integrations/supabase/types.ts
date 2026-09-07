@@ -395,6 +395,7 @@ export type Database = {
       orders: {
         Row: {
           address: string
+          cancel_reason: string | null
           client_notified: boolean | null
           complement: string | null
           created_at: string | null
@@ -414,6 +415,7 @@ export type Database = {
         }
         Insert: {
           address: string
+          cancel_reason?: string | null
           client_notified?: boolean | null
           complement?: string | null
           created_at?: string | null
@@ -433,6 +435,7 @@ export type Database = {
         }
         Update: {
           address?: string
+          cancel_reason?: string | null
           client_notified?: boolean | null
           complement?: string | null
           created_at?: string | null
@@ -453,6 +456,108 @@ export type Database = {
         Relationships: [
           {
             foreignKeyName: "orders_store_id_fkey"
+            columns: ["store_id"]
+            isOneToOne: false
+            referencedRelation: "stores"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      order_status_history: {
+        Row: {
+          actor_email: string | null
+          actor_id: string | null
+          created_at: string
+          from_status: string | null
+          id: string
+          order_id: string
+          store_id: string
+          to_status: string
+        }
+        Insert: {
+          actor_email?: string | null
+          actor_id?: string | null
+          created_at?: string
+          from_status?: string | null
+          id?: string
+          order_id: string
+          store_id: string
+          to_status: string
+        }
+        Update: {
+          actor_email?: string | null
+          actor_id?: string | null
+          created_at?: string
+          from_status?: string | null
+          id?: string
+          order_id?: string
+          store_id?: string
+          to_status?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "order_status_history_order_id_fkey"
+            columns: ["order_id"]
+            isOneToOne: false
+            referencedRelation: "orders"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "order_status_history_store_id_fkey"
+            columns: ["store_id"]
+            isOneToOne: false
+            referencedRelation: "stores"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      order_whatsapp_attempts: {
+        Row: {
+          created_at: string
+          error_message: string | null
+          event: "accepted" | "canceled" | "shipping"
+          id: string
+          message: string
+          order_id: string
+          phone: string
+          status: "started" | "opened" | "failed"
+          store_id: string
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          error_message?: string | null
+          event: "accepted" | "canceled" | "shipping"
+          id?: string
+          message: string
+          order_id: string
+          phone: string
+          status?: "started" | "opened" | "failed"
+          store_id: string
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          error_message?: string | null
+          event?: "accepted" | "canceled" | "shipping"
+          id?: string
+          message?: string
+          order_id?: string
+          phone?: string
+          status?: "started" | "opened" | "failed"
+          store_id?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "order_whatsapp_attempts_order_id_fkey"
+            columns: ["order_id"]
+            isOneToOne: false
+            referencedRelation: "orders"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "order_whatsapp_attempts_store_id_fkey"
             columns: ["store_id"]
             isOneToOne: false
             referencedRelation: "stores"
@@ -785,6 +890,11 @@ export type Database = {
           store_id: string
           updated_at: string | null
           whatsapp: string | null
+          whatsapp_accept_enabled: boolean
+          whatsapp_cancel_enabled: boolean
+          whatsapp_shipping_enabled: boolean
+          whatsapp_template_aceito: string | null
+          whatsapp_template_cancelado: string | null
           whatsapp_template_recebido: string | null
           whatsapp_template_saida_entrega: string | null
         }

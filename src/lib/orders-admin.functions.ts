@@ -74,25 +74,78 @@ export const getOrders = async (input: GetOrdersInput = {}): Promise<OrderWithIt
   })) as OrderWithItems[];
 };
 
+export type OrderCounts = {
+  new: number;
+  preparing: number;
+  ready: number;
+  delivery: number;
+};
+
+export const getOrderCounts = async (storeId: string = DEFAULT_STORE_ID): Promise<OrderCounts> => {
+  const [newResult, preparingResult, readyResult, deliveryResult] = await Promise.all([
+    supabase
+      .from("orders")
+      .select("id", { count: "exact", head: true })
+      .eq("store_id", storeId)
+      .eq("status", "pending"),
+    supabase
+      .from("orders")
+      .select("id", { count: "exact", head: true })
+      .eq("store_id", storeId)
+      .in("status", ["confirmed", "preparing"]),
+    supabase
+      .from("orders")
+      .select("id", { count: "exact", head: true })
+      .eq("store_id", storeId)
+      .eq("status", "ready"),
+    supabase
+      .from("orders")
+      .select("id", { count: "exact", head: true })
+      .eq("store_id", storeId)
+      .eq("status", "out_for_delivery"),
+  ]);
+
+  const error = [newResult, preparingResult, readyResult, deliveryResult].find((result) => result.error)?.error;
+  if (error) throw error;
+
+  return {
+    new: newResult.count ?? 0,
+    preparing: preparingResult.count ?? 0,
+    ready: readyResult.count ?? 0,
+    delivery: deliveryResult.count ?? 0,
+  };
+};
+
 export type UpdateOrderStatusInput = {
   id: string;
   status: OrderStatus;
   storeId?: string | undefined;
+  cancelReason?: string | null | undefined;
+  expectedStatus?: OrderStatus | undefined;
 };
 
 export const updateOrderStatus = async ({
   id,
   status,
   storeId: rawStoreId,
+  cancelReason,
+  expectedStatus,
 }: UpdateOrderStatusInput): Promise<OrderWithItems> => {
   const storeId = rawStoreId || DEFAULT_STORE_ID;
+  const update = {
+    status,
+    ...(status === "canceled" ? { cancel_reason: cancelReason?.trim() || null } : {}),
+  };
 
-  const { data, error } = await (supabase
+  let query = supabase
     .from("orders")
-    .update({ status } as never)
+    .update(update as never)
     .eq("id", id)
-    .eq("store_id", storeId)
-    .select(ORDER_SELECT) as any).maybeSingle();
+    .eq("store_id", storeId) as any;
+
+  if (expectedStatus) query = query.eq("status", expectedStatus);
+
+  const { data, error } = await query.select(ORDER_SELECT).maybeSingle();
 
   if (error) throw error;
   if (!data) throw new Error("Pedido não encontrado ou já foi atualizado por outra pessoa.");
@@ -122,4 +175,75 @@ export const updateOrderNotificationStatus = async (data: {
   if (error) throw error;
   if (!updated) throw new Error("Pedido não encontrado.");
   return { success: true };
+};
+
+export const createWhatsAppAttempt = async (input: {
+  orderId: string;
+  event: "accepted" | "canceled" | "shipping";
+  phone: string;
+  message: string;
+  storeId?: string;
+}): Promise<{ id: string; status: string } | null> => {
+  const storeId = input.storeId || DEFAULT_STORE_ID;
+  const { data: existing, error: lookupError } = await supabase
+    .from("order_whatsapp_attempts")
+    .select("id, status")
+    .eq("order_id", input.orderId)
+    .eq("event", input.event)
+    .eq("store_id", storeId)
+    .maybeSingle();
+
+  if (lookupError) throw lookupError;
+  if (existing) {
+    if (existing.status !== "failed") return null;
+    const { data: retried, error: retryError } = await supabase
+      .from("order_whatsapp_attempts")
+      .update({
+        phone: input.phone,
+        message: input.message,
+        status: "started",
+        error_message: null,
+      } as never)
+      .eq("id", existing.id)
+      .eq("store_id", storeId)
+      .select("id, status")
+      .maybeSingle();
+    if (retryError) throw retryError;
+    return retried;
+  }
+
+  const { data, error } = await supabase
+    .from("order_whatsapp_attempts")
+    .insert({
+      order_id: input.orderId,
+      event: input.event,
+      phone: input.phone,
+      message: input.message,
+      status: "started",
+      store_id: storeId,
+    } as never)
+    .select("id, status")
+    .maybeSingle();
+
+  if (error) {
+    if (error.code === "23505") return null;
+    throw error;
+  }
+  return data;
+};
+
+export const updateWhatsAppAttempt = async (input: {
+  id: string;
+  status: "opened" | "failed";
+  error?: string | null;
+  storeId?: string;
+}): Promise<void> => {
+  const storeId = input.storeId || DEFAULT_STORE_ID;
+  const { error } = await supabase
+    .from("order_whatsapp_attempts")
+    .update({ status: input.status, error_message: input.error || null } as never)
+    .eq("id", input.id)
+    .eq("store_id", storeId);
+
+  if (error) throw error;
 };

@@ -27,6 +27,11 @@ export type StoreSettings = {
   primary_color: string | null;
   secondary_color: string | null;
   auto_notify_whatsapp: boolean;
+  whatsapp_accept_enabled: boolean;
+  whatsapp_cancel_enabled: boolean;
+  whatsapp_shipping_enabled: boolean;
+  whatsapp_template_aceito: string | null;
+  whatsapp_template_cancelado: string | null;
   whatsapp_template_recebido: string | null;
   whatsapp_template_saida_entrega: string | null;
 };
@@ -51,6 +56,11 @@ const defaultSettings = (name = "Minha Loja", store_id = DEFAULT_STORE_ID): Stor
   primary_color: "#1d4ed8",
   secondary_color: "#eff6ff",
   auto_notify_whatsapp: false,
+  whatsapp_accept_enabled: true,
+  whatsapp_cancel_enabled: true,
+  whatsapp_shipping_enabled: true,
+  whatsapp_template_aceito: null,
+  whatsapp_template_cancelado: null,
   whatsapp_template_recebido: null,
   whatsapp_template_saida_entrega: null,
 });
@@ -96,6 +106,11 @@ export const getStoreBySlug = async (slug: string): Promise<StoreData | null> =>
           primary_color: settings.primary_color || "#1d4ed8",
           secondary_color: settings.secondary_color || "#eff6ff",
           auto_notify_whatsapp: settings.auto_notify_whatsapp ?? false,
+          whatsapp_accept_enabled: (settings as any).whatsapp_accept_enabled ?? true,
+          whatsapp_cancel_enabled: (settings as any).whatsapp_cancel_enabled ?? true,
+          whatsapp_shipping_enabled: (settings as any).whatsapp_shipping_enabled ?? true,
+          whatsapp_template_aceito: (settings as any).whatsapp_template_aceito,
+          whatsapp_template_cancelado: (settings as any).whatsapp_template_cancelado,
           whatsapp_template_recebido: (settings as any).whatsapp_template_recebido,
           whatsapp_template_saida_entrega: (settings as any).whatsapp_template_saida_entrega,
         }
@@ -133,6 +148,11 @@ export const getStoreSettings = async (storeId: string = DEFAULT_STORE_ID): Prom
     primary_color: data.primary_color,
     secondary_color: data.secondary_color,
     auto_notify_whatsapp: data.auto_notify_whatsapp ?? false,
+    whatsapp_accept_enabled: (data as any).whatsapp_accept_enabled ?? true,
+    whatsapp_cancel_enabled: (data as any).whatsapp_cancel_enabled ?? true,
+    whatsapp_shipping_enabled: (data as any).whatsapp_shipping_enabled ?? true,
+    whatsapp_template_aceito: (data as any).whatsapp_template_aceito,
+    whatsapp_template_cancelado: (data as any).whatsapp_template_cancelado,
     whatsapp_template_recebido: (data as any).whatsapp_template_recebido,
     whatsapp_template_saida_entrega: (data as any).whatsapp_template_saida_entrega,
   };

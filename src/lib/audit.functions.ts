@@ -5,6 +5,7 @@ export type AuditEntry = {
   module: string;
   storeId?: string | null;
   description?: string | null;
+  metadata?: Record<string, unknown> | null;
 };
 
 /**
@@ -24,6 +25,7 @@ export const logAudit = async (entry: AuditEntry): Promise<void> => {
     module: entry.module,
     store_id: entry.storeId ?? null,
     description: entry.description ?? null,
+    metadata: entry.metadata ?? null,
   });
 
   if (error) console.error("Falha ao registrar log de auditoria:", error);
