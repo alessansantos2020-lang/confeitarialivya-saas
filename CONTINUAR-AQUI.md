@@ -1,196 +1,142 @@
-# Continuar daqui — SaaS de Lojas (multi-segmento)
+# Continuar aqui — Central de Pedidos
 
-> Documento de handoff pra retomar o trabalho em outra janela do Claude.
-> Última atualização: 2026-09-03 (plano novo do Painel do Dono + auditoria do código)
+Data: 2026-09-07
+Projeto: `confeitarialivya-saas`
+Branch: `feature/order-operations-restructure`
 
-## Como retomar em outra janela
+## Como continuar
 
-1. Abrir uma janela nova do Claude **na pasta do projeto**
-   (`C:\Users\Alessandro\Documents\PROJETOS CLAUDE\confeitarialivya-saas`).
-2. Mandar a mensagem: `@CONTINUAR-AQUI.md continue esse projeto`.
-3. Ler a seção "ONDE PAROU" abaixo — é a lista do que falta, em ordem.
+Abra Claude nesta pasta e envie:
 
-## O que é o projeto
-
-Sistema de **catálogo online + delivery** que virou um **SaaS multi-loja**: várias
-lojas de **segmentos diferentes** (confeitaria, pizzaria, mercado, petshop, etc.)
-usam o mesmo sistema. Cada loja tem seu próprio endereço público, cardápio, cor e
-painel de administração.
-
-Começou como app de uma loja só (Confeitaria Livya, feito no Lovable). Hoje a
-"Confeitaria Livya" é só a **primeira loja de exemplo**, não a marca do produto.
-
-**Pasta do projeto:** `C:\Users\Alessandro\Documents\PROJETOS CLAUDE\confeitarialivya-saas`
-(Existe OUTRO projeto em `delivery-saas` — monorepo Next.js+NestJS. NÃO é esse. Ignorar.)
-
-## Stack
-
-- TanStack Start em **modo SPA puro** (roda 100% no navegador) + Vite 8
-- Supabase (banco + auth + storage + Edge Functions) — **CONECTADO e no ar**
-- Tailwind v4 + shadcn/ui
-- Zustand (carrinho) + React Query (dados)
-- Roda com **npm**. Porta 8080.
-
-## Como rodar
-
-```bash
-cd "C:\Users\Alessandro\Documents\PROJETOS CLAUDE\confeitarialivya-saas"
-npm run dev
+```text
+@CONTINUAR-AQUI.md continue a Central de Pedidos
 ```
 
-Sobe em `http://localhost:8080`. Publicado na Vercel: `https://confeitarialivya-saas.vercel.app`
-(deploy automático quando dá push no `main` do GitHub).
+## Estado atual
 
-## Logins
+- Escopo desta etapa: alterar SOMENTE `src/routes/staff/index.tsx`.
+- Auditoria e leitura de dependências CONCLUÍDAS. Falta só reescrever o arquivo.
+- Ainda usa Kanban de 7 colunas + `Desfazer`. Precisa virar 4 abas operacionais.
+- Não alterar histórico, painel admin, manifesto de rotas, checkout, produtos, clientes ou migrations.
 
-| Papel | E-mail | Senha | Cai em |
-|-------|--------|-------|--------|
-| Dono do sistema (super admin) | `dono@sistema.com` | `Dono@2026` | `/super` |
-| Dono de loja (admin) | `admin@confeitaria.com` | `admin123` | `/admin` |
+## APIs já prontas (confirmado por leitura)
 
-(Trocar as senhas depois.)
+`src/lib/orders-admin.functions.ts`:
+- `getOrders({ storeId, statuses, limit })` — aceita `statuses: OrderStatus[]` e faz `.in("status", ...)`.
+- `getOrderCounts(storeId)` → `{ new, preparing, ready, delivery }` em queries `head:true` separadas.
+- `updateOrderStatus({ id, status, storeId, cancelReason, expectedStatus })` — `expectedStatus` faz `.eq("status", expectedStatus)`; lança erro se ninguém casar (proteção duplo-clique/concorrência). Grava `cancel_reason` só quando `status === "canceled"`.
 
-## Os três painéis
+`src/lib/order-status.ts`:
+- `OPERATIONAL_TABS` = `[{new:[pending]},{preparing:[confirmed,preparing]},{ready:[ready]},{delivery:[out_for_delivery]}]`.
+- `OPERATIONAL_ACTION_LABEL[status]` → rótulo da ação principal (ex.: pending→"Aceitar pedido", out_for_delivery→"Finalizar pedido"; delivered/canceled = null).
+- `nextStatus()`, `canCancel()` (pending|confirmed|preparing|ready), `isOperationalStatus()`, `operationalTabFor()`.
+- `ORDER_STATUS_STYLE[status]` = `{ label, color, icon, nextLabel }`.
 
-- **`/super`** — Painel do Dono do sistema. Cria e gerencia as lojas, define quem
-  é dono de cada uma. Visual escuro. Só o super admin entra.
-- **`/admin`** — Painel da loja. O dono gerencia produtos, categorias, adicionais,
-  clientes, taxas de entrega, relatórios e configurações. Cor da própria loja.
-- **`/staff`** — Painel de Pedidos. Tela separada só pra receber e acompanhar os
-  pedidos em tempo real (com som de alerta). Usada pelo próprio dono da loja.
-- **`/{endereço-da-loja}`** — Cardápio público do cliente (ex: `/confeitaria-livya`).
+`src/lib/order-notify.ts`:
+- `notifyOrderWhatsApp(order, settings, event, source, storeId)` → `NotifyResult`. Já é idempotente para `accepted|canceled|shipping` (tabela `order_whatsapp_attempts`). Popup bloqueado → `{ sent:false, reason:"blocked_popup" }`, NÃO altera status.
+- `notifyResultMessage(result)` → texto "WhatsApp aberto." etc. (null quando `disabled`).
+- `NotifyEvent` = received|accepted|preparing|ready|shipping|delivered|canceled.
 
-## O que JÁ FOI FEITO
+`src/lib/audit.functions.ts`:
+- `logAudit({ action, module, storeId, description, metadata })`. Falha nunca derruba ação.
 
-- **Fase 1 — Base multi-loja no banco:** tabelas `stores` e `store_members`,
-  coluna `store_id` em todas as tabelas de negócio, RLS isolando dados por loja,
-  papéis `admin` / `super_admin`.
-- **Fase 2 — Frontend por loja:** rota pública `/{slug}`, todo o painel filtra e
-  grava pela loja ativa.
-- **Fase 3 — Painel admin por loja:** admin e staff mostram só os dados da loja;
-  pedidos em tempo real filtrados por loja.
-- **Fase 4 — Painel super admin (`/super`):** lista/cria/renomeia/suspende lojas,
-  define dono. Testado pelo banco (criar loja, trigger de configuração, slug
-  duplicado bloqueado).
-- **Vocabulário neutralizado:** tirado "confeitaria/cardápio/bolo"; agora usa
-  "loja/catálogo/produto" (o SaaS atende vários segmentos).
-- **Cor por loja:** cada loja pinta seu painel admin/staff com a própria cor.
-- **Sistema de funcionários REMOVIDO** (decisão de 2026-09-03):
-  - Tirado o auto-cadastro (a tela `/auth` virou só login).
-  - Apagada a tela de equipe, as funções e a Edge Function `manage-employees`.
-  - `/staff` virou "Painel de Pedidos", acesso só pro dono da loja.
-  - Migração `20260903000000_remove_employee_system.sql` **aplicada no banco em
-    2026-09-03**: não apagou nada (não havia nenhum funcionário), e agora cada
-    conta só vê o próprio perfil — o dono do sistema vê todos.
+`src/lib/delivery.functions.ts`:
+- `getStoreSettings(storeId)` → `StoreSettings` (tem `auto_notify_whatsapp`, `whatsapp_accept_enabled`, `whatsapp_shipping_enabled`, etc.).
 
-- **`/super` testado no navegador (2026-09-03):** login como `dono@sistema.com`
-  funcionou, lista de lojas carregou, criar loja funcionou (existe uma loja
-  `teste` sem dono, criada só pra testar — pode apagar). Confirmado que depois de
-  fechar o RLS o dono do sistema continua vendo e gerenciando todas as lojas.
+`src/lib/active-store.tsx`:
+- `useActiveStore()` → `{ store, storeId, ... }`.
 
-## O PLANO NOVO (decidido em 2026-09-03)
+`src/lib/order-print.ts`:
+- `printOrder(order, storeName)` → boolean.
 
-O usuário trouxe dois documentos de plano (o V2_2 é o completo, o V2_1 é a versão
-anterior sem a Central de Pedidos):
+Componentes UI disponíveis: `Tabs/TabsList/TabsTrigger/TabsContent`, `Dialog*`, `AlertDialog*`, `Textarea`, `Card/CardContent`, `Badge`, `Button`, `Input`, `Switch`, `Label`. Ícones lucide-react.
 
-- `C:\Users\Alessandro\Downloads\Plano_Mestre_Super_Admin_SaaS_Delivery_Claude_Code_V2_2.txt`
+## Reescrita a fazer em `src/routes/staff/index.tsx`
 
-Resumo do que ele pede: transformar o `/super` num painel de SaaS completo
-(Dashboard, Lojas, Usuários, Monitoramento, Avisos, **Planos e Funcionalidades**,
-Fiscal/Nota Fiscal, Logs, Configurações), fazer o `/admin` obedecer ao plano da
-loja (menu dinâmico + rota e banco bloqueados quando o recurso não está no plano),
-e criar uma **Central de Pedidos** em colunas (Novos → Aceitos → Em preparo →
-Prontos → Entrega).
+### Abas
+| Aba | id | Status do banco |
+|---|---|---|
+| Novos | `new` | `pending` |
+| Em preparo | `preparing` | `confirmed`, `preparing` |
+| Prontos | `ready` | `ready` |
+| Em entrega | `delivery` | `out_for_delivery` |
 
-Regras do documento que valem pra sempre: NÃO reconstruir nada que funciona, NÃO
-duplicar tabela/autenticação/permissão, NÃO usar número inventado na tela, e
-**bloquear no banco, não só esconder o menu**. Trocar o plano da loja nunca apaga
-dados — só corta o acesso.
+`delivered` e `canceled` NÃO aparecem (ficam em `src/routes/staff/history.tsx`).
 
-### Auditoria do código já feita (não precisa repetir)
+### Queries (query keys com storeId)
+- `['staff-orders', storeId]` → `getOrders({ storeId, statuses: [pending,confirmed,preparing,ready,out_for_delivery], limit: 150 })`.
+- `['staff-order-counts', storeId]` → `getOrderCounts(storeId)`. Contadores das abas vêm DAQUI, independentes da busca.
 
-O que **já existe e deve ser reaproveitado**, não recriado:
-- Som de alerta de pedido novo: `public/new-order-alert.mp3`, tocado em
-  `src/routes/staff/index.tsx` só no INSERT, com toggle "Som de alerta".
-- Impressão de cupom formatado: `src/routes/admin/orders.tsx:694` (`window.open` +
-  `window.print()`).
-- Loja aberta/fechada: coluna `store_settings.is_open`, editada em
-  `/admin/settings`.
-- Realtime de pedidos por loja: canal `staff-orders-realtime-${storeId}` com
-  `filter: store_id=eq.${storeId}`.
-- Dashboard do `/admin` já usa dados reais do banco (nenhum número fixo).
-- Loja ativa: `resolveActiveStore()` em `src/lib/store-context.ts` +
-  `useActiveStore()` em `src/lib/active-store.tsx`.
-- Permissões: `src/lib/auth.functions.ts` (`checkPermission`, `getMyPermissions`)
-  e no banco `private.has_permission` / `is_store_admin` / `is_super_admin`.
+### Aba ativa + busca
+- `useState<OperationalTabId>('new')` controla `Tabs`.
+- Lista visível = pedidos da aba ativa, depois filtro de busca local.
+- Busca: cliente, telefone (normalizar `\D` → dígitos, casar com e sem máscara), número/ID do pedido (prefixo `id.slice(0,8)` e id completo).
 
-O que **NÃO existe** no banco (é tudo tabela nova):
-- planos, funcionalidades, plano×funcionalidade, loja×plano
-- avisos/comunicados
-- logs/auditoria
-- qualquer coisa fiscal
-- também não existe tabela `customers` — "clientes" é derivado de `orders`
-  (`customer_phone` distinto).
+### Mutation
+- `mutationFn`: `updateOrderStatus({ id, status: next, storeId, expectedStatus: fromStatus, cancelReason? })`.
+- Depois `logAudit`:
+  - avanço → `action: 'order_status_changed'`, `metadata: { order_id, from_status, to_status, source: 'staff_order_hub' }`.
+  - cancelamento → `action: 'order_canceled'`, `metadata: { order_id, from_status, to_status:'canceled', source:'staff_order_hub', cancel_reason }`.
+- `onSuccess`: invalidar `['staff-orders',storeId]`, `['staff-order-counts',storeId]`, `['staff-history',storeId]`, `['salesReport']`, `['admin-orders',storeId]`.
+- WhatsApp automático SÓ em:
+  - `pending → confirmed` → evento `accepted`.
+  - `ready → out_for_delivery` → evento `shipping`.
+  - Nada em confirmed→preparing, preparing→ready, out_for_delivery→delivered.
+- Falha de WhatsApp/popup bloqueado → feedback via `notifyResultMessage`, sem rollback.
 
-Detalhes úteis: `orders.status` é `text` sem CHECK, com 7 valores usados
-(`pending`, `confirmed`, `preparing`, `ready`, `out_for_delivery`, `delivered`,
-`canceled`). Existe `src/lib/permissions.server.ts` que é **arquivo morto** (zero
-imports). A tela `/admin/orders` existe mas **não tem item no menu**. A tela de
-pedidos de hoje é lista agrupada por dia, **não** kanban — a Central de Pedidos em
-colunas é tela nova de verdade.
+### Proteção duplo-clique
+- `expectedStatus: fromStatus` já cobre no banco.
+- Também desabilitar TODOS os controles do card enquanto `statusMutation.isPending && variables?.id === order.id`.
 
-## ONDE PAROU — pendências
+### Card
+- Uma ação principal contextual: rótulo de `OPERATIONAL_ACTION_LABEL[order.status]`, avança pra `nextStatus(order.status)`.
+- SEM botão `Desfazer` / `RotateCcw`.
+- Cancelar: só se `canCancel(order.status)`. Abre `AlertDialog` com `Textarea` opcional pro motivo (grava `cancel_reason`).
+- Manter `OrderDetailsDialog` (detalhes completos) e botão de impressão e WhatsApp manual (reaproveitar do arquivo atual, linhas ~734-856).
+- Responsivo: 1 coluna no mobile, 2 no tablet (`sm`/`md`), 3 no desktop (`lg`). Grid, não Kanban horizontal.
 
-1. **Etapa 1 do plano novo: criar as 5 tabelas novas no banco** (planos,
-   funcionalidades, plano×funcionalidade, avisos, logs) + 3 planos de exemplo
-   (Básico/Profissional/Premium) e as funcionalidades reais do sistema. É tudo
-   adição, não altera nada existente. **Estava aguardando o OK do usuário.**
-   Depois disso, a ordem sugerida é: tela de Planos no `/super` → menu dinâmico do
-   `/admin` por plano → Central de Pedidos → Avisos → Logs → Fiscal (último, é o
-   mais complexo e precisa de provedor fiscal).
-2. **Dar push pro GitHub/Vercel** — 28 arquivos mexidos + 9 novos ainda sem
-   commit, nada publicado (push dispara deploy automático).
-3. Apagar a loja `teste` quando quiser (foi só teste).
+### Realtime + som
+- Canal `staff-orders-<storeId>` filtrado por `store_id=eq.${storeId}`.
+- Som só em `INSERT` de pedido novo (id não visto).
+- Usar `soundEnabledRef` (`useRef`) pro estado do som, pra assinatura realtime NÃO recriar ao alternar som. (Bug atual: `soundEnabled` está no dep array do useEffect.)
+- Invalidar pedidos + contadores + histórico + relatórios no evento realtime.
 
-## Como aplicar migração no banco (referência)
+### Estados
+- Loading inicial: skeleton no lugar da lista.
+- Erro inicial (sem dados): substitui a lista, com botão "Tentar novamente".
+- Erro durante refresh (com dados): preservar dados anteriores, não apagar tela.
+- Estado vazio por aba.
+- Botão refresh + indicador realtime (Ao vivo / Reconectando).
+
+## Validação (rodar ao terminar)
 
 ```bash
-export PATH="/c/Program Files/Git/usr/bin:/c/Program Files/nodejs:$PATH"
-cd "/c/Users/Alessandro/Documents/PROJETOS CLAUDE/confeitarialivya-saas"
-export SUPABASE_ACCESS_TOKEN="<token no memory do projeto>"
-npx.cmd --yes supabase@2.116.0 db push --linked
+npm run build
 ```
-
-## Como buildar (referência)
 
 ```bash
-export PATH="/c/Program Files/Git/usr/bin:/c/Program Files/nodejs:$PATH"
-cd "/c/Users/Alessandro/Documents/PROJETOS CLAUDE/confeitarialivya-saas"
-npm.cmd run build
+npm run lint
 ```
-(Precisa do `npm.cmd` e do PATH acima — o PATH herdado do Windows não funciona no Git Bash.)
 
-## Supabase (online)
+Depois preview `livya-dev`, abrir `/staff`. Conferir:
+1. 4 abas, sem Kanban horizontal.
+2. 1 lista por vez.
+3. Contadores não mudam com busca.
+4. Busca por nome, telefone com máscara, ID/prefixo.
+5. Fluxo até `delivered`.
+6. Cancelamento com e sem motivo.
+7. Sem `delivered`/`canceled` na Central.
+8. Detalhes e impressão preservados.
+9. WhatsApp automático só nas 2 transições.
+10. Popup bloqueado sem rollback.
+11. Realtime e som só em novo pedido.
+12. Duplo clique protegido.
+13. Desktop, tablet, 375px.
 
-- Projeto: `confeitaria-livya` (conta `alessansantos2026`)
-- Project ID: `uivmsigagtzsqomdayys` · URL: `https://uivmsigagtzsqomdayys.supabase.co`
-- Chaves no `.env` (protegido pelo `.gitignore`).
-- Migrations aplicadas até `20260903000000` (todas em dia).
+## Depois da Central
 
-## Estrutura importante
-
-- `src/routes/index.tsx` e `src/routes/$slug.tsx` — cardápio público do cliente
-- `src/routes/super/` — painel do dono do sistema
-- `src/routes/admin/` — painel da loja
-- `src/routes/staff/` — painel de pedidos
-- `src/routes/auth.tsx` — tela de login (só login, sem cadastro)
-- `src/lib/*.functions.ts` — funções que puxam dados do Supabase
-- `src/lib/store-theme.ts` — cor por loja
-- `supabase/migrations/` — migrations do banco
-
-## Como o usuário quer trabalhar
-
-- Português-BR, informal
-- NÃO é programador — explicar em linguagem simples, sem jargão
-- Uma etapa por vez, ele testa clicando
-- Confirmar antes de mudanças grandes/arriscadas
+1. `/admin/orders` vira rota de compatibilidade pra `/staff`.
+2. Atualizar config WhatsApp em `src/routes/admin/settings.tsx`.
+3. Trocar `Voltar ao Kanban` por `Voltar aos pedidos` em `src/routes/staff/history.tsx`.
+4. Revisar tipos e migration.
+5. Draft PR após build e lint.
