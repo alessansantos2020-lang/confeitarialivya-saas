@@ -334,6 +334,254 @@ export type Database = {
         }
         Relationships: []
       }
+      fiscal_documents: {
+        Row: {
+          access_key: string | null
+          authorized_at: string | null
+          canceled_at: string | null
+          created_at: string
+          document_type: string
+          id: string
+          idempotency_key: string
+          number: number | null
+          order_id: string | null
+          pdf_path: string | null
+          provider: string | null
+          provider_document_id: string | null
+          rejection_reason: string | null
+          series: string | null
+          status: string
+          store_id: string
+          total_amount: number | null
+          updated_at: string
+          xml_path: string | null
+        }
+        Insert: {
+          access_key?: string | null
+          authorized_at?: string | null
+          canceled_at?: string | null
+          created_at?: string
+          document_type?: string
+          id?: string
+          idempotency_key: string
+          number?: number | null
+          order_id?: string | null
+          pdf_path?: string | null
+          provider?: string | null
+          provider_document_id?: string | null
+          rejection_reason?: string | null
+          series?: string | null
+          status?: string
+          store_id: string
+          total_amount?: number | null
+          updated_at?: string
+          xml_path?: string | null
+        }
+        Update: {
+          access_key?: string | null
+          authorized_at?: string | null
+          canceled_at?: string | null
+          created_at?: string
+          document_type?: string
+          id?: string
+          idempotency_key?: string
+          number?: number | null
+          order_id?: string | null
+          pdf_path?: string | null
+          provider?: string | null
+          provider_document_id?: string | null
+          rejection_reason?: string | null
+          series?: string | null
+          status?: string
+          store_id?: string
+          total_amount?: number | null
+          updated_at?: string
+          xml_path?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "fiscal_documents_order_id_fkey"
+            columns: ["order_id"]
+            isOneToOne: false
+            referencedRelation: "orders"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "fiscal_documents_store_id_fkey"
+            columns: ["store_id"]
+            isOneToOne: false
+            referencedRelation: "stores"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      fiscal_events: {
+        Row: {
+          created_at: string
+          document_id: string
+          error_message: string | null
+          event_type: string
+          from_status: string | null
+          id: string
+          payload: Json | null
+          provider_event_id: string | null
+          store_id: string
+          to_status: string | null
+        }
+        Insert: {
+          created_at?: string
+          document_id: string
+          error_message?: string | null
+          event_type: string
+          from_status?: string | null
+          id?: string
+          payload?: Json | null
+          provider_event_id?: string | null
+          store_id: string
+          to_status?: string | null
+        }
+        Update: {
+          created_at?: string
+          document_id?: string
+          error_message?: string | null
+          event_type?: string
+          from_status?: string | null
+          id?: string
+          payload?: Json | null
+          provider_event_id?: string | null
+          store_id?: string
+          to_status?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "fiscal_events_document_id_fkey"
+            columns: ["document_id"]
+            isOneToOne: false
+            referencedRelation: "fiscal_documents"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "fiscal_events_store_id_fkey"
+            columns: ["store_id"]
+            isOneToOne: false
+            referencedRelation: "stores"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      fiscal_outbox: {
+        Row: {
+          attempts: number
+          created_at: string
+          document_id: string
+          id: string
+          idempotency_key: string
+          last_error: string | null
+          next_attempt_at: string
+          operation: string
+          status: string
+          store_id: string
+          updated_at: string
+        }
+        Insert: {
+          attempts?: number
+          created_at?: string
+          document_id: string
+          id?: string
+          idempotency_key: string
+          last_error?: string | null
+          next_attempt_at?: string
+          operation: string
+          status?: string
+          store_id: string
+          updated_at?: string
+        }
+        Update: {
+          attempts?: number
+          created_at?: string
+          document_id?: string
+          id?: string
+          idempotency_key?: string
+          last_error?: string | null
+          next_attempt_at?: string
+          operation?: string
+          status?: string
+          store_id?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "fiscal_outbox_document_id_fkey"
+            columns: ["document_id"]
+            isOneToOne: false
+            referencedRelation: "fiscal_documents"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "fiscal_outbox_store_id_fkey"
+            columns: ["store_id"]
+            isOneToOne: false
+            referencedRelation: "stores"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      fiscal_settings: {
+        Row: {
+          cnpj: string | null
+          created_at: string
+          document_type: string
+          environment: string
+          id: string
+          legal_name: string | null
+          provider: string | null
+          series: string
+          state_registration: string | null
+          store_id: string
+          tax_regime: string | null
+          trade_name: string | null
+          updated_at: string
+        }
+        Insert: {
+          cnpj?: string | null
+          created_at?: string
+          document_type?: string
+          environment?: string
+          id?: string
+          legal_name?: string | null
+          provider?: string | null
+          series?: string
+          state_registration?: string | null
+          store_id: string
+          tax_regime?: string | null
+          trade_name?: string | null
+          updated_at?: string
+        }
+        Update: {
+          cnpj?: string | null
+          created_at?: string
+          document_type?: string
+          environment?: string
+          id?: string
+          legal_name?: string | null
+          provider?: string | null
+          series?: string
+          state_registration?: string | null
+          store_id?: string
+          tax_regime?: string | null
+          trade_name?: string | null
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "fiscal_settings_store_id_fkey"
+            columns: ["store_id"]
+            isOneToOne: true
+            referencedRelation: "stores"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       order_items: {
         Row: {
           id: string
@@ -385,77 +633,6 @@ export type Database = {
           },
           {
             foreignKeyName: "order_items_store_id_fkey"
-            columns: ["store_id"]
-            isOneToOne: false
-            referencedRelation: "stores"
-            referencedColumns: ["id"]
-          },
-        ]
-      }
-      orders: {
-        Row: {
-          address: string
-          cancel_reason: string | null
-          client_notified: boolean | null
-          complement: string | null
-          created_at: string | null
-          customer_name: string
-          customer_phone: string
-          delivery_fee: number | null
-          id: string
-          neighborhood: string | null
-          number: string | null
-          observation: string | null
-          payment_method: string | null
-          reference: string | null
-          status: "pending" | "confirmed" | "preparing" | "ready" | "out_for_delivery" | "delivered" | "canceled"
-          store_id: string
-          street: string | null
-          total_amount: number
-        }
-        Insert: {
-          address: string
-          cancel_reason?: string | null
-          client_notified?: boolean | null
-          complement?: string | null
-          created_at?: string | null
-          customer_name: string
-          customer_phone: string
-          delivery_fee?: number | null
-          id?: string
-          neighborhood?: string | null
-          number?: string | null
-          observation?: string | null
-          payment_method?: string | null
-          reference?: string | null
-          status?: "pending" | "confirmed" | "preparing" | "ready" | "out_for_delivery" | "delivered" | "canceled"
-          store_id?: string
-          street?: string | null
-          total_amount: number
-        }
-        Update: {
-          address?: string
-          cancel_reason?: string | null
-          client_notified?: boolean | null
-          complement?: string | null
-          created_at?: string | null
-          customer_name?: string
-          customer_phone?: string
-          delivery_fee?: number | null
-          id?: string
-          neighborhood?: string | null
-          number?: string | null
-          observation?: string | null
-          payment_method?: string | null
-          reference?: string | null
-          status?: "pending" | "confirmed" | "preparing" | "ready" | "out_for_delivery" | "delivered" | "canceled"
-          store_id?: string
-          street?: string | null
-          total_amount?: number
-        }
-        Relationships: [
-          {
-            foreignKeyName: "orders_store_id_fkey"
             columns: ["store_id"]
             isOneToOne: false
             referencedRelation: "stores"
@@ -515,36 +692,36 @@ export type Database = {
         Row: {
           created_at: string
           error_message: string | null
-          event: "accepted" | "canceled" | "shipping"
+          event: string
           id: string
           message: string
           order_id: string
           phone: string
-          status: "started" | "opened" | "failed"
+          status: string
           store_id: string
           updated_at: string
         }
         Insert: {
           created_at?: string
           error_message?: string | null
-          event: "accepted" | "canceled" | "shipping"
+          event: string
           id?: string
           message: string
           order_id: string
           phone: string
-          status?: "started" | "opened" | "failed"
+          status?: string
           store_id: string
           updated_at?: string
         }
         Update: {
           created_at?: string
           error_message?: string | null
-          event?: "accepted" | "canceled" | "shipping"
+          event?: string
           id?: string
           message?: string
           order_id?: string
           phone?: string
-          status?: "started" | "opened" | "failed"
+          status?: string
           store_id?: string
           updated_at?: string
         }
@@ -558,6 +735,77 @@ export type Database = {
           },
           {
             foreignKeyName: "order_whatsapp_attempts_store_id_fkey"
+            columns: ["store_id"]
+            isOneToOne: false
+            referencedRelation: "stores"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      orders: {
+        Row: {
+          address: string
+          cancel_reason: string | null
+          client_notified: boolean | null
+          complement: string | null
+          created_at: string | null
+          customer_name: string
+          customer_phone: string
+          delivery_fee: number | null
+          id: string
+          neighborhood: string | null
+          number: string | null
+          observation: string | null
+          payment_method: string | null
+          reference: string | null
+          status: string
+          store_id: string
+          street: string | null
+          total_amount: number
+        }
+        Insert: {
+          address: string
+          cancel_reason?: string | null
+          client_notified?: boolean | null
+          complement?: string | null
+          created_at?: string | null
+          customer_name: string
+          customer_phone: string
+          delivery_fee?: number | null
+          id?: string
+          neighborhood?: string | null
+          number?: string | null
+          observation?: string | null
+          payment_method?: string | null
+          reference?: string | null
+          status?: string
+          store_id?: string
+          street?: string | null
+          total_amount: number
+        }
+        Update: {
+          address?: string
+          cancel_reason?: string | null
+          client_notified?: boolean | null
+          complement?: string | null
+          created_at?: string | null
+          customer_name?: string
+          customer_phone?: string
+          delivery_fee?: number | null
+          id?: string
+          neighborhood?: string | null
+          number?: string | null
+          observation?: string | null
+          payment_method?: string | null
+          reference?: string | null
+          status?: string
+          store_id?: string
+          street?: string | null
+          total_amount?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "orders_store_id_fkey"
             columns: ["store_id"]
             isOneToOne: false
             referencedRelation: "stores"
@@ -916,6 +1164,11 @@ export type Database = {
           store_id?: string
           updated_at?: string | null
           whatsapp?: string | null
+          whatsapp_accept_enabled?: boolean
+          whatsapp_cancel_enabled?: boolean
+          whatsapp_shipping_enabled?: boolean
+          whatsapp_template_aceito?: string | null
+          whatsapp_template_cancelado?: string | null
           whatsapp_template_recebido?: string | null
           whatsapp_template_saida_entrega?: string | null
         }
@@ -937,6 +1190,11 @@ export type Database = {
           store_id?: string
           updated_at?: string | null
           whatsapp?: string | null
+          whatsapp_accept_enabled?: boolean
+          whatsapp_cancel_enabled?: boolean
+          whatsapp_shipping_enabled?: boolean
+          whatsapp_template_aceito?: string | null
+          whatsapp_template_cancelado?: string | null
           whatsapp_template_recebido?: string | null
           whatsapp_template_saida_entrega?: string | null
         }

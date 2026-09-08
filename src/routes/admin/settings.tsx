@@ -10,9 +10,17 @@ import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Switch } from "@/components/ui/switch";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 import { toast } from "sonner";
 import { useState, useEffect } from "react";
 import {
+  FileText,
   Loader2,
   Save,
   Phone,
@@ -27,6 +35,28 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Copy } from "lucide-react";
 import { ImageUpload } from "@/components/admin/ImageUpload";
 
+type FiscalSettingsForm = {
+  cnpj: string;
+  legal_name: string;
+  trade_name: string;
+  state_registration: string;
+  tax_regime: string;
+  series: string;
+  environment: "homologation" | "production";
+  provider: string;
+};
+
+const EMPTY_FISCAL_SETTINGS: FiscalSettingsForm = {
+  cnpj: "",
+  legal_name: "",
+  trade_name: "",
+  state_registration: "",
+  tax_regime: "",
+  series: "1",
+  environment: "homologation",
+  provider: "",
+};
+
 export const Route = createFileRoute("/admin/settings")({
   beforeLoad: () => {
     return;
@@ -36,7 +66,8 @@ export const Route = createFileRoute("/admin/settings")({
 
 function AdminSettings() {
   const queryClient = useQueryClient();
-  const { store, storeId } = useActiveStore();
+  const { store, storeId, hasFeature } = useActiveStore();
+  const hasNfce = hasFeature("nfce");
 
   const { data: remoteSettings, isLoading } = useQuery({
     queryKey: ["storeSettings", storeId],
@@ -44,7 +75,9 @@ function AdminSettings() {
   });
 
   const [settings, setSettings] = useState<StoreSettings | null>(null);
+  const [fiscalSettings, setFiscalSettings] = useState<FiscalSettingsForm>(EMPTY_FISCAL_SETTINGS);
   const [isSaving, setIsSaving] = useState(false);
+  const [isSavingFiscal, setIsSavingFiscal] = useState(false);
   const siteOrigin = typeof window !== "undefined" ? window.location.origin : "";
   const publicStoreUrl = `${siteOrigin}/${store.slug}`;
 
@@ -53,6 +86,38 @@ function AdminSettings() {
       setSettings(remoteSettings);
     }
   }, [remoteSettings]);
+
+  const { data: remoteFiscalSettings, isLoading: isFiscalLoading } = useQuery({
+    queryKey: ["fiscal-settings", storeId],
+    enabled: hasNfce,
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from("fiscal_settings")
+        .select(
+          "cnpj, legal_name, trade_name, state_registration, tax_regime, series, environment, provider",
+        )
+        .eq("store_id", storeId)
+        .maybeSingle();
+      if (error) throw error;
+      return data;
+    },
+  });
+
+  useEffect(() => {
+    if (remoteFiscalSettings) {
+      setFiscalSettings({
+        cnpj: remoteFiscalSettings.cnpj || "",
+        legal_name: remoteFiscalSettings.legal_name || "",
+        trade_name: remoteFiscalSettings.trade_name || "",
+        state_registration: remoteFiscalSettings.state_registration || "",
+        tax_regime: remoteFiscalSettings.tax_regime || "",
+        series: remoteFiscalSettings.series || "1",
+        environment:
+          remoteFiscalSettings.environment === "production" ? "production" : "homologation",
+        provider: remoteFiscalSettings.provider || "",
+      });
+    }
+  }, [remoteFiscalSettings]);
 
   useEffect(() => {
     const channel = supabase
@@ -125,6 +190,35 @@ function AdminSettings() {
     updateMutation.mutate(settings);
   };
 
+  const handleFiscalSubmit = async (event: React.FormEvent) => {
+    event.preventDefault();
+    setIsSavingFiscal(true);
+    try {
+      const { error } = await supabase.from("fiscal_settings").upsert(
+        {
+          store_id: storeId,
+          document_type: "nfce",
+          ...fiscalSettings,
+          cnpj: fiscalSettings.cnpj.trim() || null,
+          legal_name: fiscalSettings.legal_name.trim() || null,
+          trade_name: fiscalSettings.trade_name.trim() || null,
+          state_registration: fiscalSettings.state_registration.trim() || null,
+          tax_regime: fiscalSettings.tax_regime.trim() || null,
+          provider: fiscalSettings.provider.trim() || null,
+        } as never,
+        { onConflict: "store_id" },
+      );
+      if (error) throw error;
+      await queryClient.invalidateQueries({ queryKey: ["fiscal-settings", storeId] });
+      toast.success("Configuração NFC-e salva.");
+    } catch (error) {
+      console.error(error);
+      toast.error("Não foi possível salvar a configuração NFC-e.");
+    } finally {
+      setIsSavingFiscal(false);
+    }
+  };
+
   if (isLoading || !settings) {
     return (
       <div className="p-12 flex justify-center">
@@ -160,7 +254,7 @@ function AdminSettings() {
       </div>
 
       <Tabs defaultValue="general" className="w-full">
-        <TabsList className="grid w-full grid-cols-5 md:w-auto md:inline-flex mb-4">
+        <TabsList className="grid w-full grid-cols-2 sm:grid-cols-3 md:w-auto md:inline-flex mb-4">
           <TabsTrigger value="general" className="flex items-center gap-2">
             <Layout className="w-4 h-4" />
             Geral
@@ -173,6 +267,12 @@ function AdminSettings() {
             <Palette className="w-4 h-4" />
             Visual
           </TabsTrigger>
+          {hasNfce && (
+            <TabsTrigger value="nfce" className="flex items-center gap-2">
+              <FileText className="w-4 h-4" />
+              NFC-e
+            </TabsTrigger>
+          )}
           <TabsTrigger value="whatsapp" className="flex items-center gap-2">
             <MessageCircle className="w-4 h-4" />
             Mensagens WhatsApp
@@ -488,6 +588,143 @@ function AdminSettings() {
             </CardContent>
           </Card>
         </TabsContent>
+        {hasNfce && (
+          <TabsContent value="nfce" className="space-y-6 outline-none">
+            <Card>
+              <CardHeader>
+                <CardTitle className="flex items-center gap-2">
+                  <FileText className="w-5 h-5 text-pink-600" />
+                  Configuração NFC-e
+                </CardTitle>
+                <CardDescription>
+                  Cadastre os dados fiscais básicos da loja para futura integração de emissão.
+                </CardDescription>
+              </CardHeader>
+              <CardContent>
+                {isFiscalLoading ? (
+                  <div className="py-8 flex justify-center">
+                    <Loader2 className="animate-spin text-pink-600" />
+                  </div>
+                ) : (
+                  <form onSubmit={handleFiscalSubmit} className="space-y-5">
+                    <div className="rounded-lg border border-amber-200 bg-amber-50 p-4 text-sm text-amber-800">
+                      Esta tela apenas salva configuração. Emissão de NFC-e ainda está indisponível
+                      porque nenhum provedor fiscal foi conectado. Não informe certificado digital,
+                      senha, token ou chave secreta aqui.
+                    </div>
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                      <div className="space-y-2">
+                        <Label htmlFor="fiscal-cnpj">CNPJ</Label>
+                        <Input
+                          id="fiscal-cnpj"
+                          value={fiscalSettings.cnpj}
+                          onChange={(e) =>
+                            setFiscalSettings({ ...fiscalSettings, cnpj: e.target.value })
+                          }
+                          placeholder="00.000.000/0000-00"
+                        />
+                      </div>
+                      <div className="space-y-2">
+                        <Label htmlFor="fiscal-ie">Inscrição estadual</Label>
+                        <Input
+                          id="fiscal-ie"
+                          value={fiscalSettings.state_registration}
+                          onChange={(e) =>
+                            setFiscalSettings({
+                              ...fiscalSettings,
+                              state_registration: e.target.value,
+                            })
+                          }
+                          placeholder="Inscrição estadual"
+                        />
+                      </div>
+                      <div className="space-y-2">
+                        <Label htmlFor="fiscal-legal-name">Razão social</Label>
+                        <Input
+                          id="fiscal-legal-name"
+                          value={fiscalSettings.legal_name}
+                          onChange={(e) =>
+                            setFiscalSettings({ ...fiscalSettings, legal_name: e.target.value })
+                          }
+                        />
+                      </div>
+                      <div className="space-y-2">
+                        <Label htmlFor="fiscal-trade-name">Nome fantasia</Label>
+                        <Input
+                          id="fiscal-trade-name"
+                          value={fiscalSettings.trade_name}
+                          onChange={(e) =>
+                            setFiscalSettings({ ...fiscalSettings, trade_name: e.target.value })
+                          }
+                        />
+                      </div>
+                      <div className="space-y-2">
+                        <Label htmlFor="fiscal-tax-regime">Regime tributário</Label>
+                        <Input
+                          id="fiscal-tax-regime"
+                          value={fiscalSettings.tax_regime}
+                          onChange={(e) =>
+                            setFiscalSettings({ ...fiscalSettings, tax_regime: e.target.value })
+                          }
+                          placeholder="Ex.: Simples Nacional"
+                        />
+                      </div>
+                      <div className="space-y-2">
+                        <Label htmlFor="fiscal-series">Série</Label>
+                        <Input
+                          id="fiscal-series"
+                          value={fiscalSettings.series}
+                          onChange={(e) =>
+                            setFiscalSettings({ ...fiscalSettings, series: e.target.value })
+                          }
+                        />
+                      </div>
+                      <div className="space-y-2">
+                        <Label htmlFor="fiscal-environment">Ambiente</Label>
+                        <Select
+                          value={fiscalSettings.environment}
+                          onValueChange={(value: "homologation" | "production") =>
+                            setFiscalSettings({ ...fiscalSettings, environment: value })
+                          }
+                        >
+                          <SelectTrigger id="fiscal-environment">
+                            <SelectValue />
+                          </SelectTrigger>
+                          <SelectContent>
+                            <SelectItem value="homologation">Homologação (testes)</SelectItem>
+                            <SelectItem value="production">Produção</SelectItem>
+                          </SelectContent>
+                        </Select>
+                      </div>
+                      <div className="space-y-2">
+                        <Label htmlFor="fiscal-provider">Provedor fiscal</Label>
+                        <Input
+                          id="fiscal-provider"
+                          value={fiscalSettings.provider}
+                          onChange={(e) =>
+                            setFiscalSettings({ ...fiscalSettings, provider: e.target.value })
+                          }
+                          placeholder="Ainda não definido"
+                        />
+                      </div>
+                    </div>
+                    <div className="flex justify-end">
+                      <Button type="submit" disabled={isSavingFiscal} className="gap-2">
+                        {isSavingFiscal ? (
+                          <Loader2 className="w-4 h-4 animate-spin" />
+                        ) : (
+                          <Save className="w-4 h-4" />
+                        )}
+                        Salvar configuração NFC-e
+                      </Button>
+                    </div>
+                  </form>
+                )}
+              </CardContent>
+            </Card>
+          </TabsContent>
+        )}
+
         <TabsContent value="whatsapp" className="space-y-6 outline-none">
           <Card>
             <CardHeader>
