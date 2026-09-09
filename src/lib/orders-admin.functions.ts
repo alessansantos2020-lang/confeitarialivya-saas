@@ -16,6 +16,8 @@ export type GetOrdersInput = {
   status?: OrderStatus | "all" | undefined;
   statuses?: OrderStatus[] | undefined;
   date?: string | undefined;
+  dateFrom?: string | undefined;
+  dateTo?: string | undefined;
   storeId?: string | undefined;
   limit?: number | undefined;
   offset?: number | undefined;
@@ -62,6 +64,16 @@ export const getOrders = async (input: GetOrdersInput = {}): Promise<OrderWithIt
   if (input.date) {
     const { start, end } = dateBounds(input.date);
     query = query.gte("created_at", start).lte("created_at", end);
+  }
+
+  if (input.dateFrom) {
+    const { start } = dateBounds(input.dateFrom);
+    query = query.gte("created_at", start);
+  }
+
+  if (input.dateTo) {
+    const { end } = dateBounds(input.dateTo);
+    query = query.lte("created_at", end);
   }
 
   const { data, error } = await query;

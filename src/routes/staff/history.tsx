@@ -49,6 +49,8 @@ export const Route = createFileRoute("/staff/history")({
 function StaffHistoryPage() {
   const { store, storeId } = useActiveStore();
   const [searchTerm, setSearchTerm] = useState("");
+  const [startDate, setStartDate] = useState("");
+  const [endDate, setEndDate] = useState("");
   const queryClient = useQueryClient();
 
   const { data: storeSettings } = useQuery({
@@ -64,11 +66,13 @@ function StaffHistoryPage() {
     refetch,
     isFetching,
   } = useQuery({
-    queryKey: ["staff-history", storeId],
+    queryKey: ["staff-history", storeId, startDate, endDate],
     queryFn: () =>
       getOrders({
         statuses: ["delivered", "canceled"],
         storeId,
+        dateFrom: startDate || undefined,
+        dateTo: endDate || undefined,
         limit: 150,
       }),
   });
@@ -130,6 +134,12 @@ function StaffHistoryPage() {
     );
   });
 
+  const clearFilters = () => {
+    setSearchTerm("");
+    setStartDate("");
+    setEndDate("");
+  };
+
   const handlePrint = (order: OrderWithItems) => {
     const storeName = storeSettings?.name || store?.name || "Loja";
     const ok = printOrder(order, storeName);
@@ -177,14 +187,56 @@ function StaffHistoryPage() {
         </div>
       </div>
 
-      <div className="relative">
-        <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
-        <Input
-          placeholder="Buscar no histórico por cliente, telefone ou pedido..."
-          className="pl-10 h-12 bg-white border-slate-200"
-          value={searchTerm}
-          onChange={(e) => setSearchTerm(e.target.value)}
-        />
+      <div className="space-y-3">
+        <div className="relative">
+          <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
+          <Input
+            placeholder="Buscar no histórico por cliente, telefone ou pedido..."
+            className="pl-10 h-12 bg-white border-slate-200"
+            value={searchTerm}
+            onChange={(e) => setSearchTerm(e.target.value)}
+          />
+        </div>
+
+        <div className="flex flex-col sm:flex-row sm:items-end gap-3 rounded-xl border border-slate-200 bg-white p-4">
+          <div className="flex-1 space-y-1.5">
+            <label htmlFor="history-start-date" className="text-xs font-semibold text-slate-600">
+              Data inicial
+            </label>
+            <Input
+              id="history-start-date"
+              type="date"
+              value={startDate}
+              max={endDate || undefined}
+              onChange={(e) => setStartDate(e.target.value)}
+              className="h-10"
+            />
+          </div>
+          <div className="flex-1 space-y-1.5">
+            <label htmlFor="history-end-date" className="text-xs font-semibold text-slate-600">
+              Data final
+            </label>
+            <Input
+              id="history-end-date"
+              type="date"
+              value={endDate}
+              min={startDate || undefined}
+              onChange={(e) => setEndDate(e.target.value)}
+              className="h-10"
+            />
+          </div>
+          <Button
+            type="button"
+            variant="outline"
+            size="sm"
+            onClick={clearFilters}
+            disabled={!searchTerm && !startDate && !endDate}
+            className="h-10 gap-1.5 text-slate-700"
+          >
+            <RotateCcw className="w-3.5 h-3.5" />
+            Limpar filtros
+          </Button>
+        </div>
       </div>
 
       {isError && (
