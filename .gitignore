@@ -44,3 +44,5 @@ supabase/.temp/
 
 # Relatorio de teste: tem senhas reais, fica so na maquina
 RELATORIO-E-TESTE.md
+
+.vercel
