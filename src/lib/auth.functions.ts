@@ -1,4 +1,8 @@
 import { supabase } from "@/integrations/supabase/client";
+import type { Tables } from "@/integrations/supabase/types";
+
+type UserRoleRow = Pick<Tables<"user_roles">, "role">;
+type UserPermissionRow = Pick<Tables<"user_permissions">, "permission_id">;
 
 // Convertido para SPA: essas funções eram serverFn com o middleware
 // requireSupabaseAuth. Agora rodam no cliente e obtêm o userId diretamente
@@ -13,13 +17,13 @@ export const getUserRole = async () => {
   const userId = await getCurrentUserId();
   if (!userId) return null;
 
-  const { data: roleData } = await supabase
-    .from("user_roles")
-    .select("role")
-    .eq("user_id", userId)
-    .maybeSingle();
+  const { data: roleData } = await supabase.from("user_roles").select("role").eq("user_id", userId);
 
-  return roleData?.role || null;
+  const roles = new Set((roleData as UserRoleRow[] | null)?.map((row) => row.role) || []);
+  if (roles.has("super_admin")) return "super_admin";
+  if (roles.has("admin")) return "admin";
+  if (roles.has("employee")) return "employee";
+  return roles.has("user") ? "user" : null;
 };
 
 export const checkPermission = async (permissionId: string) => {
@@ -28,13 +32,9 @@ export const checkPermission = async (permissionId: string) => {
 
   // A função has_permission foi movida para o schema privado (fora da API),
   // então a verificação é feita consultando as tabelas diretamente.
-  const { data: roleData } = await supabase
-    .from("user_roles")
-    .select("role")
-    .eq("user_id", userId)
-    .maybeSingle();
+  const { data: roleData } = await supabase.from("user_roles").select("role").eq("user_id", userId);
 
-  if (roleData?.role === "admin" || roleData?.role === "super_admin") return true;
+  if (roleData?.some((row) => row.role === "admin" || row.role === "super_admin")) return true;
 
   const { data: perm, error } = await supabase
     .from("user_permissions")
@@ -55,14 +55,10 @@ export const getMyPermissions = async (): Promise<string[]> => {
   const userId = await getCurrentUserId();
   if (!userId) return [];
 
-  const { data: roleData } = await supabase
-    .from("user_roles")
-    .select("role")
-    .eq("user_id", userId)
-    .maybeSingle();
+  const { data: roleData } = await supabase.from("user_roles").select("role").eq("user_id", userId);
 
   // Se for admin ou super_admin, retorna "all" (acesso total)
-  if (roleData?.role === "admin" || roleData?.role === "super_admin") {
+  if (roleData?.some((row) => row.role === "admin" || row.role === "super_admin")) {
     return ["all"];
   }
 

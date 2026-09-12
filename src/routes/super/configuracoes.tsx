@@ -1,81 +1,82 @@
-import { createFileRoute } from '@tanstack/react-router'
-import { useState, useEffect } from 'react'
-import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
+import { createFileRoute } from "@tanstack/react-router";
+import { useState, useEffect } from "react";
+import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import {
   getSaasSettings,
   updateSaasSettings,
   MAINTENANCE_FALLBACK,
   type SaasSettings,
   type SaasSettingsInput,
-} from '@/lib/saas-settings.functions'
-import { Button } from '@/components/ui/button'
-import { Input } from '@/components/ui/input'
-import { Label } from '@/components/ui/label'
-import { Textarea } from '@/components/ui/textarea'
-import { Switch } from '@/components/ui/switch'
-import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
-import { ImageUpload } from '@/components/admin/ImageUpload'
-import { toast } from 'sonner'
-import { Loader2, Save, Layout, Palette, Wrench, AlertTriangle } from 'lucide-react'
+} from "@/lib/saas-settings.functions";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import { Textarea } from "@/components/ui/textarea";
+import { Switch } from "@/components/ui/switch";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { ImageUpload } from "@/components/admin/ImageUpload";
+import { DEFAULT_STORE_ID } from "@/lib/delivery.functions";
+import { toast } from "sonner";
+import { Loader2, Save, Layout, Palette, Wrench, AlertTriangle } from "lucide-react";
 
-export const Route = createFileRoute('/super/configuracoes')({
+export const Route = createFileRoute("/super/configuracoes")({
   component: SuperSettingsPage,
-})
+});
 
 type FormState = {
-  name: string
-  logoUrl: string | null
-  contactEmail: string
-  contactPhone: string
-  supportInfo: string
-  primaryColor: string
-  maintenanceMode: boolean
-  maintenanceMessage: string
-}
+  name: string;
+  logoUrl: string | null;
+  contactEmail: string;
+  contactPhone: string;
+  supportInfo: string;
+  primaryColor: string;
+  maintenanceMode: boolean;
+  maintenanceMessage: string;
+};
 
 const formFrom = (s: SaasSettings): FormState => ({
   name: s.name,
   logoUrl: s.logo_url,
-  contactEmail: s.contact_email ?? '',
-  contactPhone: s.contact_phone ?? '',
-  supportInfo: s.support_info ?? '',
+  contactEmail: s.contact_email ?? "",
+  contactPhone: s.contact_phone ?? "",
+  supportInfo: s.support_info ?? "",
   primaryColor: s.primary_color,
   maintenanceMode: s.maintenance_mode,
-  maintenanceMessage: s.maintenance_message ?? '',
-})
+  maintenanceMessage: s.maintenance_message ?? "",
+});
 
-const trimmed = (v: string): string | null => (v.trim() ? v.trim() : null)
+const trimmed = (v: string): string | null => (v.trim() ? v.trim() : null);
 
-const FIELD = 'bg-slate-950 border-slate-800 text-slate-100 placeholder:text-slate-600'
-const PANEL = 'bg-slate-900 rounded-xl border border-slate-800 p-6 space-y-5'
+const FIELD = "bg-slate-950 border-slate-800 text-slate-100 placeholder:text-slate-600";
+const PANEL = "bg-slate-900 rounded-xl border border-slate-800 p-6 space-y-5";
 
 function SuperSettingsPage() {
-  const queryClient = useQueryClient()
-  const [form, setForm] = useState<FormState | null>(null)
+  const queryClient = useQueryClient();
+  const [form, setForm] = useState<FormState | null>(null);
 
   const { data, isLoading, error } = useQuery({
-    queryKey: ['saas-settings'],
+    queryKey: ["saas-settings"],
     queryFn: getSaasSettings,
-  })
+  });
 
   useEffect(() => {
-    if (data) setForm(formFrom(data))
-  }, [data])
+    if (data) setForm(formFrom(data));
+  }, [data]);
 
   const saveMutation = useMutation({
     mutationFn: (input: SaasSettingsInput) => updateSaasSettings(input),
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['saas-settings'] })
-      toast.success('Configurações salvas!')
+      queryClient.invalidateQueries({ queryKey: ["saas-settings"] });
+      toast.success("Configurações salvas!");
     },
-    onError: (e: any) => toast.error(e.message || 'Erro ao salvar.'),
-  })
+    onError: (e: any) => toast.error(e.message || "Erro ao salvar."),
+  });
 
   const save = () => {
-    if (!form) return
+    if (!form) return;
     if (!form.name.trim()) {
-      toast.error('O nome do sistema não pode ficar vazio.')
-      return
+      toast.error("O nome do sistema não pode ficar vazio.");
+      return;
     }
     saveMutation.mutate({
       name: form.name.trim(),
@@ -86,15 +87,15 @@ function SuperSettingsPage() {
       primaryColor: form.primaryColor,
       maintenanceMode: form.maintenanceMode,
       maintenanceMessage: trimmed(form.maintenanceMessage),
-    })
-  }
+    });
+  };
 
   if (error) {
     return (
       <div className="bg-red-500/10 border border-red-500/30 rounded-xl p-6 text-red-300 text-sm">
         Não foi possível carregar as configurações: {(error as Error).message}
       </div>
-    )
+    );
   }
 
   if (isLoading || !form) {
@@ -102,7 +103,7 @@ function SuperSettingsPage() {
       <div className="p-12 flex justify-center">
         <Loader2 className="animate-spin text-pink-500" size={32} />
       </div>
-    )
+    );
   }
 
   return (
@@ -224,6 +225,7 @@ function SuperSettingsPage() {
               <div className="max-w-sm">
                 <ImageUpload
                   value={form.logoUrl}
+                  storeId={DEFAULT_STORE_ID}
                   onChange={(url) => setForm({ ...form, logoUrl: url })}
                   folder="store"
                   maxSizeMB={2}
@@ -254,8 +256,8 @@ function SuperSettingsPage() {
                 />
               </div>
               <p className="text-[11px] text-slate-500">
-                Recolore este painel (botões, menu, destaques). Cada loja continua escolhendo a
-                cor dela em Configurações da loja.
+                Recolore este painel (botões, menu, destaques). Cada loja continua escolhendo a cor
+                dela em Configurações da loja.
               </p>
             </div>
           </div>
@@ -267,7 +269,7 @@ function SuperSettingsPage() {
               <div>
                 <div className="text-sm font-medium text-slate-100">Modo manutenção</div>
                 <p className="text-xs text-slate-500 mt-1 max-w-md">
-                  Ligado, o painel das lojas (<span className="font-mono">/admin</span> e{' '}
+                  Ligado, o painel das lojas (<span className="font-mono">/admin</span> e{" "}
                   <span className="font-mono">/staff</span>) fica bloqueado com um recado. O
                   cardápio dos clientes continua no ar e recebendo pedidos, e você nunca é
                   bloqueado.
@@ -300,5 +302,5 @@ function SuperSettingsPage() {
         </TabsContent>
       </Tabs>
     </div>
-  )
+  );
 }

@@ -1,0 +1,796 @@
+MANIFESTO DE TESTE DO SISTEMA
+Confeitaria Livya SaaS
+
+VERSÃO
+2026-09-10
+
+OBJETIVO
+Validar sistema completo antes de vender e antes de publicar produção.
+
+AMBIENTE ATUAL
+Preview online:
+https://confeitarialivya-saas-ob26ta5fx-a-r-machado.vercel.app/confeitaria-livya
+
+Supabase staging:
+zdbimcwedbdjkbldtxbs
+
+Regra: testar primeiro Preview + staging. Não usar produção para teste.
+
+RESULTADO FINAL
+Marcar sistema APROVADO somente quando todas etapas obrigatórias passarem.
+Falha em segurança, isolamento, checkout, autenticação ou pedido bloqueia publicação.
+
+======================================================================
+ETAPA 0 — PREPARAÇÃO E SEGURANÇA
+======================================================================
+
+[ ] 0.1 Confirmar URL de teste
+    Abrir:
+    https://confeitarialivya-saas-ob26ta5fx-a-r-machado.vercel.app/confeitaria-livya
+
+[ ] 0.2 Confirmar ambiente
+    Verificar que URL usa Preview.
+    Verificar que dados pertencem a staging.
+    Não inserir dados reais de clientes.
+
+[ ] 0.3 Fechar interferências
+    Fechar abas antigas "Authorize App".
+    Código Vercel antigo MSVP-KFRV está expirado.
+    Se aparecer Vercel Toolbar, pressionar Esc.
+
+[ ] 0.4 Preparar evidência
+    Para cada teste registrar:
+    - data e hora;
+    - aparelho e navegador;
+    - usuário usado;
+    - etapa executada;
+    - resultado;
+    - mensagem de erro;
+    - screenshot quando houver falha.
+
+[ ] 0.5 Confirmar segredo
+    Nunca colar SUPABASE_SERVICE_ROLE_KEY no navegador.
+    Nunca enviar senha real em screenshot.
+    Nunca usar senha real de cliente em staging.
+
+GATE 0
+[ ] Ambiente correto
+[ ] Sem dado real
+[ ] Evidências preparadas
+
+======================================================================
+ETAPA 1 — TESTE EM CELULAR
+======================================================================
+
+Dispositivos mínimos:
+[ ] Android + Chrome
+[ ] iPhone + Safari, se disponível
+[ ] Tela retrato
+[ ] Tela paisagem
+[ ] Tela pequena, aproximadamente 375px
+
+Testar:
+[ ] Página abre sem tela branca.
+[ ] Logo e nome aparecem.
+[ ] Texto não corta.
+[ ] Botões cabem na tela.
+[ ] Não existe rolagem horizontal.
+[ ] Rolagem vertical funciona.
+[ ] Teclado não esconde campo ativo.
+[ ] Modal abre dentro da tela.
+[ ] Modal fecha no botão correto.
+[ ] Toast ou mensagem aparece sem sair da tela.
+[ ] Imagens carregam ou mostram placeholder correto.
+[ ] Botões não exigem duplo toque.
+[ ] Clique acidental não cria pedido duplicado.
+
+GATE 1
+[ ] Layout passa em retrato
+[ ] Layout passa em paisagem
+[ ] Sem rolagem horizontal
+[ ] Campos usáveis com teclado aberto
+
+======================================================================
+ETAPA 2 — CATÁLOGO PÚBLICO
+======================================================================
+
+Abrir:
+https://confeitarialivya-saas-ob26ta5fx-a-r-machado.vercel.app/confeitaria-livya
+
+[ ] Nome da loja correto.
+[ ] Status ABERTO aparece.
+[ ] Horário aparece.
+[ ] Descrição aparece.
+[ ] Categorias aparecem.
+[ ] Produtos aparecem.
+[ ] Preços aparecem.
+[ ] Produtos indisponíveis não permitem pedido.
+[ ] Produto sem imagem mostra placeholder.
+[ ] Produto com imagem mostra imagem correta.
+[ ] Filtro por categoria funciona.
+[ ] Retornar para categoria Todos funciona.
+[ ] Atualizar página mantém catálogo.
+[ ] Abrir em aba anônima funciona.
+[ ] Catálogo não mostra owner_id.
+[ ] Catálogo não mostra dados internos da loja.
+
+Validar no navegador:
+[ ] Console sem erro funcional.
+[ ] Requisições públicas usam RPC do catálogo.
+[ ] Leituras diretas de tabelas sensíveis não aparecem como sucesso.
+
+GATE 2
+[ ] Catálogo público funciona
+[ ] Dados corretos
+[ ] Dados privados ocultos
+
+======================================================================
+ETAPA 3 — PRODUTO, ADICIONAIS E CARRINHO
+======================================================================
+
+[ ] Tocar botão + adiciona produto.
+[ ] Produto sem adicional entra direto no carrinho.
+[ ] Produto com adicional abre seleção.
+[ ] Adicional obrigatório impede avanço sem seleção.
+[ ] Adicional opcional pode ficar vazio.
+[ ] Limite máximo do grupo é respeitado.
+[ ] Seleção duplicada é rejeitada ou impedida.
+[ ] Preço do adicional aparece corretamente.
+[ ] Alterar quantidade aumenta subtotal.
+[ ] Diminuir quantidade reduz subtotal.
+[ ] Quantidade mínima é 1.
+[ ] Remover item funciona.
+[ ] Esvaziar carrinho funciona.
+[ ] Reabrir produto preserva ou limpa seleção conforme regra definida.
+[ ] Carrinho não perde dados ao fechar modal.
+[ ] Total visual bate com itens + adicionais + taxa estimada.
+
+Importante:
+Valor visual no cliente serve para UX. Valor final deve ser calculado no DB.
+
+GATE 3
+[ ] Regras de adicionais passam
+[ ] Carrinho passa
+[ ] Quantidades passam
+[ ] Total visual coerente
+
+======================================================================
+ETAPA 4 — CHECKOUT NORMAL
+======================================================================
+
+Usar dados falsos:
+Nome: Cliente QA
+Telefone: 11999999999
+Rua: Rua QA
+Número: 100
+Bairro: Centro
+Complemento: Sala QA
+Referência: Próximo ao teste
+Pagamento: pix
+Observação: Pedido de teste staging
+
+[ ] Loja aberta permite iniciar checkout.
+[ ] Nome obrigatório funciona.
+[ ] Telefone obrigatório funciona.
+[ ] Rua obrigatória funciona.
+[ ] Número obrigatório funciona.
+[ ] Bairro válido funciona.
+[ ] Forma pix funciona.
+[ ] Forma card funciona, se habilitada.
+[ ] Forma money funciona, se habilitada.
+[ ] Observação aceita texto válido.
+[ ] Campos inválidos mostram mensagem.
+[ ] Botão envia uma vez.
+[ ] Duplo toque não cria dois pedidos.
+[ ] Pedido retorna sucesso.
+[ ] ID do pedido aparece ou fica disponível no painel.
+[ ] Carrinho limpa depois do sucesso.
+[ ] Recarregar página não reenvia pedido.
+
+GATE 4
+[ ] Pedido normal criado
+[ ] Sem duplicidade
+[ ] Mensagem de sucesso
+[ ] Carrinho limpo
+
+======================================================================
+ETAPA 5 — TENTATIVAS DE MANIPULAÇÃO FINANCEIRA
+======================================================================
+
+Objetivo: cliente não pode definir preço, adicional, taxa ou total.
+Executar somente em staging.
+
+[ ] Alterar total no DevTools não altera total do pedido.
+[ ] Enviar total_amount falso não altera total do DB.
+[ ] Enviar delivery_fee falso não altera taxa do DB.
+[ ] Enviar price_at_time falso não altera preço salvo.
+[ ] Enviar product_name falso não altera nome salvo.
+[ ] Enviar preço negativo falha.
+[ ] Enviar quantidade zero falha.
+[ ] Enviar quantidade maior que limite falha.
+[ ] Enviar product_id inexistente falha.
+[ ] Enviar produto de outra loja falha.
+[ ] Enviar addon_id inexistente falha.
+[ ] Enviar adicional de outra loja falha.
+[ ] Enviar bairro de outra loja falha.
+[ ] Enviar store_id inválido falha.
+[ ] Pedido inválido não cria registro parcial.
+
+Resultado obrigatório:
+DB calcula subtotal, adicionais, taxa e total.
+Pedido e itens devem nascer na mesma transação.
+
+GATE 5
+[ ] Nenhum valor financeiro aceito do cliente
+[ ] Nenhum pedido parcial criado
+[ ] Cross-tenant financeiro bloqueado
+
+======================================================================
+ETAPA 6 — LOJA FECHADA
+======================================================================
+
+No painel Admin, alterar loja para fechada.
+
+[ ] Catálogo mostra status fechado.
+[ ] Botão Finalizar Pedido fica desabilitado.
+[ ] Cliente não inicia checkout.
+[ ] RPC create_order rejeita pedido enquanto loja fechada.
+[ ] Mensagem informa que loja está fechada.
+[ ] Reabrir loja restaura checkout.
+[ ] Pedido criado antes de fechar continua preservado.
+
+GATE 6
+[ ] UI bloqueia
+[ ] DB bloqueia
+[ ] Dados antigos preservados
+
+======================================================================
+ETAPA 7 — LOGIN, LOGOUT E RESET DE SENHA
+======================================================================
+
+Abrir:
+https://confeitarialivya-saas-ob26ta5fx-a-r-machado.vercel.app/auth
+
+[ ] Login com credencial válida funciona.
+[ ] Senha errada falha sem revelar informação indevida.
+[ ] Email inexistente falha com mensagem segura.
+[ ] Logout encerra sessão.
+[ ] Abrir painel sem sessão redireciona para auth.
+[ ] Sessão persiste ao recarregar, conforme regra.
+[ ] Sessão expirada exige novo login.
+[ ] Solicitar reset envia fluxo correto.
+[ ] Link de reset abre rota correta.
+[ ] Link expirado mostra erro seguro.
+[ ] Senha curta é rejeitada.
+[ ] Senha confirmada diferente é rejeitada.
+[ ] Nova senha funciona.
+[ ] Após reset, usuário é redirecionado para login.
+[ ] Senha antiga deixa de funcionar.
+
+Usuário bloqueado:
+[ ] Usuário com status blocked não entra.
+[ ] Mensagem informa bloqueio.
+[ ] Sessão é encerrada.
+
+GATE 7
+[ ] Login
+[ ] Logout
+[ ] Reset
+[ ] Bloqueio
+
+======================================================================
+ETAPA 8 — PAINEL STAFF E CICLO DO PEDIDO
+======================================================================
+
+Abrir:
+https://confeitarialivya-saas-ob26ta5fx-a-r-machado.vercel.app/staff
+
+[ ] Usuário autorizado acessa.
+[ ] Usuário sem role não acessa.
+[ ] Pedido novo aparece.
+[ ] Pedido começa em pending.
+[ ] Dados do cliente aparecem.
+[ ] Itens aparecem.
+[ ] Adicionais aparecem.
+[ ] Total DB aparece.
+[ ] Taxa DB aparece.
+[ ] Observação aparece.
+[ ] Busca por nome funciona.
+[ ] Busca por telefone funciona.
+[ ] Busca por ID ou prefixo funciona.
+[ ] Filtro por status funciona.
+[ ] Contadores não mudam por causa da busca.
+[ ] Atualização realtime aparece.
+[ ] Som toca somente para pedido novo, se habilitado.
+[ ] Som não toca ao alterar pedido existente.
+
+Transições válidas:
+[ ] pending -> confirmed
+[ ] confirmed -> preparing
+[ ] preparing -> ready
+[ ] ready -> out_for_delivery
+[ ] out_for_delivery -> delivered
+
+Transições inválidas:
+[ ] pending -> delivered falha.
+[ ] delivered -> canceled falha.
+[ ] Status inventado falha.
+[ ] Salto inválido falha.
+
+Cancelamento:
+[ ] Cancelar pedido exige confirmação.
+[ ] Cancelar antes de out_for_delivery funciona.
+[ ] Cancelar entregue falha.
+[ ] Cancelar com motivo salva motivo.
+[ ] Cancelar sem motivo segue regra definida.
+[ ] Cancelamento não apaga pedido.
+[ ] Cancelamento gera auditoria.
+
+Reabertura:
+[ ] Reabrir pedido segue regra definida.
+[ ] Reabertura gera auditoria.
+[ ] Pedido não duplica.
+
+Histórico:
+[ ] delivered não aparece na Central ativa.
+[ ] canceled não aparece na Central ativa.
+[ ] Histórico mostra pedido.
+[ ] Impressão preserva dados.
+[ ] Atualizar painel não apaga dados.
+
+GATE 8
+[ ] Ciclo válido passa
+[ ] Ciclo inválido bloqueia
+[ ] Cancelamento auditado
+[ ] Histórico preservado
+
+======================================================================
+ETAPA 9 — WHATSAPP E NOTIFICAÇÕES
+======================================================================
+
+[ ] Pedido recebido usa configuração correta.
+[ ] Transição aceita usa configuração correta.
+[ ] Saída para entrega usa configuração correta.
+[ ] Cancelamento usa configuração correta.
+[ ] Evento sem template usa fallback seguro.
+[ ] Falha de popup não desfaz alteração de status.
+[ ] Duplo clique não envia duas notificações.
+[ ] Tentativa e erro ficam registrados.
+[ ] Sem número configurado, sistema não quebra.
+
+GATE 9
+[ ] Notificações corretas
+[ ] Sem rollback indevido
+[ ] Falhas registradas
+
+======================================================================
+ETAPA 10 — PAINEL ADMIN
+======================================================================
+
+Abrir:
+https://confeitarialivya-saas-ob26ta5fx-a-r-machado.vercel.app/admin
+
+[ ] Admin autorizado acessa.
+[ ] Employee vê somente permissões permitidas.
+[ ] Cliente comum não acessa.
+[ ] Dashboard carrega sem erro.
+[ ] Produtos carregam.
+[ ] Criar produto funciona.
+[ ] Editar produto funciona.
+[ ] Desativar produto funciona.
+[ ] Produto de outra loja não aparece.
+[ ] Categoria criar funciona.
+[ ] Categoria editar funciona.
+[ ] Categoria excluir segue regra sem apagar dependência indevidamente.
+[ ] Adicional criar funciona.
+[ ] Grupo obrigatório funciona.
+[ ] Limites min/max funcionam.
+[ ] Taxa de entrega criar funciona.
+[ ] Taxa de entrega editar funciona.
+[ ] Taxa de entrega pertence à loja correta.
+[ ] Configuração de loja salva.
+[ ] Abrir/fechar loja salva.
+[ ] Configuração WhatsApp salva.
+[ ] Imagem válida envia.
+[ ] Arquivo grande falha.
+[ ] Tipo de arquivo inválido falha.
+[ ] Caminho Storage começa com store_id correto.
+
+Links:
+Admin:
+https://confeitarialivya-saas-ob26ta5fx-a-r-machado.vercel.app/admin
+Configurações:
+https://confeitarialivya-saas-ob26ta5fx-a-r-machado.vercel.app/admin/settings
+
+GATE 10
+[ ] CRUD autorizado
+[ ] Tenant correto
+[ ] Upload seguro
+[ ] Configurações salvas
+
+======================================================================
+ETAPA 11 — ISOLAMENTO ENTRE LOJAS
+======================================================================
+
+Obrigatório: duas lojas, dois usuários e dois produtos em staging.
+Uma conta e uma loja não validam isolamento.
+
+Preparar variáveis fora Git:
+QA_TARGET=staging
+QA_STAGING_PROJECT_REF=zdbimcwedbdjkbldtxbs
+QA_STORE_A=<uuid loja A>
+QA_STORE_B=<uuid loja B>
+QA_PRODUCT_A=<uuid produto A>
+QA_PRODUCT_B=<uuid produto B>
+QA_EMAIL_A=<email usuário A>
+QA_EMAIL_B=<email usuário B>
+QA_PASSWORD_A=<senha usuário A>
+QA_PASSWORD_B=<senha usuário B>
+
+Executar:
+QA_TARGET=staging npm run qa:staging:security
+
+Testar:
+[ ] Usuário A lê loja A.
+[ ] Usuário A não lê loja B.
+[ ] Usuário A lê produto A.
+[ ] Usuário A não lê produto B.
+[ ] Usuário B lê loja B.
+[ ] Usuário B não lê loja A.
+[ ] Usuário A não lê membros B.
+[ ] Usuário A não lê pedidos B.
+[ ] Usuário A não lê itens B.
+[ ] Usuário A não lê categorias B.
+[ ] Usuário A não lê taxas B.
+[ ] Usuário A não altera produto B.
+[ ] Usuário B não altera produto A.
+[ ] Upload A não grava em caminho B.
+[ ] Download A não lê arquivo B.
+[ ] RPC público A não retorna catálogo B.
+[ ] Audit log A não expõe dados B.
+
+GATE 11
+[ ] Todas tentativas cross-tenant bloqueadas
+[ ] Nenhum dado cruzado
+[ ] QA script passa sem falha
+
+======================================================================
+ETAPA 12 — STORAGE
+======================================================================
+
+[ ] Upload imagem produto autorizado.
+[ ] Upload imagem categoria autorizado.
+[ ] Upload imagem loja autorizado.
+[ ] Arquivo maior que limite falha.
+[ ] Extensão inválida falha.
+[ ] Nome de arquivo não permite path traversal.
+[ ] Caminho usa UUID da loja.
+[ ] Usuário A não grava na pasta B.
+[ ] Usuário A não lê arquivo privado B.
+[ ] Remoção segue permissão.
+[ ] URL pública, quando usada, não revela dado privado.
+
+GATE 12
+[ ] Storage isolado
+[ ] Validação de arquivo
+[ ] Sem path traversal
+
+======================================================================
+ETAPA 13 — SUPER ADMIN
+======================================================================
+
+Abrir:
+https://confeitarialivya-saas-ob26ta5fx-a-r-machado.vercel.app/super
+
+[ ] Super admin autorizado acessa.
+[ ] Admin comum não acessa recursos super admin.
+[ ] Lista de lojas carrega.
+[ ] Criar loja funciona.
+[ ] Slug duplicado falha.
+[ ] Loja criada recebe configuração padrão.
+[ ] Owner assignment funciona em transação.
+[ ] Owner recebe role correta.
+[ ] Usuário sem vínculo não ganha acesso.
+[ ] Suspender loja segue regra.
+[ ] Reativar loja segue regra.
+[ ] Usuário não pode assumir loja sem autorização.
+[ ] Dados de uma loja não vazam para outra.
+
+Configurações:
+https://confeitarialivya-saas-ob26ta5fx-a-r-machado.vercel.app/super/configuracoes
+
+Planos:
+https://confeitarialivya-saas-ob26ta5fx-a-r-machado.vercel.app/super/planos
+
+[ ] Planos carregam.
+[ ] Preços exibem valor correto.
+[ ] Feature gates respeitam plano.
+[ ] Alteração de plano não apaga dados.
+
+GATE 13
+[ ] Controle super admin
+[ ] Owner transacional
+[ ] Planos e features
+
+======================================================================
+ETAPA 14 — AUDITORIA E PERMISSÕES
+======================================================================
+
+[ ] Ação administrativa gera audit log.
+[ ] Actor vem da sessão autenticada.
+[ ] Usuário não informa actor_id arbitrário.
+[ ] Usuário não informa actor_email arbitrário.
+[ ] Audit log não aceita INSERT direto de authenticated.
+[ ] Audit log registra store_id correto.
+[ ] Audit log registra descrição útil.
+[ ] Audit log registra metadata sem segredo.
+[ ] Status alterado gera histórico.
+[ ] Cancelamento gera histórico.
+[ ] Reabertura gera histórico.
+[ ] Audit log não pode ser apagado por usuário comum.
+[ ] Audit log de outra loja fica isolado.
+
+GATE 14
+[ ] Actor confiável
+[ ] Logs append-only para usuário
+[ ] Tenant correto
+
+======================================================================
+ETAPA 15 — API E RLS NEGATIVO
+======================================================================
+
+Executar com browser anônimo e sessão de usuário.
+
+[ ] SELECT anônimo em stores sensível falha.
+[ ] SELECT anônimo em products direto falha.
+[ ] SELECT anônimo em categories direto falha.
+[ ] SELECT anônimo em addons direto falha.
+[ ] SELECT anônimo em delivery_fees direto falha.
+[ ] SELECT anônimo em store_settings direto falha.
+[ ] INSERT direto em orders falha.
+[ ] INSERT direto em order_items falha.
+[ ] DELETE direto em orders falha.
+[ ] UPDATE financeiro direto em orders falha.
+[ ] INSERT direto em audit_logs falha.
+[ ] RPC público permitido funciona.
+[ ] RPC interno sem role falha.
+[ ] Payload JSON inválido falha.
+[ ] UUID inválido falha.
+[ ] Campo inesperado não assume autoridade financeira.
+
+GATE 15
+[ ] RLS bloqueia acesso indevido
+[ ] RPC público mínimo
+[ ] RPC interno protegido
+
+======================================================================
+ETAPA 16 — RESILIÊNCIA E ERROS
+======================================================================
+
+[ ] Desligar internet durante catálogo mostra erro útil.
+[ ] Reconectar recupera catálogo.
+[ ] Erro de API não apaga dados já exibidos.
+[ ] Refresh durante pedido não duplica envio.
+[ ] Clicar duas vezes em salvar não duplica registro.
+[ ] Clicar duas vezes em alterar status não duplica histórico.
+[ ] Sessão expirada redireciona corretamente.
+[ ] API 401 mostra login.
+[ ] API 403 mostra sem permissão.
+[ ] API 500 não mostra segredo.
+[ ] Console não mostra token.
+[ ] URL não contém senha.
+[ ] Logs não contêm service role.
+
+GATE 16
+[ ] Falhas recuperáveis
+[ ] Sem duplicidade
+[ ] Sem vazamento
+
+======================================================================
+ETAPA 17 — BACKUP E RESTORE
+======================================================================
+
+Pré-requisito: Docker ou Podman instalado.
+
+[ ] Backup staging criado.
+[ ] Arquivo salvo fora Git.
+[ ] Backup contém schema esperado.
+[ ] Backup não contém service role em texto indevido.
+[ ] Restore testado em banco separado ou ambiente local.
+[ ] Catálogo retorna após restore.
+[ ] RLS retorna após restore.
+[ ] Functions retornam após restore.
+[ ] Migrations continuam rastreáveis.
+[ ] Não apagar dados de produção.
+
+GATE 17
+[ ] Backup existe
+[ ] Restore comprovado
+[ ] Produção preservada
+
+======================================================================
+ETAPA 18 — BUILD, LINT E MIGRATIONS
+======================================================================
+
+Executar no projeto:
+
+npm run typecheck
+npm run build
+npm run lint
+npx supabase db lint --project-ref "zdbimcwedbdjkbldtxbs"
+npx supabase migration list --project-ref "zdbimcwedbdjkbldtxbs"
+npx supabase db push --project-ref "zdbimcwedbdjkbldtxbs" --dry-run
+
+git diff --check
+
+[ ] TypeScript passa.
+[ ] Build passa.
+[ ] Lint passa ou pendências antigas estão documentadas.
+[ ] DB lint passa.
+[ ] Migrations local/remota sincronizadas.
+[ ] Dry-run não mostra migration inesperada.
+[ ] Não usar --linked até confirmar projeto alvo.
+[ ] Não usar produção como staging.
+
+GATE 18
+[ ] Código compilável
+[ ] Banco sincronizado
+[ ] Pendências documentadas
+
+======================================================================
+ETAPA 19 — DEPLOY PREVIEW
+======================================================================
+
+[ ] Preview usa VITE_SUPABASE_URL de staging.
+[ ] Preview usa VITE_SUPABASE_PROJECT_ID zdbimcwedbdjkbldtxbs.
+[ ] Preview usa VITE_SUPABASE_PUBLISHABLE_KEY staging.
+[ ] Preview não tem SUPABASE_SERVICE_ROLE_KEY.
+[ ] Build Vercel está Ready.
+[ ] Catálogo abre externamente.
+[ ] Auth abre externamente.
+[ ] Staff abre externamente.
+[ ] Requisições apontam staging.
+[ ] Erro de Vercel Toolbar não é confundido com erro app.
+[ ] Preview não usa domínio de produção.
+
+GATE 19
+[ ] Preview público testável
+[ ] Variáveis corretas
+[ ] Sem segredo backend
+
+======================================================================
+ETAPA 20 — DECISÃO DE PRODUÇÃO
+======================================================================
+
+Só iniciar após Gates 0–19 passarem.
+
+[ ] Backup confirmado.
+[ ] Credencial DB exposta anteriormente foi rotacionada.
+[ ] Histórico de migrations produção foi conferido no Dashboard.
+[ ] Migrations produção foram aprovadas.
+[ ] Variáveis Production apontam produção correta.
+[ ] Variáveis Preview continuam apontando staging.
+[ ] Domínio confirmado.
+[ ] Redirect URLs Supabase configuradas.
+[ ] Email Auth configurado.
+[ ] Storage buckets configurados.
+[ ] CORS e URLs conferidos.
+[ ] Smoke test planejado.
+[ ] Rollback planejado.
+[ ] Dono do negócio aprovou janela de publicação.
+
+Produção exige confirmação explícita antes de:
+- aplicar migration;
+- publicar deploy Production;
+- alterar dados;
+- remover dados;
+- alterar credenciais;
+- rotacionar segredo.
+
+GATE 20
+[ ] Produção pronta para publicação controlada
+
+======================================================================
+ETAPA 21 — SMOKE TEST PÓS-PRODUÇÃO
+======================================================================
+
+Após publicação autorizada:
+
+[ ] Domínio abre.
+[ ] Catálogo público abre.
+[ ] Loja aparece aberta/fechada corretamente.
+[ ] Produto aparece.
+[ ] Carrinho funciona.
+[ ] Pedido de teste autorizado funciona.
+[ ] Pedido aparece em Staff.
+[ ] Status pode avançar.
+[ ] Login funciona.
+[ ] Admin funciona.
+[ ] Storage funciona.
+[ ] Logs sem erro crítico.
+[ ] Métricas sem aumento anormal de erro.
+[ ] Pedido de teste tratado conforme procedimento.
+[ ] Nenhum pedido real foi alterado.
+
+GATE 21
+[ ] Produção operacional
+[ ] Smoke test aprovado
+[ ] Sem erro crítico
+
+======================================================================
+ETAPA 22 — PRONTO PARA VENDER
+======================================================================
+
+Segurança:
+[ ] GATES 0–16 aprovados.
+[ ] Cross-tenant aprovado.
+[ ] Checkout server-side aprovado.
+[ ] Backup/restore aprovado.
+
+Operação:
+[ ] GATES 17–21 aprovados.
+[ ] Suporte definido.
+[ ] Monitoramento definido.
+[ ] Procedimento incidente definido.
+[ ] Procedimento rollback definido.
+
+Comercial:
+[ ] Plano e preço definidos.
+[ ] Forma de cobrança definida.
+[ ] Trial definido.
+[ ] Cancelamento definido.
+[ ] Inadimplência definida.
+[ ] Termos de uso publicados.
+[ ] Política de privacidade publicada.
+[ ] LGPD revisada.
+[ ] Responsável por suporte definido.
+
+Produto SaaS completo:
+[ ] Billing recorrente.
+[ ] Webhook idempotente.
+[ ] Convite de equipe.
+[ ] Onboarding.
+[ ] Observabilidade.
+[ ] Backup automático.
+[ ] CI/CD.
+
+DECISÃO
+[ ] APROVADO PARA TESTE
+[ ] APROVADO PARA PILOTO PAGANTE
+[ ] APROVADO PARA VENDA GERAL
+[ ] REPROVADO — corrigir falhas listadas
+
+======================================================================
+REGISTRO DE FALHAS
+======================================================================
+
+ID:
+Data:
+Etapa:
+Usuário:
+Dispositivo:
+URL:
+Passos:
+Resultado esperado:
+Resultado obtido:
+Mensagem de erro:
+Screenshot/arquivo:
+Severidade: Bloqueante / Alta / Média / Baixa
+Correção:
+Reteste:
+Status: Aberto / Corrigido / Confirmado
+
+======================================================================
+REGRAS FINAIS
+======================================================================
+
+1. Não testar produção com dado falso sem autorização explícita.
+2. Não usar service_role no browser.
+3. Não colocar senha em Git.
+4. Não compartilhar token em screenshot.
+5. Não apagar pedido real.
+6. Não usar produção como staging.
+7. Toda falha de isolamento bloqueia venda.
+8. Toda falha de cálculo financeiro bloqueia venda.
+9. Toda migration deve ter alvo confirmado.
+10. Todo deploy Production exige aprovação explícita.

@@ -41,6 +41,52 @@ export type StoreData = {
   settings: StoreSettings;
 };
 
+type PublicStoreResponse = {
+  store: Store;
+  settings: StoreSettings;
+};
+
+type PublicCatalogProduct = {
+  id: string;
+  name: string;
+  description: string | null;
+  price: number;
+  effective_price: number;
+  image_url: string | null;
+  is_available: boolean | null;
+  is_featured: boolean | null;
+  is_on_sale: boolean;
+  sale_price: number | null;
+  sale_start_at: string | null;
+  sale_end_at: string | null;
+  category_id: string;
+  addons: Array<{
+    group: {
+      id: string;
+      name: string;
+      min_quantity: number;
+      max_quantity: number;
+      is_required: boolean;
+      status: string;
+      items: Array<{ id: string; name: string; price: number; status: string }>;
+    };
+  }>;
+};
+
+type PublicCatalogCategory = {
+  id: string;
+  name: string;
+  image_url: string | null;
+  sort_order: number;
+  status: string;
+  products: PublicCatalogProduct[];
+};
+
+export type PublicDeliveryFee = {
+  neighborhood: string;
+  fee: number;
+};
+
 const defaultSettings = (name = "Minha Loja", store_id = DEFAULT_STORE_ID): StoreSettings => ({
   store_id,
   name,
@@ -73,56 +119,36 @@ export const getStoreBySlug = async (slug: string): Promise<StoreData | null> =>
   const cleanSlug = (slug || "").trim().toLowerCase();
   if (!cleanSlug) return null;
 
-  const { data: store, error: storeError } = await supabase
-    .from("stores")
-    .select("*")
-    .eq("slug", cleanSlug)
-    .eq("status", "active")
-    .maybeSingle();
+  const { data, error } = await supabase.rpc("get_public_store_by_slug", {
+    _slug: cleanSlug,
+  });
 
-  if (storeError || !store) return null;
+  if (error || !data || typeof data !== "object" || Array.isArray(data)) return null;
+  return data as unknown as PublicStoreResponse;
+};
 
-  const { data: settings } = await supabase
-    .from("store_settings")
-    .select("*")
-    .eq("store_id", store.id)
-    .maybeSingle();
+export const getPublicStoreSettings = async (
+  storeId: string = DEFAULT_STORE_ID,
+): Promise<StoreSettings> => {
+  const { data, error } = await supabase.rpc("get_public_store", {
+    _store_id: storeId,
+  });
 
-  return {
-    store: store as Store,
-    settings: settings
-      ? {
-          store_id: store.id,
-          name: settings.name || store.name,
-          description: settings.description,
-          logo_url: settings.logo_url,
-          cover_url: settings.cover_url,
-          opening_hours: settings.opening_hours,
-          is_open: settings.is_open ?? true,
-          phone: settings.phone,
-          whatsapp: settings.whatsapp,
-          instagram: settings.instagram,
-          address: settings.address,
-          primary_color: settings.primary_color || "#1d4ed8",
-          secondary_color: settings.secondary_color || "#eff6ff",
-          auto_notify_whatsapp: settings.auto_notify_whatsapp ?? false,
-          whatsapp_accept_enabled: (settings as any).whatsapp_accept_enabled ?? true,
-          whatsapp_cancel_enabled: (settings as any).whatsapp_cancel_enabled ?? true,
-          whatsapp_shipping_enabled: (settings as any).whatsapp_shipping_enabled ?? true,
-          whatsapp_template_aceito: (settings as any).whatsapp_template_aceito,
-          whatsapp_template_cancelado: (settings as any).whatsapp_template_cancelado,
-          whatsapp_template_recebido: (settings as any).whatsapp_template_recebido,
-          whatsapp_template_saida_entrega: (settings as any).whatsapp_template_saida_entrega,
-        }
-      : defaultSettings(store.name, store.id),
-  };
+  if (error || !data || typeof data !== "object" || Array.isArray(data)) {
+    return defaultSettings("Minha Loja", storeId);
+  }
+
+  const response = data as unknown as PublicStoreResponse;
+  return response.settings;
 };
 
 /**
  * Busca as configurações de uma loja pelo seu store_id.
  * Se store_id for omitido, usa a loja padrão (retrocompatibilidade).
  */
-export const getStoreSettings = async (storeId: string = DEFAULT_STORE_ID): Promise<StoreSettings> => {
+export const getStoreSettings = async (
+  storeId: string = DEFAULT_STORE_ID,
+): Promise<StoreSettings> => {
   const { data, error } = await supabase
     .from("store_settings")
     .select("*")
@@ -168,29 +194,13 @@ export const getStoreSettings = async (storeId: string = DEFAULT_STORE_ID): Prom
  * Os apelidos `addons`, `group` e `items` no select existem porque a tela do
  * cliente já espera esse formato: `product.addons[].group.items[]`.
  */
-export const getCategoriesWithProducts = async (storeId: string = DEFAULT_STORE_ID) => {
-  const { data: categories, error: catError } = await supabase
-    .from("categories")
-    .select("*")
-    .eq("store_id", storeId)
-    .eq("status", "active")
-    .order("sort_order", { ascending: true });
+export const getCategoriesWithProducts = async (
+  storeId: string = DEFAULT_STORE_ID,
+): Promise<PublicCatalogCategory[]> => {
+  const { data, error } = await supabase.rpc("get_public_catalog", {
+    _store_id: storeId,
+  });
 
-  if (catError) throw catError;
-
-  const { data: products, error: prodError } = await supabase
-    .from("products")
-    .select(
-      "*, effective_price, category:categories(name), " +
-        "addons:product_addon_groups(group:addon_groups(id,name,min_quantity,max_quantity,is_required,status,items:addons(id,name,price,status)))",
-    )
-    .eq("store_id", storeId)
-    .eq("is_available", true);
-
-  if (prodError) throw prodError;
-
-  return (categories || []).map((category) => ({
-    ...category,
-    products: (products || []).filter((p) => p.category_id === category.id),
-  }));
+  if (error) throw error;
+  return Array.isArray(data) ? (data as unknown as PublicCatalogCategory[]) : [];
 };

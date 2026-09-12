@@ -13,76 +13,61 @@ export type CreateOrderInput = {
   reference?: string | null;
   payment_method: string;
   observation?: string | null;
+  items: Array<{
+    product_id: string;
+    quantity: number;
+    observation?: string | null;
+    selected_addons?: Array<{ id: string }> | null;
+  }>;
+};
+
+export type CreatedOrder = {
+  id: string;
+  store_id: string;
+  customer_name: string;
+  customer_phone: string;
+  address: string;
   total_amount: number;
   delivery_fee: number;
-  items: Array<{
+  payment_method: string;
+  observation: string | null;
+  status: string;
+  created_at: string;
+  order_items: Array<{
+    id: string;
+    order_id: string;
+    store_id: string;
     product_id: string;
     product_name: string;
     quantity: number;
     price_at_time: number;
-    observation?: string | null;
-    selected_addons?: any[] | null;
+    observation: string | null;
+    selected_addons: unknown;
   }>;
 };
 
-export const createOrder = async (data: CreateOrderInput) => {
-  const orderId = crypto.randomUUID();
-  const storeId = data.store_id || DEFAULT_STORE_ID;
+export const createOrder = async (data: CreateOrderInput): Promise<CreatedOrder> => {
+  const { data: created, error } = await supabase.rpc("create_order", {
+    _payload: {
+      store_id: data.store_id || DEFAULT_STORE_ID,
+      customer_name: data.customer_name,
+      customer_phone: data.customer_phone,
+      address: data.address,
+      neighborhood: data.neighborhood,
+      street: data.street,
+      number: data.number,
+      complement: data.complement || null,
+      reference: data.reference || null,
+      payment_method: data.payment_method,
+      observation: data.observation || null,
+      items: data.items,
+    },
+  });
 
-  const { error: orderError } = await supabase
-    .from("orders")
-    .insert([
-      {
-        id: orderId,
-        store_id: storeId,
-        customer_name: data.customer_name,
-        customer_phone: data.customer_phone,
-        address: data.address,
-        neighborhood: data.neighborhood,
-        street: data.street,
-        number: data.number,
-        complement: data.complement || null,
-        reference: data.reference || null,
-        total_amount: data.total_amount,
-        delivery_fee: data.delivery_fee,
-        status: "pending",
-        payment_method: data.payment_method,
-        observation: data.observation || null,
-      },
-    ]);
+  if (error) throw error;
+  if (!created || typeof created !== "object" || Array.isArray(created)) {
+    throw new Error("Não foi possível criar o pedido.");
+  }
 
-  if (orderError) throw orderError;
-
-  const orderItems = data.items.map((item) => ({
-    id: crypto.randomUUID(),
-    store_id: storeId,
-    order_id: orderId,
-    product_id: item.product_id,
-    product_name: item.product_name,
-    quantity: item.quantity,
-    price_at_time: item.price_at_time,
-    observation: item.observation || null,
-    selected_addons: item.selected_addons || null,
-  }));
-
-  const { error: itemsError } = await supabase
-    .from("order_items")
-    .insert(orderItems);
-
-  if (itemsError) throw itemsError;
-
-  return {
-    id: orderId,
-    store_id: storeId,
-    customer_name: data.customer_name,
-    customer_phone: data.customer_phone,
-    address: data.address,
-    total_amount: data.total_amount,
-    delivery_fee: data.delivery_fee,
-    payment_method: data.payment_method,
-    observation: data.observation || null,
-    status: "pending",
-    created_at: new Date().toISOString(),
-    order_items: orderItems,
-  };
+  return created as unknown as CreatedOrder;
 };

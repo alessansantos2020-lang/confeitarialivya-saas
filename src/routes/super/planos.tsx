@@ -1,6 +1,6 @@
-import { createFileRoute } from '@tanstack/react-router'
-import { useState, useEffect } from 'react'
-import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
+import { createFileRoute } from "@tanstack/react-router";
+import { useState, useEffect } from "react";
+import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import {
   getAllPlans,
   getAllFeatures,
@@ -12,13 +12,13 @@ import {
   type Feature,
   type BillingPeriod,
   type PlanInput,
-} from '@/lib/super-admin.functions'
-import { Button } from '@/components/ui/button'
-import { Input } from '@/components/ui/input'
-import { Badge } from '@/components/ui/badge'
-import { Checkbox } from '@/components/ui/checkbox'
-import { Switch } from '@/components/ui/switch'
-import { Textarea } from '@/components/ui/textarea'
+} from "@/lib/super-admin.functions";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Badge } from "@/components/ui/badge";
+import { Checkbox } from "@/components/ui/checkbox";
+import { Switch } from "@/components/ui/switch";
+import { Textarea } from "@/components/ui/textarea";
 import {
   Table,
   TableBody,
@@ -26,7 +26,7 @@ import {
   TableHead,
   TableHeader,
   TableRow,
-} from '@/components/ui/table'
+} from "@/components/ui/table";
 import {
   Dialog,
   DialogContent,
@@ -34,7 +34,7 @@ import {
   DialogFooter,
   DialogHeader,
   DialogTitle,
-} from '@/components/ui/dialog'
+} from "@/components/ui/dialog";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -44,146 +44,156 @@ import {
   AlertDialogFooter,
   AlertDialogHeader,
   AlertDialogTitle,
-} from '@/components/ui/alert-dialog'
+} from "@/components/ui/alert-dialog";
 import {
   Select,
   SelectContent,
   SelectItem,
   SelectTrigger,
   SelectValue,
-} from '@/components/ui/select'
+} from "@/components/ui/select";
 import {
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
   DropdownMenuTrigger,
-} from '@/components/ui/dropdown-menu'
-import { Plus, Loader2, MoreHorizontal, Pencil, Trash2, Package, Lock } from 'lucide-react'
-import { toast } from 'sonner'
+} from "@/components/ui/dropdown-menu";
+import { Plus, Loader2, MoreHorizontal, Pencil, Trash2, Package, Lock } from "lucide-react";
+import { toast } from "sonner";
 
-export const Route = createFileRoute('/super/planos')({
+export const Route = createFileRoute("/super/planos")({
   component: SuperPlansPage,
-})
+});
 
 const BILLING_LABEL: Record<BillingPeriod, string> = {
-  monthly: 'Mensal',
-  quarterly: 'Trimestral',
-  yearly: 'Anual',
-}
+  monthly: "Mensal",
+  quarterly: "Trimestral",
+  yearly: "Anual",
+};
 
 function money(cents: number) {
-  return new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(cents / 100)
+  return new Intl.NumberFormat("pt-BR", { style: "currency", currency: "BRL" }).format(cents / 100);
 }
 
 type FormState = {
-  name: string
-  description: string
-  priceReais: string
-  billingPeriod: BillingPeriod
-  featureIds: Set<string>
-}
+  name: string;
+  description: string;
+  priceReais: string;
+  billingPeriod: BillingPeriod;
+  featureIds: Set<string>;
+};
 
 const emptyForm = (features: Feature[]): FormState => ({
-  name: '',
-  description: '',
-  priceReais: '',
-  billingPeriod: 'monthly',
+  name: "",
+  description: "",
+  priceReais: "",
+  billingPeriod: "monthly",
   // Funcionalidades essenciais já vêm marcadas (não dá pra desligar).
   featureIds: new Set(features.filter((f) => f.is_core).map((f) => f.id)),
-})
+});
 
 function SuperPlansPage() {
-  const queryClient = useQueryClient()
-  const [editing, setEditing] = useState<PlanOverview | null>(null)
-  const [isFormOpen, setIsFormOpen] = useState(false)
-  const [deleteTarget, setDeleteTarget] = useState<PlanOverview | null>(null)
-  const [form, setForm] = useState<FormState | null>(null)
+  const queryClient = useQueryClient();
+  const [editing, setEditing] = useState<PlanOverview | null>(null);
+  const [isFormOpen, setIsFormOpen] = useState(false);
+  const [deleteTarget, setDeleteTarget] = useState<PlanOverview | null>(null);
+  const [form, setForm] = useState<FormState | null>(null);
 
   const { data: plans, isLoading } = useQuery({
-    queryKey: ['super-plans'],
+    queryKey: ["super-plans"],
     queryFn: getAllPlans,
-  })
+  });
 
   const { data: features } = useQuery({
-    queryKey: ['super-features'],
+    queryKey: ["super-features"],
     queryFn: getAllFeatures,
-  })
+  });
 
-  const invalidate = () => queryClient.invalidateQueries({ queryKey: ['super-plans'] })
+  const invalidate = () => queryClient.invalidateQueries({ queryKey: ["super-plans"] });
 
   const saveMutation = useMutation({
-    mutationFn: (payload: { id: string | null; input: PlanInput }) =>
-      payload.id ? updatePlan(payload.id, payload.input) : createPlan(payload.input),
-    onSuccess: () => {
-      invalidate()
-      setIsFormOpen(false)
-      setEditing(null)
-      setForm(null)
-      toast.success('Plano salvo!')
+    mutationFn: async (payload: { id: string | null; input: PlanInput }) => {
+      if (payload.id) {
+        await updatePlan(payload.id, payload.input);
+        return;
+      }
+
+      await createPlan(payload.input);
     },
-    onError: (error: any) => toast.error(error.message),
-  })
+    onSuccess: () => {
+      invalidate();
+      setIsFormOpen(false);
+      setEditing(null);
+      setForm(null);
+      toast.success("Plano salvo!");
+    },
+    onError: (error: unknown) =>
+      toast.error(error instanceof Error ? error.message : "Falha ao salvar plano."),
+  });
 
   const activeMutation = useMutation({
-    mutationFn: ({ id, isActive }: { id: string; isActive: boolean }) => setPlanActive(id, isActive),
+    mutationFn: ({ id, isActive }: { id: string; isActive: boolean }) =>
+      setPlanActive(id, isActive),
     onSuccess: () => {
-      invalidate()
-      toast.success('Status do plano atualizado!')
+      invalidate();
+      toast.success("Status do plano atualizado!");
     },
-    onError: (error: any) => toast.error(error.message),
-  })
+    onError: (error: unknown) =>
+      toast.error(error instanceof Error ? error.message : "Falha ao salvar plano."),
+  });
 
   const deleteMutation = useMutation({
     mutationFn: (id: string) => deletePlan(id),
     onSuccess: () => {
-      invalidate()
-      setDeleteTarget(null)
-      toast.success('Plano excluído!')
+      invalidate();
+      setDeleteTarget(null);
+      toast.success("Plano excluído!");
     },
-    onError: (error: any) => toast.error(error.message),
-  })
+    onError: (error: unknown) =>
+      toast.error(error instanceof Error ? error.message : "Falha ao salvar plano."),
+  });
 
   const openCreate = () => {
-    setEditing(null)
-    setForm(emptyForm(features || []))
-    setIsFormOpen(true)
-  }
+    setEditing(null);
+    setForm(emptyForm(features || []));
+    setIsFormOpen(true);
+  };
 
   const openEdit = (plan: PlanOverview) => {
-    setEditing(plan)
+    setEditing(plan);
     setForm({
       name: plan.name,
-      description: plan.description || '',
-      priceReais: (plan.price_cents / 100).toFixed(2).replace('.', ','),
+      description: plan.description || "",
+      priceReais: (plan.price_cents / 100).toFixed(2).replace(".", ","),
       billingPeriod: plan.billing_period,
       featureIds: new Set(plan.featureIds),
-    })
-    setIsFormOpen(true)
-  }
+    });
+    setIsFormOpen(true);
+  };
 
   const toggleFeature = (id: string) => {
     setForm((prev) => {
-      if (!prev) return prev
-      const next = new Set(prev.featureIds)
-      if (next.has(id)) next.delete(id)
-      else next.add(id)
-      return { ...prev, featureIds: next }
-    })
-  }
+      if (!prev) return prev;
+      const next = new Set(prev.featureIds);
+      if (next.has(id)) next.delete(id);
+      else next.add(id);
+      return { ...prev, featureIds: next };
+    });
+  };
 
   const handleSave = (e: React.FormEvent) => {
-    e.preventDefault()
-    if (!form || !form.name.trim()) return
+    e.preventDefault();
+    if (!form || !form.name.trim()) return;
 
-    const priceCents = Math.round(parseFloat(form.priceReais.replace(',', '.') || '0') * 100)
+    const priceCents = Math.round(parseFloat(form.priceReais.replace(",", ".") || "0") * 100);
     if (isNaN(priceCents) || priceCents < 0) {
-      toast.error('Preço inválido.')
-      return
+      toast.error("Preço inválido.");
+      return;
     }
 
     // Garante que os essenciais entrem mesmo se algo escapou da UI.
-    const coreIds = (features || []).filter((f) => f.is_core).map((f) => f.id)
-    const featureIds = Array.from(new Set([...form.featureIds, ...coreIds]))
+    const coreIds = (features || []).filter((f) => f.is_core).map((f) => f.id);
+    const featureIds = Array.from(new Set([...form.featureIds, ...coreIds]));
 
     saveMutation.mutate({
       id: editing?.id ?? null,
@@ -194,8 +204,8 @@ function SuperPlansPage() {
         billingPeriod: form.billingPeriod,
         featureIds,
       },
-    })
-  }
+    });
+  };
 
   return (
     <div className="space-y-6">
@@ -258,11 +268,11 @@ function SuperPlansPage() {
                       variant="outline"
                       className={
                         plan.is_active
-                          ? 'bg-emerald-500/15 text-emerald-400 border-emerald-500/30'
-                          : 'bg-slate-500/15 text-slate-400 border-slate-500/30'
+                          ? "bg-emerald-500/15 text-emerald-400 border-emerald-500/30"
+                          : "bg-slate-500/15 text-slate-400 border-slate-500/30"
                       }
                     >
-                      {plan.is_active ? 'Ativo' : 'Inativo'}
+                      {plan.is_active ? "Ativo" : "Inativo"}
                     </Badge>
                   </TableCell>
                   <TableCell className="text-right">
@@ -282,7 +292,7 @@ function SuperPlansPage() {
                             activeMutation.mutate({ id: plan.id, isActive: !plan.is_active })
                           }
                         >
-                          {plan.is_active ? 'Desativar' : 'Ativar'}
+                          {plan.is_active ? "Desativar" : "Ativar"}
                         </DropdownMenuItem>
                         <DropdownMenuItem
                           className="text-red-500"
@@ -306,16 +316,16 @@ function SuperPlansPage() {
       <Dialog
         open={isFormOpen}
         onOpenChange={(open) => {
-          setIsFormOpen(open)
+          setIsFormOpen(open);
           if (!open) {
-            setEditing(null)
-            setForm(null)
+            setEditing(null);
+            setForm(null);
           }
         }}
       >
         <DialogContent className="max-w-lg max-h-[90vh] overflow-y-auto">
           <DialogHeader>
-            <DialogTitle>{editing ? 'Editar plano' : 'Novo plano'}</DialogTitle>
+            <DialogTitle>{editing ? "Editar plano" : "Novo plano"}</DialogTitle>
             <DialogDescription>
               Marque as funcionalidades que este plano libera. As essenciais são obrigatórias.
             </DialogDescription>
@@ -406,7 +416,7 @@ function SuperPlansPage() {
                   Cancelar
                 </Button>
                 <Button type="submit" disabled={saveMutation.isPending || !form.name.trim()}>
-                  {saveMutation.isPending ? <Loader2 className="animate-spin" /> : 'Salvar plano'}
+                  {saveMutation.isPending ? <Loader2 className="animate-spin" /> : "Salvar plano"}
                 </Button>
               </DialogFooter>
             </form>
@@ -429,11 +439,11 @@ function SuperPlansPage() {
               className="bg-red-600 hover:bg-red-700"
               onClick={() => deleteTarget && deleteMutation.mutate(deleteTarget.id)}
             >
-              {deleteMutation.isPending ? <Loader2 className="animate-spin" /> : 'Excluir'}
+              {deleteMutation.isPending ? <Loader2 className="animate-spin" /> : "Excluir"}
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
     </div>
-  )
+  );
 }

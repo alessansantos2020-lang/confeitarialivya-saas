@@ -407,6 +407,7 @@ function AdminSettings() {
                   <Label>Logo da Loja</Label>
                   <ImageUpload
                     value={settings.logo_url}
+                    storeId={storeId}
                     onChange={async (url) => {
                       setSettings((prev) => (prev ? { ...prev, logo_url: url } : prev));
                       // Persist logo change immediately to avoid loss
@@ -428,6 +429,7 @@ function AdminSettings() {
                   <Label>Imagem de Capa</Label>
                   <ImageUpload
                     value={settings.cover_url}
+                    storeId={storeId}
                     onChange={async (url) => {
                       setSettings((prev) => (prev ? { ...prev, cover_url: url } : prev));
                       // Persist cover change immediately to avoid loss

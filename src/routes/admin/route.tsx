@@ -163,27 +163,6 @@ function AdminLayout() {
     let cancelled = false;
 
     const loadAuth = async () => {
-      // 1. Direct local storage check for immediate feedback
-      const projectId = import.meta.env["VITE_SUPABASE_PROJECT_ID"];
-      const authKey = `sb-${projectId}-auth-token`;
-      const localSessionStr = projectId ? localStorage.getItem(authKey) : null;
-
-      if (!localSessionStr) {
-        console.log("No local session found, redirecting to /auth");
-        navigate({ to: "/auth" });
-        return;
-      }
-
-      try {
-        const localSession = JSON.parse(localSessionStr);
-        if (localSession?.user?.email) {
-          setUserEmail(localSession.user.email);
-        }
-      } catch (e) {
-        console.error("Error parsing local session:", e);
-      }
-
-      // 2. Fallback to Supabase API check
       const {
         data: { session },
       } = await supabase.auth.getSession();
@@ -210,12 +189,6 @@ function AdminLayout() {
         const isActiveAdmin = role === "admin" && profileData?.data?.status === "active";
 
         if (!isSuperAdmin && !isActiveAdmin) {
-          console.log(
-            "Access denied to Admin panel. Role:",
-            role,
-            "Status:",
-            profileData?.data?.status,
-          );
           await supabase.auth.signOut();
           navigate({ to: "/auth" });
           return;
@@ -272,8 +245,7 @@ function AdminLayout() {
         }
 
         setIsAuthLoading(false);
-      } catch (e) {
-        console.error("Erro ao verificar autenticação:", e);
+      } catch {
         if (!cancelled) navigate({ to: "/auth" });
       }
     };
@@ -316,10 +288,10 @@ function AdminLayout() {
           };
           if (newSettings) {
             setStoreName(newSettings["name"] || activeStore.name);
-            setStoreLogo(newSettings["logo_url"]);
+            setStoreLogo(newSettings["logo_url"] ?? null);
             setStoreTheme({
-              primary: newSettings["primary_color"],
-              secondary: newSettings["secondary_color"],
+              primary: newSettings["primary_color"] ?? null,
+              secondary: newSettings["secondary_color"] ?? null,
             });
             setStoreIsOpen(newSettings["is_open"] ?? true);
           }

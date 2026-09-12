@@ -51,7 +51,7 @@ export const getOrders = async (input: GetOrdersInput = {}): Promise<OrderWithIt
     .select(ORDER_SELECT)
     .eq("store_id", storeId)
     .order("created_at", { ascending: false })
-    .range(offset, offset + limit - 1) as any;
+    .range(offset, offset + limit - 1);
 
   if (input.status && input.status !== "all") {
     query = query.eq("status", input.status);
@@ -81,8 +81,8 @@ export const getOrders = async (input: GetOrdersInput = {}): Promise<OrderWithIt
 
   return ((data || []) as Array<Record<string, unknown>>).map((order) => ({
     ...order,
-    status: order.status as OrderStatus,
-    order_items: Array.isArray(order.order_items) ? order.order_items : [],
+    status: order["status"] as OrderStatus,
+    order_items: Array.isArray(order["order_items"]) ? order["order_items"] : [],
   })) as OrderWithItems[];
 };
 
@@ -117,7 +117,9 @@ export const getOrderCounts = async (storeId: string = DEFAULT_STORE_ID): Promis
       .eq("status", "out_for_delivery"),
   ]);
 
-  const error = [newResult, preparingResult, readyResult, deliveryResult].find((result) => result.error)?.error;
+  const error = [newResult, preparingResult, readyResult, deliveryResult].find(
+    (result) => result.error,
+  )?.error;
   if (error) throw error;
 
   return {
@@ -153,7 +155,7 @@ export const updateOrderStatus = async ({
     .from("orders")
     .update(update as never)
     .eq("id", id)
-    .eq("store_id", storeId) as any;
+    .eq("store_id", storeId);
 
   if (expectedStatus) query = query.eq("status", expectedStatus);
 

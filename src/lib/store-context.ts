@@ -1,6 +1,12 @@
 import { supabase } from "@/integrations/supabase/client";
 import type { Store } from "./delivery.functions";
 
+type StoreMembershipRow = {
+  store_id: string;
+  role: string;
+  store: Store | null;
+};
+
 export type StoreMembership = {
   store_id: string;
   role: string;
@@ -23,12 +29,12 @@ export const getMyStores = async (): Promise<StoreMembership[]> => {
     .eq("user_id", userId);
 
   if (memberships && memberships.length > 0) {
-    return memberships
-      .filter((m: any) => m.store)
-      .map((m: any) => ({
-        store_id: m.store_id,
-        role: m.role,
-        store: m.store as Store,
+    return (memberships as unknown as StoreMembershipRow[])
+      .filter((membership) => membership.store)
+      .map((membership) => ({
+        store_id: membership.store_id,
+        role: membership.role,
+        store: membership.store as Store,
       }));
   }
 
@@ -82,9 +88,10 @@ export const resolveActiveStore = async (): Promise<{
   if (memberships.length === 0) return { store: null, memberships };
 
   const savedId = getSelectedStoreId();
-  const saved = savedId
-    ? memberships.find((m) => m.store_id === savedId)
-    : undefined;
+  const saved = savedId ? memberships.find((m) => m.store_id === savedId) : undefined;
 
-  return { store: (saved || memberships[0]).store, memberships };
+  const first = memberships[0];
+  if (!first) return { store: null, memberships };
+
+  return { store: (saved || first).store, memberships };
 };

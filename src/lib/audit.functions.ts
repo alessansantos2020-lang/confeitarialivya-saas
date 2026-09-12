@@ -1,11 +1,12 @@
 import { supabase } from "@/integrations/supabase/client";
+import type { Json } from "@/integrations/supabase/types";
 
 export type AuditEntry = {
   action: string;
   module: string;
   storeId?: string | null;
   description?: string | null;
-  metadata?: Record<string, unknown> | null;
+  metadata?: Json | null;
 };
 
 /**
@@ -18,15 +19,15 @@ export const logAudit = async (entry: AuditEntry): Promise<void> => {
   const user = data.user;
   if (!user) return;
 
-  const { error } = await supabase.from("audit_logs").insert({
-    actor_id: user.id,
-    actor_email: user.email ?? null,
-    action: entry.action,
-    module: entry.module,
-    store_id: entry.storeId ?? null,
-    description: entry.description ?? null,
-    metadata: entry.metadata ?? null,
-  });
+  const auditPayload = {
+    _action: entry.action,
+    _module: entry.module,
+    ...(entry.storeId ? { _store_id: entry.storeId } : {}),
+    ...(entry.description ? { _description: entry.description } : {}),
+    ...(entry.metadata ? { _metadata: entry.metadata } : {}),
+  };
+
+  const { error } = await supabase.rpc("append_audit_log", auditPayload);
 
   if (error) console.error("Falha ao registrar log de auditoria:", error);
 };
@@ -103,19 +104,30 @@ export const getAuditLogs = async (filters: AuditFilters): Promise<AuditPage> =>
   const userNames = new Map<string, string | null>();
   for (const p of usersRes.data || []) userNames.set(p.id, p.full_name);
 
-  const rows: AuditRow[] = (logsRes.data || []).map((l) => ({
-    id: l.id,
-    createdAt: l.created_at,
-    actorId: l.actor_id,
-    actorEmail: l.actor_email,
-    // A conta pode ter sido apagada: actor_id vira nulo e sobra o e-mail.
-    actorName: l.actor_id ? userNames.get(l.actor_id) ?? null : null,
-    action: l.action,
-    module: l.module,
-    storeId: l.store_id,
-    storeName: l.store_id ? storeNames.get(l.store_id) ?? "Loja removida" : null,
-    description: l.description,
-  }));
+  const rows: AuditRow[] = (logsRes.data || []).map(
+    (l: {
+      id: string;
+      created_at: string;
+      actor_id: string | null;
+      actor_email: string | null;
+      action: string;
+      module: string;
+      store_id: string | null;
+      description: string | null;
+    }) => ({
+      id: l.id,
+      createdAt: l.created_at,
+      actorId: l.actor_id,
+      actorEmail: l.actor_email,
+      // A conta pode ter sido apagada: actor_id vira nulo e sobra o e-mail.
+      actorName: l.actor_id ? (userNames.get(l.actor_id) ?? null) : null,
+      action: l.action,
+      module: l.module,
+      storeId: l.store_id,
+      storeName: l.store_id ? (storeNames.get(l.store_id) ?? "Loja removida") : null,
+      description: l.description,
+    }),
+  );
 
   return { rows, total: logsRes.count ?? 0, pageSize: AUDIT_PAGE_SIZE };
 };

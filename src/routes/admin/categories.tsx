@@ -1,12 +1,22 @@
-import { createFileRoute } from '@tanstack/react-router'
-import { useState } from 'react'
-import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
-import { supabase } from '@/integrations/supabase/client'
-import { useActiveStore } from '@/lib/active-store'
-import { Plus, Pencil, Trash2, GripVertical, Check, X, Loader2, Upload, Image as ImageIcon } from 'lucide-react'
-import { ImageUpload } from '@/components/admin/ImageUpload'
-import { Button } from '@/components/ui/button'
-import { Input } from '@/components/ui/input'
+import { createFileRoute } from "@tanstack/react-router";
+import { useState } from "react";
+import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
+import { supabase } from "@/integrations/supabase/client";
+import { useActiveStore } from "@/lib/active-store";
+import {
+  Plus,
+  Pencil,
+  Trash2,
+  GripVertical,
+  Check,
+  X,
+  Loader2,
+  Upload,
+  Image as ImageIcon,
+} from "lucide-react";
+import { ImageUpload } from "@/components/admin/ImageUpload";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
 import {
   Table,
   TableBody,
@@ -14,7 +24,7 @@ import {
   TableHead,
   TableHeader,
   TableRow,
-} from '@/components/ui/table'
+} from "@/components/ui/table";
 import {
   Dialog,
   DialogContent,
@@ -22,7 +32,7 @@ import {
   DialogTitle,
   DialogTrigger,
   DialogFooter,
-} from '@/components/ui/dialog'
+} from "@/components/ui/dialog";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -33,152 +43,158 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
   AlertDialogTrigger,
-} from '@/components/ui/alert-dialog'
-import { Badge } from '@/components/ui/badge'
-import { toast } from 'sonner'
-import { format } from 'date-fns'
-import { ptBR } from 'date-fns/locale'
+} from "@/components/ui/alert-dialog";
+import { Badge } from "@/components/ui/badge";
+import { toast } from "sonner";
+import { format } from "date-fns";
+import { ptBR } from "date-fns/locale";
 
 type Category = {
-  id: string
-  name: string
-  status: 'active' | 'inactive'
-  sort_order: number
-  image_url: string | null
-  created_at: string
-}
+  id: string;
+  name: string;
+  status: "active" | "inactive";
+  sort_order: number;
+  image_url: string | null;
+  created_at: string;
+};
 
-export const Route = createFileRoute('/admin/categories')({
+export const Route = createFileRoute("/admin/categories")({
   beforeLoad: () => {
     return;
   },
   component: CategoriesPage,
-})
+});
 
 function CategoriesPage() {
-  const { storeId } = useActiveStore()
-  const queryClient = useQueryClient()
-  const [isAddOpen, setIsAddOpen] = useState(false)
-  const [editingCategory, setEditingCategory] = useState<Category | null>(null)
-  const [newName, setNewName] = useState('')
-  const [isUploading, setIsUploading] = useState(false)
-  const [newCategoryImage, setNewCategoryImage] = useState('')
-  const [editCategoryImage, setEditCategoryImage] = useState('')
+  const { storeId } = useActiveStore();
+  const queryClient = useQueryClient();
+  const [isAddOpen, setIsAddOpen] = useState(false);
+  const [editingCategory, setEditingCategory] = useState<Category | null>(null);
+  const [newName, setNewName] = useState("");
+  const [isUploading, setIsUploading] = useState(false);
+  const [newCategoryImage, setNewCategoryImage] = useState("");
+  const [editCategoryImage, setEditCategoryImage] = useState("");
 
-  const { data: categories, isLoading, error: queryError } = useQuery({
-    queryKey: ['categories', storeId],
+  const {
+    data: categories,
+    isLoading,
+    error: queryError,
+  } = useQuery({
+    queryKey: ["categories", storeId],
     queryFn: async () => {
-      console.log('Fetching categories...');
+      console.log("Fetching categories...");
       const { data, error } = await supabase
-        .from('categories')
-        .select('*')
-        .eq('store_id', storeId)
-        .order('sort_order', { ascending: true })
+        .from("categories")
+        .select("*")
+        .eq("store_id", storeId)
+        .order("sort_order", { ascending: true });
 
       if (error) {
-        console.error('Supabase error fetching categories:', error);
+        console.error("Supabase error fetching categories:", error);
         throw error;
       }
-      console.log('Categories fetched:', data);
-      return (data || []) as Category[]
+      console.log("Categories fetched:", data);
+      return (data || []) as Category[];
     },
-  })
+  });
 
   if (queryError) {
-    console.error('React Query error:', queryError);
+    console.error("React Query error:", queryError);
   }
 
   const createMutation = useMutation({
-    mutationFn: async (data: { name: string, image_url: string }) => {
-      const { error } = await supabase
-        .from('categories')
-        .insert([{
+    mutationFn: async (data: { name: string; image_url: string }) => {
+      const { error } = await supabase.from("categories").insert([
+        {
           store_id: storeId,
           name: data.name,
           image_url: data.image_url,
           sort_order: (categories?.length || 0) + 1,
-          status: 'active'
-        } as any])
-      if (error) throw error
+          status: "active",
+        } as any,
+      ]);
+      if (error) throw error;
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['categories', storeId] })
-      setIsAddOpen(false)
-      setNewName('')
-      setNewCategoryImage('')
-      toast.success('Categoria criada com sucesso!')
+      queryClient.invalidateQueries({ queryKey: ["categories", storeId] });
+      setIsAddOpen(false);
+      setNewName("");
+      setNewCategoryImage("");
+      toast.success("Categoria criada com sucesso!");
     },
     onError: (error: any) => toast.error(`Erro ao criar categoria: ${error.message}`),
-  })
+  });
 
   const updateMutation = useMutation({
     mutationFn: async (updates: Partial<Category> & { id: string }) => {
       const { error } = await supabase
-        .from('categories')
+        .from("categories")
         .update(updates as any)
-        .eq('id', updates.id)
-        .eq('store_id', storeId)
-      if (error) throw error
+        .eq("id", updates.id)
+        .eq("store_id", storeId);
+      if (error) throw error;
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['categories', storeId] })
-      setEditingCategory(null)
-      toast.success('Categoria atualizada!')
+      queryClient.invalidateQueries({ queryKey: ["categories", storeId] });
+      setEditingCategory(null);
+      toast.success("Categoria atualizada!");
     },
-  })
+  });
 
   const deleteMutation = useMutation({
     mutationFn: async (id: string) => {
       // Check for products in this category
       const { count, error: countError } = await supabase
-        .from('products')
-        .select('*', { count: 'exact', head: true })
-        .eq('store_id', storeId)
-        .eq('category_id', id);
+        .from("products")
+        .select("*", { count: "exact", head: true })
+        .eq("store_id", storeId)
+        .eq("category_id", id);
 
       if (countError) throw countError;
       if (count && count > 0) {
-        throw new Error(`Esta categoria possui ${count} produto(s) vinculado(s) e não pode ser excluída. Remova ou mova os produtos primeiro.`);
+        throw new Error(
+          `Esta categoria possui ${count} produto(s) vinculado(s) e não pode ser excluída. Remova ou mova os produtos primeiro.`,
+        );
       }
 
       const { error } = await supabase
-        .from('categories')
+        .from("categories")
         .delete()
-        .eq('id', id)
-        .eq('store_id', storeId)
-      if (error) throw error
+        .eq("id", id)
+        .eq("store_id", storeId);
+      if (error) throw error;
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['categories', storeId] })
-      toast.success('Categoria excluída!')
+      queryClient.invalidateQueries({ queryKey: ["categories", storeId] });
+      toast.success("Categoria excluída!");
     },
-    onError: (error: any) => toast.error(error.message)
-  })
+    onError: (error: any) => toast.error(error.message),
+  });
 
   // handleFileUpload was removed in favor of ImageUpload component
 
   const toggleStatus = (category: Category) => {
     updateMutation.mutate({
       id: category.id,
-      status: category.status === 'active' ? 'inactive' : 'active',
-    })
-  }
+      status: category.status === "active" ? "inactive" : "active",
+    });
+  };
 
   const handleCreate = (e: React.FormEvent) => {
-    e.preventDefault()
-    if (!newName.trim()) return
-    createMutation.mutate({ name: newName, image_url: newCategoryImage })
-  }
+    e.preventDefault();
+    if (!newName.trim()) return;
+    createMutation.mutate({ name: newName, image_url: newCategoryImage });
+  };
 
   const handleUpdate = (e: React.FormEvent) => {
-    e.preventDefault()
-    if (!editingCategory || !editingCategory.name.trim()) return
-    updateMutation.mutate({ 
-      id: editingCategory.id, 
+    e.preventDefault();
+    if (!editingCategory || !editingCategory.name.trim()) return;
+    updateMutation.mutate({
+      id: editingCategory.id,
       name: editingCategory.name,
-      image_url: editCategoryImage || editingCategory.image_url
-    })
-  }
+      image_url: editCategoryImage || editingCategory.image_url,
+    });
+  };
 
   return (
     <div className="space-y-6">
@@ -187,14 +203,14 @@ function CategoriesPage() {
           <h1 className="text-2xl font-bold text-slate-800">Categorias</h1>
           <p className="text-slate-500 text-sm">Gerencie as categorias do seu catálogo</p>
         </div>
-        
-        <Dialog 
-          open={isAddOpen} 
+
+        <Dialog
+          open={isAddOpen}
           onOpenChange={(open) => {
             setIsAddOpen(open);
             if (!open) {
-              setNewName('');
-              setNewCategoryImage('');
+              setNewName("");
+              setNewCategoryImage("");
             }
           }}
         >
@@ -211,8 +227,8 @@ function CategoriesPage() {
             <form onSubmit={handleCreate} className="space-y-4 py-4">
               <div className="space-y-2">
                 <label className="text-sm font-medium">Nome da Categoria</label>
-                <Input 
-                  value={newName} 
+                <Input
+                  value={newName}
                   onChange={(e) => setNewName(e.target.value)}
                   placeholder="Ex: Promoções, Mais vendidos, Bebidas..."
                   autoFocus
@@ -223,16 +239,19 @@ function CategoriesPage() {
                 <label className="text-sm font-medium">Imagem (Opcional)</label>
                 <ImageUpload
                   value={newCategoryImage}
-                  onChange={(url) => setNewCategoryImage(url || '')}
+                  storeId={storeId}
+                  onChange={(url) => setNewCategoryImage(url || "")}
                   folder="categories"
                   maxSizeMB={2}
                 />
               </div>
 
               <DialogFooter>
-                <Button type="button" variant="outline" onClick={() => setIsAddOpen(false)}>Cancelar</Button>
+                <Button type="button" variant="outline" onClick={() => setIsAddOpen(false)}>
+                  Cancelar
+                </Button>
                 <Button type="submit" disabled={createMutation.isPending}>
-                  {createMutation.isPending ? <Loader2 className="animate-spin" /> : 'Criar'}
+                  {createMutation.isPending ? <Loader2 className="animate-spin" /> : "Criar"}
                 </Button>
               </DialogFooter>
             </form>
@@ -270,12 +289,13 @@ function CategoriesPage() {
                   </TableCell>
                   <TableCell>
                     {category.image_url ? (
-                      <img 
-                        src={category.image_url} 
+                      <img
+                        src={category.image_url}
                         alt={category.name}
                         className="w-10 h-10 rounded-lg object-cover border bg-slate-50"
                         onError={(e) => {
-                          (e.target as HTMLImageElement).src = 'https://placehold.co/100x100?text=Erro';
+                          (e.target as HTMLImageElement).src =
+                            "https://placehold.co/100x100?text=Erro";
                         }}
                       />
                     ) : (
@@ -284,42 +304,46 @@ function CategoriesPage() {
                       </div>
                     )}
                   </TableCell>
-                  <TableCell className="font-medium text-slate-700">
-                    {category.name}
-                  </TableCell>
+                  <TableCell className="font-medium text-slate-700">{category.name}</TableCell>
                   <TableCell>
-                    <button 
-                      onClick={() => toggleStatus(category)}
-                      className="cursor-pointer"
-                    >
-                      <Badge variant={category.status === 'active' ? 'default' : 'secondary'} className={category.status === 'active' ? 'bg-green-100 text-green-700 hover:bg-green-200 border-green-200' : ''}>
-                        {category.status === 'active' ? 'Ativo' : 'Inativo'}
+                    <button onClick={() => toggleStatus(category)} className="cursor-pointer">
+                      <Badge
+                        variant={category.status === "active" ? "default" : "secondary"}
+                        className={
+                          category.status === "active"
+                            ? "bg-green-100 text-green-700 hover:bg-green-200 border-green-200"
+                            : ""
+                        }
+                      >
+                        {category.status === "active" ? "Ativo" : "Inativo"}
                       </Badge>
                     </button>
                   </TableCell>
-                  <TableCell className="text-slate-500">
-                    {category.sort_order}
-                  </TableCell>
+                  <TableCell className="text-slate-500">{category.sort_order}</TableCell>
                   <TableCell className="text-slate-500 text-xs">
                     {category.created_at && !isNaN(new Date(category.created_at).getTime())
                       ? format(new Date(category.created_at), "dd/MM/yyyy HH:mm", { locale: ptBR })
                       : "—"}
                   </TableCell>
                   <TableCell className="text-right space-x-2">
-                    <Dialog 
-                      open={editingCategory?.id === category.id} 
+                    <Dialog
+                      open={editingCategory?.id === category.id}
                       onOpenChange={(open) => {
                         if (!open) {
                           setEditingCategory(null);
-                          setEditCategoryImage('');
+                          setEditCategoryImage("");
                         }
                       }}
                     >
                       <DialogTrigger asChild>
-                        <Button variant="ghost" size="icon" onClick={() => {
-                          setEditingCategory(category);
-                          setEditCategoryImage('');
-                        }}>
+                        <Button
+                          variant="ghost"
+                          size="icon"
+                          onClick={() => {
+                            setEditingCategory(category);
+                            setEditCategoryImage("");
+                          }}
+                        >
                           <Pencil size={16} className="text-slate-500" />
                         </Button>
                       </DialogTrigger>
@@ -330,9 +354,13 @@ function CategoriesPage() {
                         <form onSubmit={handleUpdate} className="space-y-4 py-4">
                           <div className="space-y-2">
                             <label className="text-sm font-medium">Nome da Categoria</label>
-                            <Input 
-                              value={editingCategory?.name || ''} 
-                              onChange={(e) => setEditingCategory(prev => prev ? {...prev, name: e.target.value} : null)}
+                            <Input
+                              value={editingCategory?.name || ""}
+                              onChange={(e) =>
+                                setEditingCategory((prev) =>
+                                  prev ? { ...prev, name: e.target.value } : null,
+                                )
+                              }
                             />
                           </div>
 
@@ -340,14 +368,23 @@ function CategoriesPage() {
                             <label className="text-sm font-medium">Imagem</label>
                             <ImageUpload
                               value={editCategoryImage || editingCategory?.image_url}
-                              onChange={(url) => setEditCategoryImage(url || '')}
+                              storeId={storeId}
+                              onChange={(url) => setEditCategoryImage(url || "")}
                               folder="categories"
                               maxSizeMB={2}
                             />
                           </div>
                           <DialogFooter>
-                            <Button type="button" variant="outline" onClick={() => setEditingCategory(null)}>Cancelar</Button>
-                            <Button type="submit" disabled={updateMutation.isPending}>Salvar</Button>
+                            <Button
+                              type="button"
+                              variant="outline"
+                              onClick={() => setEditingCategory(null)}
+                            >
+                              Cancelar
+                            </Button>
+                            <Button type="submit" disabled={updateMutation.isPending}>
+                              Salvar
+                            </Button>
                           </DialogFooter>
                         </form>
                       </DialogContent>
@@ -363,12 +400,13 @@ function CategoriesPage() {
                         <AlertDialogHeader>
                           <AlertDialogTitle>Excluir Categoria?</AlertDialogTitle>
                           <AlertDialogDescription>
-                            Esta ação não pode ser desfeita. Isso excluirá permanentemente a categoria "{category.name}".
+                            Esta ação não pode ser desfeita. Isso excluirá permanentemente a
+                            categoria "{category.name}".
                           </AlertDialogDescription>
                         </AlertDialogHeader>
                         <AlertDialogFooter>
                           <AlertDialogCancel>Cancelar</AlertDialogCancel>
-                          <AlertDialogAction 
+                          <AlertDialogAction
                             onClick={() => deleteMutation.mutate(category.id)}
                             className="bg-red-600 hover:bg-red-700"
                           >
@@ -385,5 +423,5 @@ function CategoriesPage() {
         )}
       </div>
     </div>
-  )
+  );
 }

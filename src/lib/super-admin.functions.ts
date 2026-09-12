@@ -64,10 +64,10 @@ export const getAllStores = async (): Promise<StoreOverview[]> => {
     ...(store as Store),
     status: store.status as StoreStatus,
     memberCount: memberCounts.get(store.id) || 0,
-    ownerName: store.owner_id ? profileNames.get(store.owner_id) ?? null : null,
+    ownerName: store.owner_id ? (profileNames.get(store.owner_id) ?? null) : null,
     settingsName: settingsNames.get(store.id) ?? null,
     planId: (store as any).plan_id ?? null,
-    planName: (store as any).plan_id ? planNames.get((store as any).plan_id) ?? null : null,
+    planName: (store as any).plan_id ? (planNames.get((store as any).plan_id) ?? null) : null,
   }));
 };
 
@@ -162,36 +162,12 @@ export const getAssignableUsers = async (): Promise<AssignableUser[]> => {
  * (exigido pelo guard do /admin).
  */
 export const assignStoreOwner = async (storeId: string, userId: string) => {
-  const { error: storeError } = await supabase
-    .from("stores")
-    .update({ owner_id: userId })
-    .eq("id", storeId);
-  if (storeError) throw storeError;
-
-  const { error: memberError } = await supabase
-    .from("store_members")
-    .upsert({ store_id: storeId, user_id: userId, role: "admin" }, { onConflict: "store_id,user_id" });
-  if (memberError) throw memberError;
-
-  const { data: existingRole } = await supabase
-    .from("user_roles")
-    .select("role")
-    .eq("user_id", userId)
-    .maybeSingle();
-
-  if (!existingRole) {
-    const { error: roleError } = await supabase
-      .from("user_roles")
-      .insert({ user_id: userId, role: "admin" });
-    if (roleError) throw roleError;
-  }
-
-  await logAudit({
-    action: "store_owner_assigned",
-    module: "lojas",
-    storeId,
-    description: `Conta ${userId} definida como dona da loja`,
+  const { error } = await supabase.rpc("assign_store_owner", {
+    _store_id: storeId,
+    _user_id: userId,
   });
+
+  if (error) throw error;
 };
 
 // ---------------------------------------------------------------------------
@@ -432,11 +408,7 @@ export const deletePlan = async (planId: string): Promise<void> => {
     throw new Error("Não é possível excluir: há lojas usando este plano.");
   }
 
-  const { data: plan } = await supabase
-    .from("plans")
-    .select("name")
-    .eq("id", planId)
-    .maybeSingle();
+  const { data: plan } = await supabase.from("plans").select("name").eq("id", planId).maybeSingle();
 
   const { error } = await supabase.from("plans").delete().eq("id", planId);
   if (error) throw error;
@@ -476,7 +448,7 @@ export const setStorePlan = async (storeId: string, planId: string | null): Prom
   if (error) throw error;
 
   const planName = (id: string | null) =>
-    id ? (plans || []).find((p) => p.id === id)?.name ?? id : "Sem plano (acesso total)";
+    id ? ((plans || []).find((p) => p.id === id)?.name ?? id) : "Sem plano (acesso total)";
 
   await logAudit({
     action: "store_plan_changed",
@@ -731,7 +703,10 @@ export const getStoreDetails = async (storeId: string): Promise<StoreDetails> =>
       .select("phone, whatsapp, address")
       .eq("store_id", storeId)
       .maybeSingle(),
-    supabase.from("store_members").select("id", { count: "exact", head: true }).eq("store_id", storeId),
+    supabase
+      .from("store_members")
+      .select("id", { count: "exact", head: true })
+      .eq("store_id", storeId),
     supabase.from("orders").select("id", { count: "exact", head: true }).eq("store_id", storeId),
     supabase.from("products").select("id", { count: "exact", head: true }).eq("store_id", storeId),
     // Não existe tabela de clientes: "clientes" é telefone distinto nos pedidos.

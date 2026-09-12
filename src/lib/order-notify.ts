@@ -8,19 +8,22 @@ import {
 import { paymentMethodLabel } from "./order-status";
 
 export type NotifyEvent =
-  | "received"
-  | "accepted"
-  | "preparing"
-  | "ready"
-  | "shipping"
-  | "delivered"
-  | "canceled";
+  "received" | "accepted" | "preparing" | "ready" | "shipping" | "delivered" | "canceled";
 
 export type NotifySource = "manual" | "automatic";
 
 export type NotifyResult =
   | { sent: true; message: string }
-  | { sent: false; reason: "disabled" | "missing_phone" | "invalid_phone" | "blocked_popup" | "duplicate" | "record_failed" };
+  | {
+      sent: false;
+      reason:
+        | "disabled"
+        | "missing_phone"
+        | "invalid_phone"
+        | "blocked_popup"
+        | "duplicate"
+        | "record_failed";
+    };
 
 const eventEnabled = (settings: StoreSettings, event: NotifyEvent): boolean => {
   if (event === "accepted") return settings.whatsapp_accept_enabled;
@@ -29,7 +32,7 @@ const eventEnabled = (settings: StoreSettings, event: NotifyEvent): boolean => {
   return true;
 };
 
-const eventIsIdempotent = (event: NotifyEvent): boolean =>
+const eventIsIdempotent = (event: NotifyEvent): event is "accepted" | "canceled" | "shipping" =>
   event === "accepted" || event === "canceled" || event === "shipping";
 
 const money = (value: number | null | undefined): string =>
@@ -37,26 +40,33 @@ const money = (value: number | null | undefined): string =>
 
 const parseAddons = (value: unknown): Array<{ name?: string; price?: number }> => {
   if (!value) return [];
-  if (typeof value !== "string") return Array.isArray(value) ? value as Array<{ name?: string; price?: number }> : [];
+  if (typeof value !== "string")
+    return Array.isArray(value) ? (value as Array<{ name?: string; price?: number }>) : [];
   try {
     const parsed: unknown = JSON.parse(value);
-    return Array.isArray(parsed) ? parsed as Array<{ name?: string; price?: number }> : [];
+    return Array.isArray(parsed) ? (parsed as Array<{ name?: string; price?: number }>) : [];
   } catch {
     return [];
   }
 };
 
 const itemSummary = (order: OrderWithItems): string =>
-  order.order_items.map((item) => {
-    const name = item.product_name || item.product?.name || "Produto";
-    const addons = parseAddons(item.selected_addons)
-      .map((addon) => addon.name)
-      .filter(Boolean)
-      .join(", ");
-    return `${item.quantity}x ${name}${addons ? ` (${addons})` : ""}`;
-  }).join("\n");
+  order.order_items
+    .map((item) => {
+      const name = item.product_name || item.product?.name || "Produto";
+      const addons = parseAddons(item.selected_addons)
+        .map((addon) => addon.name)
+        .filter(Boolean)
+        .join(", ");
+      return `${item.quantity}x ${name}${addons ? ` (${addons})` : ""}`;
+    })
+    .join("\n");
 
-const fallbackMessage = (order: OrderWithItems, settings: StoreSettings, event: NotifyEvent): string => {
+const fallbackMessage = (
+  order: OrderWithItems,
+  settings: StoreSettings,
+  event: NotifyEvent,
+): string => {
   const name = order.customer_name || "cliente";
   const number = order.id.slice(0, 8).toUpperCase();
   const store = settings.name || "Loja";
@@ -88,13 +98,18 @@ const fallbackMessage = (order: OrderWithItems, settings: StoreSettings, event: 
 
 const templateFor = (settings: StoreSettings, event: NotifyEvent): string | null => {
   if (event === "received") return settings.whatsapp_template_recebido;
-  if (event === "accepted") return settings.whatsapp_template_aceito || settings.whatsapp_template_recebido;
+  if (event === "accepted")
+    return settings.whatsapp_template_aceito || settings.whatsapp_template_recebido;
   if (event === "canceled") return settings.whatsapp_template_cancelado;
   if (event === "shipping") return settings.whatsapp_template_saida_entrega;
   return null;
 };
 
-const buildMessage = (order: OrderWithItems, settings: StoreSettings, event: NotifyEvent): string => {
+const buildMessage = (
+  order: OrderWithItems,
+  settings: StoreSettings,
+  event: NotifyEvent,
+): string => {
   const configured = templateFor(settings, event)?.trim();
   if (!configured) return fallbackMessage(order, settings, event);
 
@@ -128,7 +143,8 @@ export const notifyOrderWhatsApp = async (
   source: NotifySource,
   storeId: string,
 ): Promise<NotifyResult> => {
-  if (source === "automatic" && !settings.auto_notify_whatsapp) return { sent: false, reason: "disabled" };
+  if (source === "automatic" && !settings.auto_notify_whatsapp)
+    return { sent: false, reason: "disabled" };
   if (!eventEnabled(settings, event)) return { sent: false, reason: "disabled" };
 
   const phone = (order.customer_phone || "").replace(/\D/g, "");
@@ -155,7 +171,10 @@ export const notifyOrderWhatsApp = async (
     }
   }
 
-  const popup = window.open(`https://wa.me/55${phone}?text=${encodeURIComponent(message)}`, "_blank");
+  const popup = window.open(
+    `https://wa.me/55${phone}?text=${encodeURIComponent(message)}`,
+    "_blank",
+  );
   if (!popup) {
     if (attemptId) {
       await updateWhatsAppAttempt({
@@ -169,8 +188,9 @@ export const notifyOrderWhatsApp = async (
   }
 
   if (attemptId) {
-    await updateWhatsAppAttempt({ id: attemptId, status: "opened", storeId })
-      .catch((error) => console.error("Falha ao atualizar tentativa de WhatsApp:", error));
+    await updateWhatsAppAttempt({ id: attemptId, status: "opened", storeId }).catch((error) =>
+      console.error("Falha ao atualizar tentativa de WhatsApp:", error),
+    );
   }
 
   try {
@@ -187,7 +207,8 @@ export const notifyResultMessage = (result: NotifyResult): string | null => {
   if (result.reason === "disabled") return null;
   if (result.reason === "duplicate") return "Esta mensagem já foi aberta para este pedido.";
   if (result.reason === "record_failed") return "Não foi possível registrar tentativa de WhatsApp.";
-  if (result.reason === "missing_phone") return "Cliente não possui telefone cadastrado para WhatsApp.";
+  if (result.reason === "missing_phone")
+    return "Cliente não possui telefone cadastrado para WhatsApp.";
   if (result.reason === "invalid_phone") return "Telefone do cliente é inválido para WhatsApp.";
   return "Permita pop-ups para abrir o WhatsApp.";
 };
@@ -200,10 +221,20 @@ export const buildOrderWhatsAppMessage = (
 
 export const validateWhatsAppTemplate = (template: string): string[] => {
   const allowed = new Set([
-    "nome", "nome_cliente", "numero_pedido", "itens", "total", "pagamento",
-    "forma_pagamento", "endereco", "loja", "nome_estabelecimento", "motivo_cancelamento",
+    "nome",
+    "nome_cliente",
+    "numero_pedido",
+    "itens",
+    "total",
+    "pagamento",
+    "forma_pagamento",
+    "endereco",
+    "loja",
+    "nome_estabelecimento",
+    "motivo_cancelamento",
   ]);
   const found = template.match(/\\{([a-z_]+)\\}/gi) || [];
-  return [...new Set(found.map((value) => value.slice(1, -1).toLowerCase()))]
-    .filter((name) => !allowed.has(name));
+  return [...new Set(found.map((value) => value.slice(1, -1).toLowerCase()))].filter(
+    (name) => !allowed.has(name),
+  );
 };

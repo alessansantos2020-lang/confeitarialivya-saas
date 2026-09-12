@@ -24,6 +24,7 @@ import { Route as AdminOrdersRouteImport } from './routes/admin/orders'
 import { Route as AdminProductsRouteImport } from './routes/admin/products'
 import { Route as AdminReportsRouteImport } from './routes/admin/reports'
 import { Route as AdminSettingsRouteImport } from './routes/admin/settings'
+import { Route as AuthResetPasswordRouteImport } from './routes/auth/reset-password'
 import { Route as StaffIndexRouteImport } from './routes/staff/index'
 import { Route as StaffHistoryRouteImport } from './routes/staff/history'
 import { Route as SuperIndexRouteImport } from './routes/super/index'
@@ -110,6 +111,11 @@ const AdminSettingsRoute = AdminSettingsRouteImport.update({
   path: '/settings',
   getParentRoute: () => AdminRouteRoute,
 } as any)
+const AuthResetPasswordRoute = AuthResetPasswordRouteImport.update({
+  id: '/reset-password',
+  path: '/reset-password',
+  getParentRoute: () => AuthRoute,
+} as any)
 const StaffIndexRoute = StaffIndexRouteImport.update({
   id: '/',
   path: '/',
@@ -167,7 +173,7 @@ export interface FileRoutesByFullPath {
   '/staff': typeof StaffRouteRouteWithChildren
   '/super': typeof SuperRouteRouteWithChildren
   '/$slug': typeof SlugRoute
-  '/auth': typeof AuthRoute
+  '/auth': typeof AuthRouteWithChildren
   '/admin/add-ons': typeof AdminAddOnsRoute
   '/admin/categories': typeof AdminCategoriesRoute
   '/admin/customers': typeof AdminCustomersRoute
@@ -176,6 +182,7 @@ export interface FileRoutesByFullPath {
   '/admin/products': typeof AdminProductsRoute
   '/admin/reports': typeof AdminReportsRoute
   '/admin/settings': typeof AdminSettingsRoute
+  '/auth/reset-password': typeof AuthResetPasswordRoute
   '/staff/history': typeof StaffHistoryRoute
   '/super/avisos': typeof SuperAvisosRoute
   '/super/configuracoes': typeof SuperConfiguracoesRoute
@@ -191,7 +198,7 @@ export interface FileRoutesByFullPath {
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
   '/$slug': typeof SlugRoute
-  '/auth': typeof AuthRoute
+  '/auth': typeof AuthRouteWithChildren
   '/admin/add-ons': typeof AdminAddOnsRoute
   '/admin/categories': typeof AdminCategoriesRoute
   '/admin/customers': typeof AdminCustomersRoute
@@ -200,6 +207,7 @@ export interface FileRoutesByTo {
   '/admin/products': typeof AdminProductsRoute
   '/admin/reports': typeof AdminReportsRoute
   '/admin/settings': typeof AdminSettingsRoute
+  '/auth/reset-password': typeof AuthResetPasswordRoute
   '/staff/history': typeof StaffHistoryRoute
   '/super/avisos': typeof SuperAvisosRoute
   '/super/configuracoes': typeof SuperConfiguracoesRoute
@@ -219,7 +227,7 @@ export interface FileRoutesById {
   '/staff': typeof StaffRouteRouteWithChildren
   '/super': typeof SuperRouteRouteWithChildren
   '/$slug': typeof SlugRoute
-  '/auth': typeof AuthRoute
+  '/auth': typeof AuthRouteWithChildren
   '/admin/add-ons': typeof AdminAddOnsRoute
   '/admin/categories': typeof AdminCategoriesRoute
   '/admin/customers': typeof AdminCustomersRoute
@@ -228,6 +236,7 @@ export interface FileRoutesById {
   '/admin/products': typeof AdminProductsRoute
   '/admin/reports': typeof AdminReportsRoute
   '/admin/settings': typeof AdminSettingsRoute
+  '/auth/reset-password': typeof AuthResetPasswordRoute
   '/staff/history': typeof StaffHistoryRoute
   '/super/avisos': typeof SuperAvisosRoute
   '/super/configuracoes': typeof SuperConfiguracoesRoute
@@ -257,6 +266,7 @@ export interface FileRouteTypes {
     | '/admin/products'
     | '/admin/reports'
     | '/admin/settings'
+    | '/auth/reset-password'
     | '/staff/history'
     | '/super/avisos'
     | '/super/configuracoes'
@@ -281,6 +291,7 @@ export interface FileRouteTypes {
     | '/admin/products'
     | '/admin/reports'
     | '/admin/settings'
+    | '/auth/reset-password'
     | '/staff/history'
     | '/super/avisos'
     | '/super/configuracoes'
@@ -308,6 +319,7 @@ export interface FileRouteTypes {
     | '/admin/products'
     | '/admin/reports'
     | '/admin/settings'
+    | '/auth/reset-password'
     | '/staff/history'
     | '/super/avisos'
     | '/super/configuracoes'
@@ -327,7 +339,7 @@ export interface RootRouteChildren {
   StaffRouteRoute: typeof StaffRouteRouteWithChildren
   SuperRouteRoute: typeof SuperRouteRouteWithChildren
   SlugRoute: typeof SlugRoute
-  AuthRoute: typeof AuthRoute
+  AuthRoute: typeof AuthRouteWithChildren
 }
 
 declare module '@tanstack/react-router' {
@@ -436,6 +448,13 @@ declare module '@tanstack/react-router' {
       fullPath: '/admin/settings'
       preLoaderRoute: typeof AdminSettingsRouteImport
       parentRoute: typeof AdminRouteRoute
+    }
+    '/auth/reset-password': {
+      id: '/auth/reset-password'
+      path: '/reset-password'
+      fullPath: '/auth/reset-password'
+      preLoaderRoute: typeof AuthResetPasswordRouteImport
+      parentRoute: typeof AuthRoute
     }
     '/staff/': {
       id: '/staff/'
@@ -578,13 +597,23 @@ const SuperRouteRouteWithChildren = SuperRouteRoute._addFileChildren(
   SuperRouteRouteChildren,
 )
 
+interface AuthRouteChildren {
+  AuthResetPasswordRoute: typeof AuthResetPasswordRoute
+}
+
+const AuthRouteChildren: AuthRouteChildren = {
+  AuthResetPasswordRoute: AuthResetPasswordRoute,
+}
+
+const AuthRouteWithChildren = AuthRoute._addFileChildren(AuthRouteChildren)
+
 const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
   AdminRouteRoute: AdminRouteRouteWithChildren,
   StaffRouteRoute: StaffRouteRouteWithChildren,
   SuperRouteRoute: SuperRouteRouteWithChildren,
   SlugRoute: SlugRoute,
-  AuthRoute: AuthRoute,
+  AuthRoute: AuthRouteWithChildren,
 }
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)
