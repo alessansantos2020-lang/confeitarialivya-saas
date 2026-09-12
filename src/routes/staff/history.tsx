@@ -89,6 +89,7 @@ function StaffHistoryPage() {
         id: order.id,
         status: prevStatus,
         storeId,
+        expectedStatus: order.status,
       });
 
       if (order.status === "canceled") {

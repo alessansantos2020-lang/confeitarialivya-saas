@@ -32,7 +32,6 @@ import {
   ChevronLeft,
   ChevronRight,
   Loader2,
-  Printer,
   Lock,
   Wrench,
   Store as StoreIcon,

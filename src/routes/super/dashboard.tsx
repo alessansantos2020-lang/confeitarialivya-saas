@@ -38,7 +38,7 @@ const PERIODS: DashboardPeriod[] = [7, 30, 90]
 function SuperDashboardPage() {
   const [period, setPeriod] = useState<DashboardPeriod>(30)
 
-  const { data, isLoading } = useQuery({
+  const { data, isLoading, isError, refetch } = useQuery({
     queryKey: ['super-dashboard', period],
     queryFn: () => getSuperDashboard(period),
   })
@@ -74,7 +74,18 @@ function SuperDashboardPage() {
         </div>
       </div>
 
-      {isLoading || !data ? (
+      {isError ? (
+        <div className="p-12 flex flex-col items-center justify-center gap-4 text-center">
+          <p className="text-red-300">Não foi possível carregar o dashboard.</p>
+          <Button
+            variant="outline"
+            onClick={() => refetch()}
+            className="border-slate-700 text-slate-200 hover:bg-slate-800"
+          >
+            Tentar novamente
+          </Button>
+        </div>
+      ) : isLoading || !data ? (
         <div className="p-12 flex justify-center">
           <Loader2 className="animate-spin text-pink-500" size={32} />
         </div>

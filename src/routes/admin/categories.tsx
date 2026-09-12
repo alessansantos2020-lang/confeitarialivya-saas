@@ -7,7 +7,6 @@ import {
   Plus,
   Pencil,
   Trash2,
-  GripVertical,
   Check,
   X,
   Loader2,
@@ -75,32 +74,19 @@ function CategoriesPage() {
   const [newCategoryImage, setNewCategoryImage] = useState("");
   const [editCategoryImage, setEditCategoryImage] = useState("");
 
-  const {
-    data: categories,
-    isLoading,
-    error: queryError,
-  } = useQuery({
+  const { data: categories, isLoading } = useQuery({
     queryKey: ["categories", storeId],
     queryFn: async () => {
-      console.log("Fetching categories...");
       const { data, error } = await supabase
         .from("categories")
         .select("*")
         .eq("store_id", storeId)
         .order("sort_order", { ascending: true });
 
-      if (error) {
-        console.error("Supabase error fetching categories:", error);
-        throw error;
-      }
-      console.log("Categories fetched:", data);
+      if (error) throw error;
       return (data || []) as Category[];
     },
   });
-
-  if (queryError) {
-    console.error("React Query error:", queryError);
-  }
 
   const createMutation = useMutation({
     mutationFn: async (data: { name: string; image_url: string }) => {
@@ -272,7 +258,6 @@ function CategoriesPage() {
           <Table>
             <TableHeader>
               <TableRow>
-                <TableHead className="w-12"></TableHead>
                 <TableHead className="w-16">Imagem</TableHead>
                 <TableHead>Nome</TableHead>
                 <TableHead>Status</TableHead>
@@ -284,9 +269,6 @@ function CategoriesPage() {
             <TableBody>
               {categories?.map((category) => (
                 <TableRow key={category.id}>
-                  <TableCell>
-                    <GripVertical className="text-slate-300 cursor-move" size={16} />
-                  </TableCell>
                   <TableCell>
                     {category.image_url ? (
                       <img

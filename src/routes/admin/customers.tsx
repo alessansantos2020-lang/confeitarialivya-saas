@@ -1,5 +1,5 @@
 import { createFileRoute } from '@tanstack/react-router';
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { getCustomers, getCustomerHistory } from '@/lib/customers.functions';
 import { useActiveStore } from '@/lib/active-store';
@@ -47,10 +47,16 @@ export const Route = createFileRoute('/admin/customers')({
 function CustomersPage() {
   const { storeId } = useActiveStore();
   const [searchTerm, setSearchTerm] = useState('');
+  const [debouncedSearch, setDebouncedSearch] = useState('');
+
+  useEffect(() => {
+    const timer = setTimeout(() => setDebouncedSearch(searchTerm), 350);
+    return () => clearTimeout(timer);
+  }, [searchTerm]);
 
   const { data: customers, isLoading } = useQuery({
-    queryKey: ['admin-customers', storeId, searchTerm],
-    queryFn: () => getCustomers({ search: searchTerm || undefined, storeId }) as any
+    queryKey: ['admin-customers', storeId, debouncedSearch],
+    queryFn: () => getCustomers({ search: debouncedSearch || undefined, storeId }) as any
   });
 
   return (
@@ -107,7 +113,7 @@ function CustomersPage() {
                         <div>
                           <div className="text-sm font-medium text-slate-900">{customer.name}</div>
                           <div className="text-xs text-slate-500 flex items-center gap-1">
-                            <MapPin className="w-3 h-3" /> {customer.address.split(',')[0]}...
+                            <MapPin className="w-3 h-3" /> {customer.address ? `${customer.address.split(',')[0]}...` : 'Sem endereço'}
                           </div>
                         </div>
                       </div>

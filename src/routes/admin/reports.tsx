@@ -6,19 +6,17 @@ import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/com
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import { 
-  BarChart, 
-  Bar, 
-  XAxis, 
-  YAxis, 
-  CartesianGrid, 
-  Tooltip, 
-  ResponsiveContainer, 
-  LineChart, 
+import {
+  BarChart,
+  Bar,
+  XAxis,
+  YAxis,
+  CartesianGrid,
+  Tooltip,
+  ResponsiveContainer,
+  LineChart,
   Line,
-  Cell,
-  PieChart,
-  Pie
+  Cell
 } from 'recharts';
 import { 
   TrendingUp, 
@@ -31,15 +29,12 @@ import {
   Loader2
 } from 'lucide-react';
 import { useState } from 'react';
-import { format, subDays, startOfMonth, endOfMonth, startOfWeek, endOfWeek, subMonths } from 'date-fns';
+import { format, subDays, startOfMonth, endOfMonth, subMonths } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
 import { generatePDFReport } from '@/lib/pdf-generator';
 
 
 export const Route = createFileRoute('/admin/reports')({
-  beforeLoad: () => {
-    return;
-  },
   component: ReportsPage,
 });
 
@@ -50,7 +45,7 @@ function ReportsPage() {
     end: format(new Date(), 'yyyy-MM-dd')
   });
 
-  const { data, isLoading, refetch } = useQuery({
+  const { data, isLoading, isError, refetch } = useQuery({
     queryKey: ['salesReport', storeId, dateRange],
     queryFn: () => getSalesReport({
       storeId,
@@ -117,6 +112,15 @@ function ReportsPage() {
     return (
       <div className="flex items-center justify-center h-[60vh]">
         <Loader2 className="w-8 h-8 animate-spin text-pink-600" />
+      </div>
+    );
+  }
+
+  if (isError) {
+    return (
+      <div className="flex flex-col items-center justify-center h-[60vh] gap-4">
+        <p className="text-red-600 font-medium">Erro ao carregar relatórios.</p>
+        <Button variant="outline" onClick={() => refetch()}>Tentar novamente</Button>
       </div>
     );
   }

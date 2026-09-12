@@ -37,29 +37,48 @@ const statusMap: Record<string, { label: string; color: string; icon: any }> = {
   canceled: { label: "Cancelado", color: "bg-red-100 text-red-700 border-red-200", icon: XCircle },
 };
 
+const CUSTOMER_PAGE_SIZE = 1000;
+
+const getUniqueCustomerCount = async (storeId: string): Promise<number> => {
+  const phones = new Set<string>();
+
+  for (let offset = 0; ; offset += CUSTOMER_PAGE_SIZE) {
+    const { data, error } = await supabase
+      .from("orders")
+      .select("customer_phone")
+      .eq("store_id", storeId)
+      .order("id", { ascending: true })
+      .range(offset, offset + CUSTOMER_PAGE_SIZE - 1);
+
+    if (error) throw error;
+
+    for (const order of data || []) {
+      if (order.customer_phone) phones.add(order.customer_phone);
+    }
+
+    if (!data || data.length < CUSTOMER_PAGE_SIZE) break;
+  }
+
+  return phones.size;
+};
+
 function AdminDashboard() {
   const { storeId } = useActiveStore();
   const today = new Date();
   today.setHours(0, 0, 0, 0);
 
-  const { data: stats, isLoading: statsLoading } = useQuery({
+  const { data: stats, isLoading: statsLoading, isError: statsError } = useQuery({
     queryKey: ["admin-stats", storeId],
     queryFn: async () => {
       // Pedidos de hoje e faturamento
-      const { data: todayOrders } = await supabase
+      const { data: todayOrders, error: todayOrdersError } = await supabase
         .from("orders")
         .select("status, total_amount")
         .eq("store_id", storeId)
         .gte("created_at", today.toISOString());
+      if (todayOrdersError) throw todayOrdersError;
 
-      // Total de clientes (baseado em nomes/telefones únicos ou usuários se existissem)
-      // Por agora, contaremos registros únicos de telefone nos pedidos
-      const { data: allOrders } = await supabase
-        .from("orders")
-        .select("customer_phone")
-        .eq("store_id", storeId);
-
-      const uniqueCustomers = new Set(allOrders?.map(o => o.customer_phone)).size;
+      const uniqueCustomers = await getUniqueCustomerCount(storeId);
 
       const counts = {
         today: todayOrders?.length || 0,
@@ -78,20 +97,6 @@ function AdminDashboard() {
     }
   });
 
-  const { data: recentOrders, isLoading: ordersLoading } = useQuery({
-    queryKey: ["recent-orders", storeId],
-    queryFn: async () => {
-      const { data, error } = await supabase
-        .from("orders")
-        .select("*")
-        .eq("store_id", storeId)
-        .order("created_at", { ascending: false })
-        .limit(5);
-      
-      if (error) throw error;
-      return data;
-    }
-  });
 
   const StatCard = ({ title, value, icon: Icon, colorClass, loading }: any) => (
     <Card className="overflow-hidden border-none shadow-sm hover:shadow-md transition-shadow">
@@ -119,6 +124,13 @@ function AdminDashboard() {
         <h1 className="text-2xl md:text-3xl font-bold text-slate-900">Visão Geral do Negócio</h1>
         <p className="text-slate-500 mt-1">Métricas de faturamento e clientes para hoje, {format(new Date(), "dd 'de' MMMM", { locale: ptBR })}.</p>
       </div>
+
+      {statsError && (
+        <div className="bg-red-50 border border-red-200 rounded-xl p-4 text-center">
+          <p className="text-red-700 font-medium">Erro ao carregar dados do painel.</p>
+          <p className="text-red-500 text-sm mt-1">Verifique sua conexão e tente recarregar a página.</p>
+        </div>
+      )}
 
       {/* Main Indicators */}
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">

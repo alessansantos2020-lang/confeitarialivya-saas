@@ -150,7 +150,7 @@ function SuperPlansPage() {
       toast.success("Plano excluído!");
     },
     onError: (error: unknown) =>
-      toast.error(error instanceof Error ? error.message : "Falha ao salvar plano."),
+      toast.error(error instanceof Error ? error.message : "Falha ao excluir plano."),
   });
 
   const openCreate = () => {

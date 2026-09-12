@@ -22,7 +22,10 @@ export const getCustomers = async (data: { search: string | undefined; storeId?:
     .order("created_at", { ascending: false });
 
   if (data.search) {
-    query = query.or(`customer_name.ilike.%${data.search}%,customer_phone.ilike.%${data.search}%`);
+    // Sanitiza caracteres especiais do PostgREST filter syntax para evitar filter injection
+    const sanitized = data.search.replace(/[.,()\\*%]/g, "");
+    if (!sanitized) return [];
+    query = query.or(`customer_name.ilike.%${sanitized}%,customer_phone.ilike.%${sanitized}%`);
   }
 
   const { data: orders, error } = await query;

@@ -391,9 +391,10 @@ export const setPlanActive = async (planId: string, isActive: boolean): Promise<
   if (error) throw error;
 
   await logAudit({
-    action: isActive ? "plan_activated" : "plan_deactivated",
+    action: "plan_updated",
     module: "planos",
     description: `Plano ${planId} ${isActive ? "ativado" : "desativado"}`,
+    metadata: { is_active: isActive },
   });
 };
 
