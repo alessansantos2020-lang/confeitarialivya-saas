@@ -190,7 +190,7 @@ function ReportsPage() {
             <h3 className="text-2xl font-bold mt-1">
               {new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(data?.summary.totalRevenue || 0)}
             </h3>
-            <p className="text-xs text-pink-100 mt-2 opacity-80">Pedidos concluídos no período</p>
+            <p className="text-xs text-pink-100 mt-2 opacity-80">Pedidos não cancelados no período</p>
           </CardContent>
         </Card>
 

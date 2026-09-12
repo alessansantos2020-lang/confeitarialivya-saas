@@ -70,7 +70,7 @@ function AdminDashboard() {
         out_for_delivery: todayOrders?.filter(o => o.status === 'out_for_delivery').length || 0,
         delivered: todayOrders?.filter(o => o.status === 'delivered').length || 0,
         canceled: todayOrders?.filter(o => o.status === 'canceled').length || 0,
-        revenue: todayOrders?.reduce((acc, o) => o.status === 'delivered' ? acc + (Number(o.total_amount) || 0) : acc, 0) || 0,
+        revenue: todayOrders?.reduce((acc, o) => o.status !== 'canceled' ? acc + (Number(o.total_amount) || 0) : acc, 0) || 0,
         customers: uniqueCustomers || 0
       };
 

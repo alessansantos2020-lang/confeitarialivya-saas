@@ -54,27 +54,25 @@ export const getSalesReport = async (input: z.input<typeof reportInput>) => {
   orders?.forEach(order => {
     stats.totalOrders++;
 
-    const isDelivered = order.status === 'delivered';
     const isCancelled = order.status === 'canceled';
+    const isRevenueOrder = !isCancelled;
 
-    if (isDelivered) {
+    if (isRevenueOrder) {
       stats.totalRevenue += Number(order.total_amount);
       stats.completedOrders++;
-    } else if (isCancelled) {
+    } else {
       stats.canceledOrders++;
     }
 
-    // Daily breakdown - only for delivered orders
     const day = new Date(order.created_at || new Date()).toLocaleDateString('pt-BR');
-    if (isDelivered) {
+    if (isRevenueOrder) {
       stats.dailySales[day] = (stats.dailySales[day] || 0) + Number(order.total_amount);
     } else if (!stats.dailySales[day]) {
       stats.dailySales[day] = 0;
     }
 
-    // Product stats - only for delivered orders
     (order.order_items as any[])?.forEach((item: any) => {
-      if (isDelivered) {
+      if (isRevenueOrder) {
         const productId = item.product_id;
         const productName = item.products?.name || 'Produto Removido';
         if (!stats.productsSold[productId]) {
