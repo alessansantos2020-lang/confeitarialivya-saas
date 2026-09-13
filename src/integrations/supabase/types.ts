@@ -1284,6 +1284,19 @@ export type Database = {
         Args: { _store_id: string; _user_id: string };
         Returns: undefined;
       };
+      claim_order_whatsapp_attempt: {
+        Args: {
+          _event: string;
+          _message: string;
+          _order_id: string;
+          _phone: string;
+          _store_id: string;
+        };
+        Returns: {
+          id: string;
+          status: string;
+        }[];
+      };
       create_order: { Args: { _payload: Json }; Returns: Json };
       effective_price: {
         Args: { product: Database["public"]["Tables"]["products"]["Row"] };

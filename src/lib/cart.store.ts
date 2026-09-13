@@ -1,5 +1,6 @@
-import { create } from 'zustand';
-import { persist } from 'zustand/middleware';
+import { create } from "zustand";
+import { persist } from "zustand/middleware";
+import { cartItemIdentityKey } from "./order-utils";
 
 export interface CartItem {
   id: string;
@@ -16,11 +17,17 @@ export interface CartItem {
   }[];
 }
 
-interface CartStore {
+interface CartData {
   items: CartItem[];
   deliveryFee: number;
   selectedNeighborhood: string | null;
-  addItem: (item: Omit<CartItem, 'id'>) => void;
+}
+
+interface CartStore extends CartData {
+  storeId: string | null;
+  cartsByStore: Record<string, CartData>;
+  setStoreContext: (storeId: string) => void;
+  addItem: (item: Omit<CartItem, "id">) => void;
   removeItem: (itemId: string) => void;
   updateQuantity: (itemId: string, quantity: number) => void;
   setDeliveryFee: (fee: number, neighborhood: string | null) => void;
@@ -31,20 +38,40 @@ interface CartStore {
   getTotal: () => number;
 }
 
+const emptyCart = (): CartData => ({
+  items: [],
+  deliveryFee: 0,
+  selectedNeighborhood: null,
+});
+
+const cartData = (state: CartStore): CartData => ({
+  items: state.items,
+  deliveryFee: state.deliveryFee,
+  selectedNeighborhood: state.selectedNeighborhood,
+});
+
 export const useCart = create<CartStore>()(
   persist(
     (set, get) => ({
-      items: [],
-      deliveryFee: 0,
-      selectedNeighborhood: null,
+      ...emptyCart(),
+      storeId: null,
+      cartsByStore: {},
+      setStoreContext: (storeId) => {
+        const state = get();
+        if (state.storeId === storeId) return;
+
+        const nextCart = state.cartsByStore[storeId] ?? emptyCart();
+        const cartsByStore = state.storeId
+          ? { ...state.cartsByStore, [state.storeId]: cartData(state) }
+          : state.cartsByStore;
+        set({ storeId, cartsByStore, ...nextCart });
+      },
       addItem: (newItem) => {
         const items = get().items;
         const existingItemIndex = items.findIndex(
-          (item) => 
-            item.product_id === newItem.product_id && 
-            JSON.stringify([...item.addons].sort((a,b) => a.id.localeCompare(b.id))) === 
-            JSON.stringify([...newItem.addons].sort((a,b) => a.id.localeCompare(b.id))) &&
-            (item.observation || "") === (newItem.observation || "")
+          (item) =>
+            cartItemIdentityKey(item.product_id, item.addons, item.observation) ===
+            cartItemIdentityKey(newItem.product_id, newItem.addons, newItem.observation),
         );
 
         if (existingItemIndex > -1) {
@@ -67,15 +94,19 @@ export const useCart = create<CartStore>()(
           return;
         }
         set({
-          items: get().items.map((item) =>
-            item.id === itemId ? { ...item, quantity } : item
-          ),
+          items: get().items.map((item) => (item.id === itemId ? { ...item, quantity } : item)),
         });
       },
       setDeliveryFee: (fee, neighborhood) => {
         set({ deliveryFee: fee, selectedNeighborhood: neighborhood });
       },
-      clearCart: () => set({ items: [], deliveryFee: 0, selectedNeighborhood: null }),
+      clearCart: () => {
+        const state = get();
+        const cartsByStore = state.storeId
+          ? { ...state.cartsByStore, [state.storeId]: emptyCart() }
+          : state.cartsByStore;
+        set({ ...emptyCart(), cartsByStore });
+      },
       getTotalItems: () => get().items.reduce((acc, item) => acc + item.quantity, 0),
       getSubtotal: () =>
         get().items.reduce((acc, item) => {
@@ -86,7 +117,23 @@ export const useCart = create<CartStore>()(
       getTotal: () => get().getSubtotal() + get().getDeliveryFee(),
     }),
     {
-      name: 'cart-storage',
-    }
-  )
+      name: "cart-storage",
+      version: 1,
+      migrate: (persistedState) => {
+        const state = persistedState as Partial<CartStore> | undefined;
+        return {
+          ...state,
+          ...emptyCart(),
+          storeId: null,
+          cartsByStore: {},
+        } as CartStore;
+      },
+    },
+  ),
 );
+
+export const setCartStoreContext = (storeId: string): void => {
+  useCart.getState().setStoreContext(storeId);
+};
+
+export const getCartData = (): CartData => cartData(useCart.getState());

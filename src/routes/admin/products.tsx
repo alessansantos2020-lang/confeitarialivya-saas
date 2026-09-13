@@ -1,10 +1,11 @@
 import { createFileRoute } from "@tanstack/react-router";
-import { useState, useEffect } from "react";
+import { useState } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { useActiveStore } from "@/lib/active-store";
 import {
   Plus,
+  PlusCircle,
   Pencil,
   Trash2,
   Loader2,
@@ -12,15 +13,10 @@ import {
   Star,
   StarOff,
   Search,
-  Upload,
-  X,
-  Tag,
-  PlusCircle,
 } from "lucide-react";
-import { ImageUpload } from "@/components/admin/ImageUpload";
+import { ProductForm } from "@/components/admin/products/product-form";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { Textarea } from "@/components/ui/textarea";
 import {
   Table,
   TableBody,
@@ -35,7 +31,6 @@ import {
   DialogHeader,
   DialogTitle,
   DialogTrigger,
-  DialogFooter,
 } from "@/components/ui/dialog";
 import {
   AlertDialog,
@@ -48,120 +43,32 @@ import {
   AlertDialogTitle,
   AlertDialogTrigger,
 } from "@/components/ui/alert-dialog";
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
 import { Badge } from "@/components/ui/badge";
 import { Switch } from "@/components/ui/switch";
-import { Checkbox } from "@/components/ui/checkbox";
 import { toast } from "sonner";
 import { getPromotionStatus, getDiscountPercent, type PromotionStatus } from "@/lib/promotions";
+import type { Category, AddonGroupOption, Product } from "@/components/admin/products/types";
+import type { Database } from "@/integrations/supabase/types";
 
-type Category = {
-  id: string;
-  name: string;
-};
+type ProductInsert = Database["public"]["Tables"]["products"]["Insert"];
+type ProductUpdate = Database["public"]["Tables"]["products"]["Update"];
+type ProductCreateInput = ProductInsert & { addon_group_ids?: string[] };
+type ProductUpdateInput = ProductUpdate & { id: string; addon_group_ids?: string[] };
 
-type AddonGroupOption = {
-  id: string;
-  name: string;
-  is_required: boolean;
-  min_quantity: number;
-  max_quantity: number;
-};
-
-type Product = {
-  id: string;
-  name: string;
-  description: string | null;
-  price: number;
-  image_url: string | null;
-  category_id: string;
-  is_available: boolean;
-  is_featured: boolean;
-  is_on_sale: boolean;
-  sale_price: number | null;
-  sale_start_at: string | null;
-  sale_end_at: string | null;
-  created_at: string;
-  category?: Category;
-};
+const errorMessage = (error: unknown) => (error instanceof Error ? error.message : String(error));
 
 const formatCurrency = (value: number) =>
   new Intl.NumberFormat("pt-BR", { style: "currency", currency: "BRL" }).format(value);
 
-/** `2026-09-04T14:30:00Z` -> `2026-09-04T11:30` para o input datetime-local. */
-const toLocalInput = (iso: string | null | undefined) => {
-  if (!iso) return "";
-  const d = new Date(iso);
-  const pad = (n: number) => String(n).padStart(2, "0");
-  return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}T${pad(d.getHours())}:${pad(d.getMinutes())}`;
-};
-
 const fromLocalInput = (value: string) => (value ? new Date(value).toISOString() : null);
 
-const PROMO_BADGE: Record<PromotionStatus, { label: string; className: string } | null> = {
+type PromoBadge = { label: string; className: string } | null;
+const PROMO_BADGE: Record<PromotionStatus, PromoBadge> = {
   none: null,
   active: { label: "Em promoção", className: "bg-rose-100 text-rose-700 border-rose-200" },
   scheduled: { label: "Agendada", className: "bg-sky-100 text-sky-700 border-sky-200" },
   expired: { label: "Encerrada", className: "bg-slate-100 text-slate-500 border-slate-200" },
 };
-
-/**
- * Escolha de quais grupos de adicionais o produto oferece.
- * Os grupos e seus itens são criados na tela Adicionais — aqui só se liga.
- */
-function AddonGroupPicker({
-  groups,
-  selected,
-  onToggle,
-}: {
-  groups: AddonGroupOption[] | undefined;
-  selected: string[];
-  onToggle: (groupId: string, checked: boolean) => void;
-}) {
-  return (
-    <div className="space-y-3 border rounded-lg p-3 bg-slate-50/60 border-slate-200">
-      <label className="text-sm font-medium flex items-center gap-1.5">
-        <PlusCircle size={14} className="text-slate-500" /> Adicionais
-      </label>
-
-      {!groups?.length ? (
-        <p className="text-xs text-slate-500">
-          Nenhum grupo de adicionais cadastrado. Crie os grupos na tela{" "}
-          <span className="font-medium">Adicionais</span> para poder ligá-los aqui.
-        </p>
-      ) : (
-        <div className="space-y-2">
-          {groups.map((group) => (
-            <label
-              key={group.id}
-              className="flex items-start gap-2.5 cursor-pointer rounded-md p-1.5 hover:bg-white"
-            >
-              <Checkbox
-                checked={selected.includes(group.id)}
-                onCheckedChange={(checked) => onToggle(group.id, checked === true)}
-                className="mt-0.5"
-              />
-              <span className="leading-tight">
-                <span className="block text-sm font-medium text-slate-700">{group.name}</span>
-                <span className="block text-xs text-slate-400">
-                  {group.is_required
-                    ? `Obrigatório • mín ${group.min_quantity}`
-                    : `Opcional • máx ${group.max_quantity}`}
-                </span>
-              </span>
-            </label>
-          ))}
-        </div>
-      )}
-    </div>
-  );
-}
 
 export const Route = createFileRoute("/admin/products")({
   beforeLoad: () => {
@@ -179,7 +86,6 @@ function ProductsPage() {
   const [editingProduct, setEditingProduct] = useState<Partial<Product> | null>(null);
   const [search, setSearch] = useState("");
   const [promoFilter, setPromoFilter] = useState<"all" | "on_sale" | "no_sale">("all");
-  const [isUploading, setIsUploading] = useState(false);
   const [newProductImage, setNewProductImage] = useState("");
   const [editProductImage, setEditProductImage] = useState("");
   const [newHasPromo, setNewHasPromo] = useState(false);
@@ -283,7 +189,7 @@ function ProductsPage() {
   };
 
   const createMutation = useMutation({
-    mutationFn: async (newProduct: any) => {
+    mutationFn: async (newProduct: ProductCreateInput) => {
       const { category, addon_group_ids, ...insertData } = newProduct;
       const { data, error } = await supabase
         .from("products")
@@ -300,11 +206,11 @@ function ProductsPage() {
       setIsAddOpen(false);
       toast.success("Produto criado com sucesso!");
     },
-    onError: (error: any) => toast.error(`Erro ao criar produto: ${error.message}`),
+    onError: (error: unknown) => toast.error(`Erro ao criar produto: ${errorMessage(error)}`),
   });
 
   const updateMutation = useMutation({
-    mutationFn: async (updates: any) => {
+    mutationFn: async (updates: ProductUpdateInput) => {
       const { id, category, addon_group_ids, ...updateData } = updates;
       const { data, error } = await supabase
         .from("products")
@@ -325,7 +231,7 @@ function ProductsPage() {
       setEditingProduct(null);
       toast.success("Produto atualizado!");
     },
-    onError: (error) => toast.error(`Erro ao atualizar: ${error.message}`),
+    onError: (error: unknown) => toast.error(`Erro ao atualizar: ${errorMessage(error)}`),
   });
 
   const deleteMutation = useMutation({
@@ -354,7 +260,7 @@ function ProductsPage() {
       queryClient.invalidateQueries({ queryKey: ["products", storeId] });
       toast.success("Produto excluído!");
     },
-    onError: (error: any) => toast.error(error.message),
+    onError: (error: unknown) => toast.error(errorMessage(error)),
   });
 
   // handleFileUpload was removed in favor of ImageUpload component
@@ -439,7 +345,7 @@ function ProductsPage() {
       return;
     }
 
-    createMutation.mutate(newProduct as any);
+    createMutation.mutate(newProduct);
   };
 
   const handleUpdate = (e: React.FormEvent<HTMLFormElement>) => {
@@ -474,7 +380,7 @@ function ProductsPage() {
       ...(canUseAddons ? { addon_group_ids: editAddonGroups } : {}),
     };
 
-    updateMutation.mutate(updates as any);
+    updateMutation.mutate(updates);
   };
 
   const filteredProducts = products?.filter((p) => {
@@ -528,99 +434,23 @@ function ProductsPage() {
               <DialogHeader>
                 <DialogTitle>Adicionar Produto</DialogTitle>
               </DialogHeader>
-              <form onSubmit={handleCreate} className="space-y-4 py-4">
-                <div className="grid grid-cols-2 gap-4">
-                  <div className="col-span-2 space-y-2">
-                    <label className="text-sm font-medium">Nome do Produto</label>
-                    <Input name="name" placeholder="Ex: Nome do produto" required />
-                  </div>
-
-                  <div className="space-y-2">
-                    <label className="text-sm font-medium">Preço (R$)</label>
-                    <Input name="price" type="number" step="0.01" placeholder="0.00" required />
-                  </div>
-
-                  <div className="space-y-2">
-                    <label className="text-sm font-medium">Categoria</label>
-                    <Select name="category_id" required>
-                      <SelectTrigger>
-                        <SelectValue placeholder="Selecione" />
-                      </SelectTrigger>
-                      <SelectContent>
-                        {categories?.map((c) => (
-                          <SelectItem key={c.id} value={c.id}>
-                            {c.name}
-                          </SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
-                  </div>
-                </div>
-
-                <div className="space-y-2">
-                  <label className="text-sm font-medium">Imagem do Produto</label>
-                  <ImageUpload
-                    value={newProductImage}
-                    storeId={storeId}
-                    onChange={(url) => setNewProductImage(url || "")}
-                    folder="products"
-                    className="max-w-[220px]"
-                  />
-                </div>
-
-                <div className="space-y-2">
-                  <label className="text-sm font-medium">Descrição</label>
-                  <Textarea name="description" placeholder="Detalhes do produto..." rows={3} />
-                </div>
-
-                {canUseAddons && (
-                  <AddonGroupPicker
-                    groups={addonGroups}
-                    selected={newAddonGroups}
-                    onToggle={(groupId, checked) =>
-                      setNewAddonGroups((prev) =>
-                        checked ? [...prev, groupId] : prev.filter((id) => id !== groupId),
-                      )
-                    }
-                  />
-                )}
-
-                {canUsePromotions && (
-                  <div className="space-y-3 border rounded-lg p-3 bg-rose-50/50 border-rose-100">
-                    <div className="flex items-center justify-between">
-                      <label className="text-sm font-medium flex items-center gap-1.5">
-                        <Tag size={14} className="text-rose-500" /> Produto em promoção
-                      </label>
-                      <Switch checked={newHasPromo} onCheckedChange={setNewHasPromo} />
-                    </div>
-                    {newHasPromo && (
-                      <div className="grid grid-cols-2 gap-3">
-                        <div className="col-span-2 space-y-1">
-                          <label className="text-xs text-slate-500">Preço promocional (R$)</label>
-                          <Input name="sale_price" type="number" step="0.01" placeholder="0.00" />
-                        </div>
-                        <div className="space-y-1">
-                          <label className="text-xs text-slate-500">Início (opcional)</label>
-                          <Input name="sale_start_at" type="datetime-local" />
-                        </div>
-                        <div className="space-y-1">
-                          <label className="text-xs text-slate-500">Fim (opcional)</label>
-                          <Input name="sale_end_at" type="datetime-local" />
-                        </div>
-                      </div>
-                    )}
-                  </div>
-                )}
-
-                <DialogFooter>
-                  <Button type="button" variant="outline" onClick={() => setIsAddOpen(false)}>
-                    Cancelar
-                  </Button>
-                  <Button type="submit" disabled={createMutation.isPending}>
-                    {createMutation.isPending ? <Loader2 className="animate-spin" /> : "Criar"}
-                  </Button>
-                </DialogFooter>
-              </form>
+              <ProductForm
+                mode="create"
+                storeId={storeId}
+                categories={categories}
+                addonGroups={addonGroups}
+                canUseAddons={canUseAddons}
+                canUsePromotions={canUsePromotions}
+                image={newProductImage}
+                onImageChange={setNewProductImage}
+                hasPromo={newHasPromo}
+                onHasPromoChange={setNewHasPromo}
+                selectedAddonGroups={newAddonGroups}
+                onAddonGroupsChange={setNewAddonGroups}
+                onSubmit={handleCreate}
+                onCancel={() => setIsAddOpen(false)}
+                isPending={createMutation.isPending}
+              />
             </DialogContent>
           </Dialog>
         </div>
@@ -827,138 +657,24 @@ function ProductsPage() {
                           <DialogHeader>
                             <DialogTitle>Editar Produto</DialogTitle>
                           </DialogHeader>
-                          <form onSubmit={handleUpdate} className="space-y-4 py-4">
-                            <div className="grid grid-cols-2 gap-4">
-                              <div className="col-span-2 space-y-2">
-                                <label className="text-sm font-medium">Nome do Produto</label>
-                                <Input name="name" defaultValue={product.name} required />
-                              </div>
-
-                              <div className="space-y-2">
-                                <label className="text-sm font-medium">Preço (R$)</label>
-                                <Input
-                                  name="price"
-                                  type="number"
-                                  step="0.01"
-                                  defaultValue={product.price}
-                                  required
-                                />
-                              </div>
-
-                              <div className="space-y-2">
-                                <label className="text-sm font-medium">Categoria</label>
-                                <Select name="category_id" defaultValue={product.category_id}>
-                                  <SelectTrigger>
-                                    <SelectValue />
-                                  </SelectTrigger>
-                                  <SelectContent>
-                                    {categories?.map((c) => (
-                                      <SelectItem key={c.id} value={c.id}>
-                                        {c.name}
-                                      </SelectItem>
-                                    ))}
-                                  </SelectContent>
-                                </Select>
-                              </div>
-                            </div>
-
-                            <div className="space-y-2">
-                              <label className="text-sm font-medium">Imagem do Produto</label>
-                              <ImageUpload
-                                value={editProductImage || product.image_url}
-                                storeId={storeId}
-                                onChange={(url) => setEditProductImage(url || "")}
-                                folder="products"
-                                className="max-w-[220px]"
-                              />
-                            </div>
-
-                            <div className="space-y-2">
-                              <label className="text-sm font-medium">Descrição</label>
-                              <Textarea
-                                name="description"
-                                defaultValue={product.description || ""}
-                                rows={3}
-                              />
-                            </div>
-
-                            {canUseAddons && (
-                              <AddonGroupPicker
-                                groups={addonGroups}
-                                selected={editAddonGroups}
-                                onToggle={(groupId, checked) =>
-                                  setEditAddonGroups((prev) =>
-                                    checked
-                                      ? [...prev, groupId]
-                                      : prev.filter((id) => id !== groupId),
-                                  )
-                                }
-                              />
-                            )}
-
-                            {canUsePromotions && (
-                              <div className="space-y-3 border rounded-lg p-3 bg-rose-50/50 border-rose-100">
-                                <div className="flex items-center justify-between">
-                                  <label className="text-sm font-medium flex items-center gap-1.5">
-                                    <Tag size={14} className="text-rose-500" /> Produto em promoção
-                                  </label>
-                                  <Switch
-                                    checked={editHasPromo}
-                                    onCheckedChange={setEditHasPromo}
-                                  />
-                                </div>
-                                <div className="grid grid-cols-2 gap-3">
-                                  <div className="col-span-2 space-y-1">
-                                    <label className="text-xs text-slate-500">
-                                      Preço promocional (R$)
-                                    </label>
-                                    <Input
-                                      name="sale_price"
-                                      type="number"
-                                      step="0.01"
-                                      placeholder="0.00"
-                                      defaultValue={product.sale_price ?? ""}
-                                    />
-                                  </div>
-                                  <div className="space-y-1">
-                                    <label className="text-xs text-slate-500">
-                                      Início (opcional)
-                                    </label>
-                                    <Input
-                                      name="sale_start_at"
-                                      type="datetime-local"
-                                      defaultValue={toLocalInput(product.sale_start_at)}
-                                    />
-                                  </div>
-                                  <div className="space-y-1">
-                                    <label className="text-xs text-slate-500">Fim (opcional)</label>
-                                    <Input
-                                      name="sale_end_at"
-                                      type="datetime-local"
-                                      defaultValue={toLocalInput(product.sale_end_at)}
-                                    />
-                                  </div>
-                                </div>
-                                <p className="text-[10px] text-slate-400">
-                                  Desligar a promoção não apaga o preço promocional — ele fica
-                                  guardado pra próxima vez.
-                                </p>
-                              </div>
-                            )}
-
-                            <DialogFooter>
-                              <Button
-                                type="button"
-                                variant="outline"
-                                onClick={() => setEditingProduct(null)}
-                              >
-                                Cancelar
-                              </Button>
-                              <Button type="submit" disabled={updateMutation.isPending}>
-                                Salvar
-                              </Button>
-                            </DialogFooter>
-                          </form>
+                          <ProductForm
+                            mode="edit"
+                            product={product}
+                            storeId={storeId}
+                            categories={categories}
+                            addonGroups={addonGroups}
+                            canUseAddons={canUseAddons}
+                            canUsePromotions={canUsePromotions}
+                            image={editProductImage}
+                            onImageChange={setEditProductImage}
+                            hasPromo={editHasPromo}
+                            onHasPromoChange={setEditHasPromo}
+                            selectedAddonGroups={editAddonGroups}
+                            onAddonGroupsChange={setEditAddonGroups}
+                            onSubmit={handleUpdate}
+                            onCancel={() => setEditingProduct(null)}
+                            isPending={updateMutation.isPending}
+                          />
                         </DialogContent>
                       </Dialog>
 

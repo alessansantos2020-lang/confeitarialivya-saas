@@ -1,6 +1,25 @@
 import { supabase } from "@/integrations/supabase/client";
 import { z } from "zod";
 import { DEFAULT_STORE_ID } from "./delivery.functions";
+import type { Tables } from "@/integrations/supabase/types";
+
+type ReportItem = Pick<Tables<"order_items">, "quantity" | "product_id" | "price_at_time"> & {
+  products: { name: string } | null;
+};
+
+type ReportOrder = Pick<
+  Tables<"orders">,
+  "status" | "total_amount" | "created_at" | "customer_phone" | "customer_name"
+> & {
+  order_items: ReportItem[];
+};
+
+type ReportCustomer = {
+  name: string;
+  phone: string;
+  total_orders: number;
+  total_spent: number;
+};
 
 const reportInput = z.object({
   storeId: z.string().uuid().optional(),
@@ -16,8 +35,9 @@ export const getSalesReport = async (input: z.input<typeof reportInput>) => {
   const storeId = rawStoreId || DEFAULT_STORE_ID;
 
   let query = supabase
-    .from('orders')
-    .select(`
+    .from("orders")
+    .select(
+      `
       *,
       order_items (
         quantity,
@@ -28,15 +48,15 @@ export const getSalesReport = async (input: z.input<typeof reportInput>) => {
           categories (name)
         )
       )
-    `)
-    .eq('store_id', storeId);
-
+    `,
+    )
+    .eq("store_id", storeId);
 
   if (startDate) {
-    query = query.gte('created_at', startDate);
+    query = query.gte("created_at", startDate);
   }
   if (endDate) {
-    query = query.lte('created_at', endDate);
+    query = query.lte("created_at", endDate);
   }
 
   const { data: orders, error } = await query;
@@ -47,14 +67,15 @@ export const getSalesReport = async (input: z.input<typeof reportInput>) => {
     totalOrders: 0,
     completedOrders: 0,
     canceledOrders: 0,
-    productsSold: {} as Record<string, { name: string, quantity: number, revenue: number }>,
-    dailySales: {} as Record<string, number>
+    productsSold: {} as Record<string, { name: string; quantity: number; revenue: number }>,
+    dailySales: {} as Record<string, number>,
   };
+  const reportOrders = (orders || []) as ReportOrder[];
 
-  orders?.forEach(order => {
+  reportOrders.forEach((order) => {
     stats.totalOrders++;
 
-    const isCancelled = order.status === 'canceled';
+    const isCancelled = order.status === "canceled";
     const isRevenueOrder = !isCancelled;
 
     if (isRevenueOrder) {
@@ -64,24 +85,25 @@ export const getSalesReport = async (input: z.input<typeof reportInput>) => {
       stats.canceledOrders++;
     }
 
-    const day = new Date(order.created_at || new Date()).toLocaleDateString('pt-BR');
+    const day = new Date(order.created_at || new Date()).toLocaleDateString("pt-BR");
     if (isRevenueOrder) {
       stats.dailySales[day] = (stats.dailySales[day] || 0) + Number(order.total_amount);
     } else if (!stats.dailySales[day]) {
       stats.dailySales[day] = 0;
     }
 
-    (order.order_items as any[])?.forEach((item: any) => {
+    order.order_items.forEach((item) => {
       if (isRevenueOrder) {
         const productId = item.product_id;
-        const productName = item.products?.name || 'Produto Removido';
+        if (!productId) return;
+        const productName = item.products?.name || "Produto Removido";
         if (!stats.productsSold[productId]) {
           stats.productsSold[productId] = { name: productName, quantity: 0, revenue: 0 };
         }
         stats.productsSold[productId].quantity += item.quantity;
 
         const itemPrice = Number(item.price_at_time || 0);
-        stats.productsSold[productId].revenue += (item.quantity * itemPrice);
+        stats.productsSold[productId].revenue += item.quantity * itemPrice;
       }
     });
   });
@@ -95,27 +117,30 @@ export const getSalesReport = async (input: z.input<typeof reportInput>) => {
     .slice(-30); // Last 30 points
 
   // Group orders for reports
-  const ordersWithDetails = orders?.map(order => ({
+  const ordersWithDetails = reportOrders.map((order) => ({
     ...order,
-    items_summary: (order.order_items as any[])?.map(i => `${i.quantity}x ${i.products?.name}`).join(', ')
-  })) || [];
+    items_summary: order.order_items
+      .map((item) => `${item.quantity}x ${item.products?.name || "Produto Removido"}`)
+      .join(", "),
+  }));
 
   // Customers from orders in this period
-  const customersMap = new Map();
-  orders?.forEach(order => {
+  const customersMap = new Map<string, ReportCustomer>();
+  reportOrders.forEach((order) => {
     const phone = order.customer_phone;
-    if (!customersMap.has(phone)) {
-      customersMap.set(phone, {
-        name: order.customer_name,
-        phone: order.customer_phone,
-        total_orders: 1,
-        total_spent: Number(order.total_amount)
-      });
-    } else {
-      const c = customersMap.get(phone);
-      c.total_orders++;
-      c.total_spent += Number(order.total_amount);
+    const existing = customersMap.get(phone);
+    if (existing) {
+      existing.total_orders++;
+      existing.total_spent += Number(order.total_amount);
+      return;
     }
+
+    customersMap.set(phone, {
+      name: order.customer_name,
+      phone,
+      total_orders: 1,
+      total_spent: Number(order.total_amount),
+    });
   });
 
   return {
@@ -123,11 +148,11 @@ export const getSalesReport = async (input: z.input<typeof reportInput>) => {
       totalRevenue: stats.totalRevenue,
       totalOrders: stats.totalOrders,
       completedOrders: stats.completedOrders,
-      canceledOrders: stats.canceledOrders
+      canceledOrders: stats.canceledOrders,
     },
     topProducts,
     salesChart,
     orders: ordersWithDetails,
-    customers: Array.from(customersMap.values())
+    customers: Array.from(customersMap.values()),
   };
 };

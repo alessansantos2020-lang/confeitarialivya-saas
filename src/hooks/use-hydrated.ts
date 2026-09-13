@@ -1,4 +1,4 @@
-import { useMemo, useState, useEffect } from 'react';
+import { useEffect, useState } from "react";
 
 export function useIsHydrated() {
   const [isHydrated, setIsHydrated] = useState(false);

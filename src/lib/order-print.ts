@@ -1,5 +1,7 @@
 import type { OrderWithItems } from "./orders-admin.functions";
 import { paymentMethodLabel } from "./order-status";
+import { formatCurrencyBRL } from "./formatters";
+import { parseSelectedAddons } from "./order-utils";
 
 const escapeHtml = (value: unknown): string =>
   String(value ?? "")
@@ -9,40 +11,30 @@ const escapeHtml = (value: unknown): string =>
     .replaceAll('"', "&quot;")
     .replaceAll("'", "&#039;");
 
-const parseAddons = (value: unknown): Array<{ name?: string }> => {
-  if (!value) return [];
-  if (typeof value !== "string") return Array.isArray(value) ? value as Array<{ name?: string }> : [];
-  try {
-    const parsed: unknown = JSON.parse(value);
-    return Array.isArray(parsed) ? parsed as Array<{ name?: string }> : [];
-  } catch {
-    return [];
-  }
-};
-
-const money = (value: number | null | undefined): string =>
-  new Intl.NumberFormat("pt-BR", { style: "currency", currency: "BRL" }).format(Number(value || 0));
+const money = formatCurrencyBRL;
 
 export const printOrder = (order: OrderWithItems, storeName: string): boolean => {
   const printWindow = window.open("", "_blank", "noopener,noreferrer");
   if (!printWindow) return false;
 
-  const items = order.order_items.map((item) => {
-    const name = item.product_name || item.product?.name || "Produto";
-    const addons = parseAddons(item.selected_addons)
-      .map((addon) => addon.name)
-      .filter(Boolean)
-      .map((name) => `<div class="addon">+ ${escapeHtml(name)}</div>`)
-      .join("");
-    const observation = item.observation
-      ? `<div class="obs">Obs: ${escapeHtml(item.observation)}</div>`
-      : "";
+  const items = order.order_items
+    .map((item) => {
+      const name = item.product_name || item.product?.name || "Produto";
+      const addons = parseSelectedAddons(item.selected_addons)
+        .map((addon) => addon.name)
+        .filter(Boolean)
+        .map((name) => `<div class="addon">+ ${escapeHtml(name)}</div>`)
+        .join("");
+      const observation = item.observation
+        ? `<div class="obs">Obs: ${escapeHtml(item.observation)}</div>`
+        : "";
 
-    return `<div class="item-block">
+      return `<div class="item-block">
       <div class="item"><span class="item-qty">${item.quantity}x</span><span class="item-name">${escapeHtml(name)}</span><span>${money(Number(item.price_at_time) * item.quantity)}</span></div>
       ${addons}${observation}
     </div>`;
-  }).join("");
+    })
+    .join("");
 
   const address = [
     order.street,
@@ -50,7 +42,10 @@ export const printOrder = (order: OrderWithItems, storeName: string): boolean =>
     order.complement,
     order.neighborhood,
     order.reference ? `Ref.: ${order.reference}` : null,
-  ].filter(Boolean).map(escapeHtml).join(", ");
+  ]
+    .filter(Boolean)
+    .map(escapeHtml)
+    .join(", ");
 
   const html = `<!doctype html>
 <html lang="pt-BR"><head><meta charset="utf-8"><title>Pedido #${escapeHtml(order.id.slice(0, 8).toUpperCase())}</title>

@@ -1,15 +1,26 @@
 import { supabase } from "@/integrations/supabase/client";
+import type { Tables } from "@/integrations/supabase/types";
 
 export const DEFAULT_STORE_ID = "00000000-0000-0000-0000-000000000001";
 export const DEFAULT_STORE_SLUG = "confeitaria-livya";
+
+export type StoreStatus = "active" | "inactive" | "suspended";
 
 export type Store = {
   id: string;
   name: string;
   slug: string;
   owner_id: string | null;
-  status: "active" | "inactive" | "suspended";
+  status: StoreStatus;
   created_at: string;
+};
+
+export const isStoreStatus = (value: string): value is StoreStatus =>
+  value === "active" || value === "inactive" || value === "suspended";
+
+export const toStore = (store: Tables<"stores">): Store => {
+  if (!isStoreStatus(store.status)) throw new Error("Status de loja inválido.");
+  return { ...store, status: store.status };
 };
 
 export type StoreSettings = {
@@ -41,12 +52,62 @@ export type StoreData = {
   settings: StoreSettings;
 };
 
-type PublicStoreResponse = {
-  store: Store;
-  settings: StoreSettings;
+export type PublicStoreResponse = StoreData;
+export type StoreSettingsRow = Tables<"store_settings">;
+
+const isPublicStoreResponse = (value: unknown): value is PublicStoreResponse => {
+  if (typeof value !== "object" || value === null || Array.isArray(value)) return false;
+  const response = value as Record<string, unknown>;
+  return (
+    typeof response["store"] === "object" &&
+    response["store"] !== null &&
+    typeof response["settings"] === "object" &&
+    response["settings"] !== null
+  );
 };
 
-type PublicCatalogProduct = {
+const toStoreSettings = (data: StoreSettingsRow): StoreSettings => ({
+  store_id: data.store_id,
+  name: data.name || "Minha Loja",
+  description: data.description,
+  logo_url: data.logo_url,
+  cover_url: data.cover_url,
+  opening_hours: data.opening_hours,
+  is_open: data.is_open ?? true,
+  phone: data.phone,
+  whatsapp: data.whatsapp,
+  instagram: data.instagram,
+  address: data.address,
+  primary_color: data.primary_color,
+  secondary_color: data.secondary_color,
+  auto_notify_whatsapp: data.auto_notify_whatsapp ?? false,
+  whatsapp_accept_enabled: data.whatsapp_accept_enabled ?? true,
+  whatsapp_cancel_enabled: data.whatsapp_cancel_enabled ?? true,
+  whatsapp_shipping_enabled: data.whatsapp_shipping_enabled ?? true,
+  whatsapp_template_aceito: data.whatsapp_template_aceito,
+  whatsapp_template_cancelado: data.whatsapp_template_cancelado,
+  whatsapp_template_recebido: data.whatsapp_template_recebido,
+  whatsapp_template_saida_entrega: data.whatsapp_template_saida_entrega,
+});
+
+export type PublicCatalogAddon = {
+  id: string;
+  name: string;
+  price: number;
+  status: string;
+};
+
+export type PublicCatalogAddonGroup = {
+  id: string;
+  name: string;
+  min_quantity: number;
+  max_quantity: number;
+  is_required: boolean;
+  status: string;
+  items: PublicCatalogAddon[];
+};
+
+export type PublicCatalogProduct = {
   id: string;
   name: string;
   description: string | null;
@@ -60,20 +121,10 @@ type PublicCatalogProduct = {
   sale_start_at: string | null;
   sale_end_at: string | null;
   category_id: string;
-  addons: Array<{
-    group: {
-      id: string;
-      name: string;
-      min_quantity: number;
-      max_quantity: number;
-      is_required: boolean;
-      status: string;
-      items: Array<{ id: string; name: string; price: number; status: string }>;
-    };
-  }>;
+  addons: Array<{ group: PublicCatalogAddonGroup }>;
 };
 
-type PublicCatalogCategory = {
+export type PublicCatalogCategory = {
   id: string;
   name: string;
   image_url: string | null;
@@ -86,6 +137,8 @@ export type PublicDeliveryFee = {
   neighborhood: string;
   fee: number;
 };
+
+const isPublicCatalog = (value: unknown): value is PublicCatalogCategory[] => Array.isArray(value);
 
 const defaultSettings = (name = "Minha Loja", store_id = DEFAULT_STORE_ID): StoreSettings => ({
   store_id,
@@ -111,10 +164,6 @@ const defaultSettings = (name = "Minha Loja", store_id = DEFAULT_STORE_ID): Stor
   whatsapp_template_saida_entrega: null,
 });
 
-/**
- * Busca uma loja pelo seu slug (ex: "confeitaria-livya") e suas configurações.
- * Retorna null se a loja não existir ou não estiver ativa.
- */
 export const getStoreBySlug = async (slug: string): Promise<StoreData | null> => {
   const cleanSlug = (slug || "").trim().toLowerCase();
   if (!cleanSlug) return null;
@@ -123,8 +172,11 @@ export const getStoreBySlug = async (slug: string): Promise<StoreData | null> =>
     _slug: cleanSlug,
   });
 
-  if (error || !data || typeof data !== "object" || Array.isArray(data)) return null;
-  return data as unknown as PublicStoreResponse;
+  if (error || !data || !isPublicStoreResponse(data)) return null;
+  return {
+    store: toStore(data.store as Tables<"stores">),
+    settings: toStoreSettings(data.settings as StoreSettingsRow),
+  };
 };
 
 export const getPublicStoreSettings = async (
@@ -134,18 +186,14 @@ export const getPublicStoreSettings = async (
     _store_id: storeId,
   });
 
-  if (error || !data || typeof data !== "object" || Array.isArray(data)) {
+  if (error) {
+    console.error("Falha ao carregar configurações públicas:", error);
     return defaultSettings("Minha Loja", storeId);
   }
-
-  const response = data as unknown as PublicStoreResponse;
-  return response.settings;
+  if (!isPublicStoreResponse(data)) return defaultSettings("Minha Loja", storeId);
+  return toStoreSettings(data.settings as StoreSettingsRow);
 };
 
-/**
- * Busca as configurações de uma loja pelo seu store_id.
- * Se store_id for omitido, usa a loja padrão (retrocompatibilidade).
- */
 export const getStoreSettings = async (
   storeId: string = DEFAULT_STORE_ID,
 ): Promise<StoreSettings> => {
@@ -155,45 +203,14 @@ export const getStoreSettings = async (
     .eq("store_id", storeId)
     .maybeSingle();
 
-  if (error || !data) {
+  if (error) {
+    console.error("Falha ao carregar configurações da loja:", error);
     return defaultSettings("Minha Loja", storeId);
   }
-
-  return {
-    store_id: data.store_id || storeId,
-    name: data.name,
-    description: data.description,
-    logo_url: data.logo_url,
-    cover_url: data.cover_url,
-    opening_hours: data.opening_hours,
-    is_open: data.is_open ?? true,
-    phone: data.phone,
-    whatsapp: data.whatsapp,
-    instagram: data.instagram,
-    address: data.address,
-    primary_color: data.primary_color,
-    secondary_color: data.secondary_color,
-    auto_notify_whatsapp: data.auto_notify_whatsapp ?? false,
-    whatsapp_accept_enabled: (data as any).whatsapp_accept_enabled ?? true,
-    whatsapp_cancel_enabled: (data as any).whatsapp_cancel_enabled ?? true,
-    whatsapp_shipping_enabled: (data as any).whatsapp_shipping_enabled ?? true,
-    whatsapp_template_aceito: (data as any).whatsapp_template_aceito,
-    whatsapp_template_cancelado: (data as any).whatsapp_template_cancelado,
-    whatsapp_template_recebido: (data as any).whatsapp_template_recebido,
-    whatsapp_template_saida_entrega: (data as any).whatsapp_template_saida_entrega,
-  };
+  if (!data) return defaultSettings("Minha Loja", storeId);
+  return toStoreSettings(data);
 };
 
-/**
- * Busca categorias ativas e seus produtos vinculados a uma loja específica.
- *
- * `effective_price` é coluna calculada pelo banco: já vem com o preço
- * promocional quando a promoção está valendo (e com o preço normal quando não
- * está). Nunca calculamos isso aqui — é o mesmo valor que o pedido vai cobrar.
- *
- * Os apelidos `addons`, `group` e `items` no select existem porque a tela do
- * cliente já espera esse formato: `product.addons[].group.items[]`.
- */
 export const getCategoriesWithProducts = async (
   storeId: string = DEFAULT_STORE_ID,
 ): Promise<PublicCatalogCategory[]> => {
@@ -202,5 +219,5 @@ export const getCategoriesWithProducts = async (
   });
 
   if (error) throw error;
-  return Array.isArray(data) ? (data as unknown as PublicCatalogCategory[]) : [];
+  return isPublicCatalog(data) ? data : [];
 };

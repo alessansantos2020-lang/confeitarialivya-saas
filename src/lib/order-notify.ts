@@ -6,6 +6,8 @@ import {
   type OrderWithItems,
 } from "./orders-admin.functions";
 import { paymentMethodLabel } from "./order-status";
+import { formatCurrencyBRL } from "./formatters";
+import { orderItemsSummary } from "./order-utils";
 
 export type NotifyEvent =
   "received" | "accepted" | "preparing" | "ready" | "shipping" | "delivered" | "canceled";
@@ -35,32 +37,8 @@ const eventEnabled = (settings: StoreSettings, event: NotifyEvent): boolean => {
 const eventIsIdempotent = (event: NotifyEvent): event is "accepted" | "canceled" | "shipping" =>
   event === "accepted" || event === "canceled" || event === "shipping";
 
-const money = (value: number | null | undefined): string =>
-  new Intl.NumberFormat("pt-BR", { style: "currency", currency: "BRL" }).format(Number(value || 0));
-
-const parseAddons = (value: unknown): Array<{ name?: string; price?: number }> => {
-  if (!value) return [];
-  if (typeof value !== "string")
-    return Array.isArray(value) ? (value as Array<{ name?: string; price?: number }>) : [];
-  try {
-    const parsed: unknown = JSON.parse(value);
-    return Array.isArray(parsed) ? (parsed as Array<{ name?: string; price?: number }>) : [];
-  } catch {
-    return [];
-  }
-};
-
-const itemSummary = (order: OrderWithItems): string =>
-  order.order_items
-    .map((item) => {
-      const name = item.product_name || item.product?.name || "Produto";
-      const addons = parseAddons(item.selected_addons)
-        .map((addon) => addon.name)
-        .filter(Boolean)
-        .join(", ");
-      return `${item.quantity}x ${name}${addons ? ` (${addons})` : ""}`;
-    })
-    .join("\n");
+const money = formatCurrencyBRL;
+const itemSummary = (order: OrderWithItems): string => orderItemsSummary(order.order_items);
 
 const fallbackMessage = (
   order: OrderWithItems,
@@ -153,6 +131,7 @@ export const notifyOrderWhatsApp = async (
 
   const message = buildMessage(order, settings, event);
   let attemptId: string | null = null;
+  const popup = window.open("about:blank", "_blank");
 
   if (eventIsIdempotent(event)) {
     try {
@@ -163,18 +142,18 @@ export const notifyOrderWhatsApp = async (
         message,
         storeId,
       });
-      if (!attempt) return { sent: false, reason: "duplicate" };
+      if (!attempt) {
+        popup?.close();
+        return { sent: false, reason: "duplicate" };
+      }
       attemptId = attempt.id;
     } catch (error) {
+      popup?.close();
       console.error("Falha ao registrar tentativa de WhatsApp:", error);
       return { sent: false, reason: "record_failed" };
     }
   }
 
-  const popup = window.open(
-    `https://wa.me/55${phone}?text=${encodeURIComponent(message)}`,
-    "_blank",
-  );
   if (!popup) {
     if (attemptId) {
       await updateWhatsAppAttempt({
@@ -186,6 +165,8 @@ export const notifyOrderWhatsApp = async (
     }
     return { sent: false, reason: "blocked_popup" };
   }
+
+  popup.location.href = `https://wa.me/55${phone}?text=${encodeURIComponent(message)}`;
 
   if (attemptId) {
     await updateWhatsAppAttempt({ id: attemptId, status: "opened", storeId }).catch((error) =>

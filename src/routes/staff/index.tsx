@@ -10,18 +10,16 @@ import {
 } from "@/lib/orders-admin.functions";
 import { getStoreSettings } from "@/lib/delivery.functions";
 import {
-  OPERATIONAL_ACTION_LABEL,
   OPERATIONAL_TABS,
-  ORDER_STATUS_STYLE,
-  canCancel,
   nextStatus,
-  paymentMethodLabel,
   type OperationalTabId,
   type OrderStatus,
 } from "@/lib/order-status";
 import { notifyOrderWhatsApp, notifyResultMessage, type NotifyEvent } from "@/lib/order-notify";
 import { printOrder } from "@/lib/order-print";
 import { logAudit } from "@/lib/audit.functions";
+import { OperationalOrderCard } from "@/components/staff/operational-order-card";
+import { OrderDetailsDialog } from "@/components/staff/order-details-dialog";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -32,13 +30,7 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
-import {
-  Dialog,
-  DialogContent,
-  DialogHeader,
-  DialogTitle,
-  DialogTrigger,
-} from "@/components/ui/dialog";
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Textarea } from "@/components/ui/textarea";
 import { Badge } from "@/components/ui/badge";
@@ -46,31 +38,18 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Switch } from "@/components/ui/switch";
 import { Label } from "@/components/ui/label";
-import { Card, CardContent } from "@/components/ui/card";
 import { toast } from "sonner";
 import { useActiveStore } from "@/lib/active-store";
-import { format } from "date-fns";
-import { ptBR } from "date-fns/locale";
 import {
   AlertTriangle,
-  ArrowRight,
   Ban,
   Bell,
   BellOff,
   CheckCircle,
-  CheckCircle2,
-  Clock,
-  Eye,
   History,
-  Loader2,
-  MapPin,
-  MessageCircle,
-  Phone,
-  Printer,
   RefreshCw,
   Search,
   ShoppingBag,
-  Truck,
   Wifi,
   WifiOff,
   XCircle,
@@ -91,6 +70,7 @@ const OPERATIONAL_STATUSES: OrderStatus[] = [
 const AUTOMATIC_NOTIFY_EVENTS: Partial<Record<OrderStatus, NotifyEvent>> = {
   confirmed: "accepted",
   out_for_delivery: "shipping",
+  canceled: "canceled",
 };
 
 const normalizeDigits = (value: string | null | undefined) => (value || "").replace(/\D/g, "");
@@ -534,299 +514,4 @@ function StaffOrdersPage() {
       </AlertDialog>
     </div>
   );
-}
-
-function OperationalOrderCard({
-  order,
-  onAdvance,
-  onCancelRequest,
-  onPrint,
-  onNotifyWhatsApp,
-  isUpdating,
-}: {
-  order: OrderWithItems;
-  onAdvance: (order: OrderWithItems) => void;
-  onCancelRequest: (order: OrderWithItems) => void;
-  onPrint: (order: OrderWithItems) => void;
-  onNotifyWhatsApp: (order: OrderWithItems) => void;
-  isUpdating: boolean;
-}) {
-  const meta = ORDER_STATUS_STYLE[order.status];
-  const next = nextStatus(order.status);
-  const actionLabel = OPERATIONAL_ACTION_LABEL[order.status];
-  const cancellable = canCancel(order.status);
-  const isNew = order.status === "pending";
-
-  return (
-    <Card
-      className={`overflow-hidden border bg-white transition-all ${isNew ? "border-blue-500 shadow-sm ring-1 ring-blue-400/40" : "border-slate-200 hover:border-slate-300 hover:shadow-sm"}`}
-    >
-      <div
-        className={`flex items-center justify-between p-2 px-3 text-xs ${isNew ? "bg-blue-600 text-white" : "border-b border-slate-100 bg-slate-50 text-slate-600"}`}
-      >
-        <div className="flex items-center gap-1.5">
-          <span className="font-mono font-bold">#{order.id.slice(0, 8).toUpperCase()}</span>
-          {isNew && (
-            <Badge className="h-4 bg-white px-1 text-[9px] font-extrabold uppercase text-blue-700">
-              Novo
-            </Badge>
-          )}
-        </div>
-        <span className="flex items-center gap-1 text-[11px] font-medium">
-          <Clock className="h-3 w-3" />
-          {order.created_at
-            ? format(new Date(order.created_at), "HH:mm", { locale: ptBR })
-            : "--:--"}
-        </span>
-      </div>
-
-      <CardContent className="space-y-2.5 p-3">
-        <div>
-          <h4 className="truncate text-sm font-bold text-slate-900" title={order.customer_name}>
-            {order.customer_name}
-          </h4>
-          <div className="mt-0.5 flex items-center gap-1 text-xs text-slate-500">
-            <MapPin className="h-3 w-3 shrink-0 text-slate-400" />
-            <span className="truncate">
-              {order.neighborhood || order.address || "Endereço não informado"}
-            </span>
-          </div>
-        </div>
-
-        <div className="space-y-1 rounded-lg border border-slate-100 bg-slate-50 p-2 text-xs">
-          {order.order_items?.length ? (
-            order.order_items.slice(0, 3).map((item, index) => (
-              <div key={item.id || index} className="flex justify-between truncate text-slate-700">
-                <span className="truncate">
-                  <strong>{item.quantity}x</strong>{" "}
-                  {item.product_name || item.product?.name || "Produto"}
-                </span>
-                <span className="ml-1 shrink-0 font-medium text-slate-600">
-                  {money(Number(item.price_at_time) * item.quantity)}
-                </span>
-              </div>
-            ))
-          ) : (
-            <p className="italic text-slate-400">Sem itens listados</p>
-          )}
-          {order.order_items && order.order_items.length > 3 && (
-            <p className="pt-0.5 text-[10px] font-medium text-slate-500">
-              + {order.order_items.length - 3} outro(s) item(ns)...
-            </p>
-          )}
-        </div>
-
-        {order.observation && (
-          <div className="line-clamp-2 rounded border border-amber-200/60 bg-amber-50 p-1.5 text-[11px] italic text-amber-800">
-            Obs: {order.observation}
-          </div>
-        )}
-
-        <div className="flex items-center justify-between border-t border-slate-100 pt-1 text-xs">
-          <span className="text-sm font-black text-pink-600">{money(order.total_amount)}</span>
-          <span className="rounded bg-slate-100 px-1.5 py-0.5 text-[10px] font-bold uppercase tracking-wider text-slate-500">
-            {paymentMethodLabel(order.payment_method)}
-          </span>
-        </div>
-
-        {next && actionLabel && (
-          <Button
-            className={`h-9 w-full gap-1.5 text-xs font-bold text-white shadow-sm ${meta.color}`}
-            onClick={() => onAdvance(order)}
-            disabled={isUpdating}
-          >
-            <>
-              {isUpdating ? (
-                <Loader2 className="h-3.5 w-3.5 animate-spin" />
-              ) : (
-                <>
-                  {actionLabel}
-                  <ArrowRight className="h-3 w-3" />
-                </>
-              )}
-            </>
-          </Button>
-        )}
-
-        <div className="flex items-center gap-1 pt-1">
-          <OrderDetailsDialog order={order} disabled={isUpdating} />
-          <Button
-            variant="outline"
-            size="sm"
-            className="h-8 px-2 text-slate-600 hover:text-slate-900"
-            title="Imprimir comanda"
-            onClick={() => onPrint(order)}
-            disabled={isUpdating}
-          >
-            <Printer className="h-3.5 w-3.5" />
-          </Button>
-          <Button
-            variant="outline"
-            size="sm"
-            className="h-8 px-2 text-emerald-600 hover:bg-emerald-50 hover:text-emerald-700"
-            title="Avisar cliente no WhatsApp"
-            onClick={() => onNotifyWhatsApp(order)}
-            disabled={isUpdating}
-          >
-            <MessageCircle className="h-3.5 w-3.5" />
-          </Button>
-          {cancellable && (
-            <Button
-              variant="outline"
-              size="sm"
-              className="h-8 px-2 text-red-500 hover:bg-red-50 hover:text-red-700"
-              title="Cancelar pedido"
-              onClick={() => onCancelRequest(order)}
-              disabled={isUpdating}
-            >
-              <Ban className="h-3.5 w-3.5" />
-            </Button>
-          )}
-        </div>
-      </CardContent>
-    </Card>
-  );
-}
-
-function money(value: number | null | undefined) {
-  return new Intl.NumberFormat("pt-BR", { style: "currency", currency: "BRL" }).format(value || 0);
-}
-
-function OrderDetailsDialog({ order, disabled }: { order: OrderWithItems; disabled?: boolean }) {
-  const meta = ORDER_STATUS_STYLE[order.status];
-  const items = order.order_items || [];
-
-  return (
-    <Dialog>
-      <DialogTrigger asChild>
-        <Button
-          variant="outline"
-          size="sm"
-          className="h-8 flex-1 gap-1 text-xs text-slate-700"
-          disabled={disabled}
-        >
-          <Eye className="h-3.5 w-3.5" /> Detalhes
-        </Button>
-      </DialogTrigger>
-      <DialogContent className="max-h-[90vh] max-w-xl overflow-y-auto">
-        <DialogHeader>
-          <div className="flex items-center justify-between">
-            <DialogTitle className="text-lg font-bold">
-              Pedido #{order.id.slice(0, 8).toUpperCase()}
-            </DialogTitle>
-            <Badge className={`${meta.color} text-[10px] font-bold uppercase`}>{meta.label}</Badge>
-          </div>
-        </DialogHeader>
-        <div className="space-y-4 py-2 text-sm">
-          <div className="space-y-2 rounded-xl border border-slate-200 bg-slate-50 p-3.5">
-            <div className="flex items-center justify-between border-b border-slate-200 pb-2">
-              <div>
-                <p className="font-bold text-slate-900">{order.customer_name}</p>
-                <p className="flex items-center gap-1 text-xs text-slate-500">
-                  <Phone className="h-3 w-3" /> {order.customer_phone || "Sem telefone"}
-                </p>
-              </div>
-              <span className="text-xs text-slate-400">
-                {order.created_at
-                  ? format(new Date(order.created_at), "dd/MM/yyyy 'às' HH:mm", { locale: ptBR })
-                  : ""}
-              </span>
-            </div>
-            <div className="space-y-1 pt-1 text-xs text-slate-600">
-              <p>
-                <strong>Endereço:</strong> {order.address || "Não informado"}
-              </p>
-              {order.reference && (
-                <p>
-                  <strong>Referência:</strong> {order.reference}
-                </p>
-              )}
-              {order.observation && (
-                <p className="mt-1 rounded border border-amber-200 bg-amber-50 p-2 text-amber-800">
-                  <strong>Observação:</strong> {order.observation}
-                </p>
-              )}
-            </div>
-          </div>
-
-          <div className="space-y-2">
-            <h4 className="border-b pb-1 text-xs font-bold uppercase tracking-wider text-slate-500">
-              Itens do Pedido ({items.length})
-            </h4>
-            <div className="space-y-2">
-              {items.map((item) => {
-                const addons = getAddonPreviews(item.selected_addons);
-                return (
-                  <div key={item.id} className="rounded-lg border border-slate-100 bg-white p-2.5">
-                    <div className="flex justify-between font-medium text-slate-900">
-                      <span>
-                        {item.quantity}x {item.product_name || item.product?.name || "Produto"}
-                      </span>
-                      <span>{money(Number(item.price_at_time) * item.quantity)}</span>
-                    </div>
-                    {addons.length > 0 && (
-                      <div className="space-y-0.5 pl-4 pt-1 text-xs text-slate-500">
-                        {addons.map((addon, index) => (
-                          <div key={index} className="flex justify-between italic">
-                            <span>+ {addon.name}</span>
-                            {addon.price ? <span>{money(addon.price)}</span> : null}
-                          </div>
-                        ))}
-                      </div>
-                    )}
-                    {item.observation && (
-                      <p className="mt-1.5 rounded bg-amber-50 p-1.5 text-xs italic text-amber-700">
-                        Obs: {item.observation}
-                      </p>
-                    )}
-                  </div>
-                );
-              })}
-            </div>
-          </div>
-
-          <div className="space-y-2 rounded-xl bg-slate-900 p-4 text-white">
-            <div className="flex justify-between text-xs text-slate-400">
-              <span>Subtotal dos produtos</span>
-              <span>{money((order.total_amount || 0) - Number(order.delivery_fee || 0))}</span>
-            </div>
-            <div className="flex justify-between text-xs text-slate-400">
-              <span>Taxa de entrega</span>
-              <span>{money(Number(order.delivery_fee || 0))}</span>
-            </div>
-            <div className="flex justify-between border-t border-slate-800 pt-1 text-xs text-slate-300">
-              <span>Pagamento</span>
-              <span className="font-bold uppercase">
-                {paymentMethodLabel(order.payment_method)}
-              </span>
-            </div>
-            <div className="flex justify-between border-t border-slate-800 pt-1 text-base font-black text-pink-400">
-              <span>Total</span>
-              <span>{money(order.total_amount)}</span>
-            </div>
-          </div>
-        </div>
-      </DialogContent>
-    </Dialog>
-  );
-}
-
-type AddonPreview = { name?: string; price?: number };
-
-function isAddon(value: unknown): value is AddonPreview {
-  return typeof value === "object" && value !== null && !Array.isArray(value);
-}
-
-function parseJson(value: string): AddonPreview[] {
-  try {
-    const parsed: unknown = JSON.parse(value);
-    return Array.isArray(parsed) ? parsed.filter(isAddon) : [];
-  } catch {
-    return [];
-  }
-}
-
-function getAddonPreviews(value: unknown): AddonPreview[] {
-  if (typeof value === "string") return parseJson(value);
-  return Array.isArray(value) ? value.filter(isAddon) : [];
 }

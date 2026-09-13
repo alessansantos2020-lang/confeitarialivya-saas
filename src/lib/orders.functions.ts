@@ -1,6 +1,18 @@
 import { supabase } from "@/integrations/supabase/client";
 import { DEFAULT_STORE_ID } from "./delivery.functions";
 
+const isRecord = (value: unknown): value is Record<string, unknown> =>
+  typeof value === "object" && value !== null && !Array.isArray(value);
+
+const isCreatedOrder = (value: unknown): value is CreatedOrder => {
+  if (!isRecord(value)) return false;
+  return (
+    typeof value["id"] === "string" &&
+    typeof value["store_id"] === "string" &&
+    Array.isArray(value["order_items"])
+  );
+};
+
 export type CreateOrderInput = {
   store_id?: string;
   customer_name: string;
@@ -65,9 +77,9 @@ export const createOrder = async (data: CreateOrderInput): Promise<CreatedOrder>
   });
 
   if (error) throw error;
-  if (!created || typeof created !== "object" || Array.isArray(created)) {
+  if (!isCreatedOrder(created)) {
     throw new Error("Não foi possível criar o pedido.");
   }
 
-  return created as unknown as CreatedOrder;
+  return created;
 };

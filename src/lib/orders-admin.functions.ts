@@ -1,5 +1,5 @@
 import { supabase } from "@/integrations/supabase/client";
-import type { Tables } from "@/integrations/supabase/types";
+import type { Tables, TablesUpdate } from "@/integrations/supabase/types";
 import { DEFAULT_STORE_ID } from "./delivery.functions";
 import type { OrderStatus } from "./order-status";
 
@@ -146,16 +146,12 @@ export const updateOrderStatus = async ({
   expectedStatus,
 }: UpdateOrderStatusInput): Promise<OrderWithItems> => {
   const storeId = rawStoreId || DEFAULT_STORE_ID;
-  const update = {
+  const update: TablesUpdate<"orders"> = {
     status,
     ...(status === "canceled" ? { cancel_reason: cancelReason?.trim() || null } : {}),
   };
 
-  let query = supabase
-    .from("orders")
-    .update(update as never)
-    .eq("id", id)
-    .eq("store_id", storeId);
+  let query = supabase.from("orders").update(update).eq("id", id).eq("store_id", storeId);
 
   if (expectedStatus) query = query.eq("status", expectedStatus);
 
@@ -180,7 +176,7 @@ export const updateOrderNotificationStatus = async (data: {
 
   const { data: updated, error } = await supabase
     .from("orders")
-    .update({ client_notified: data.notified } as never)
+    .update({ client_notified: data.notified } satisfies TablesUpdate<"orders">)
     .eq("id", data.id)
     .eq("store_id", storeId)
     .select("id")
@@ -199,51 +195,16 @@ export const createWhatsAppAttempt = async (input: {
   storeId?: string;
 }): Promise<{ id: string; status: string } | null> => {
   const storeId = input.storeId || DEFAULT_STORE_ID;
-  const { data: existing, error: lookupError } = await supabase
-    .from("order_whatsapp_attempts")
-    .select("id, status")
-    .eq("order_id", input.orderId)
-    .eq("event", input.event)
-    .eq("store_id", storeId)
-    .maybeSingle();
+  const { data, error } = await supabase.rpc("claim_order_whatsapp_attempt", {
+    _order_id: input.orderId,
+    _store_id: storeId,
+    _event: input.event,
+    _phone: input.phone,
+    _message: input.message,
+  });
 
-  if (lookupError) throw lookupError;
-  if (existing) {
-    if (existing.status !== "failed") return null;
-    const { data: retried, error: retryError } = await supabase
-      .from("order_whatsapp_attempts")
-      .update({
-        phone: input.phone,
-        message: input.message,
-        status: "started",
-        error_message: null,
-      } as never)
-      .eq("id", existing.id)
-      .eq("store_id", storeId)
-      .select("id, status")
-      .maybeSingle();
-    if (retryError) throw retryError;
-    return retried;
-  }
-
-  const { data, error } = await supabase
-    .from("order_whatsapp_attempts")
-    .insert({
-      order_id: input.orderId,
-      event: input.event,
-      phone: input.phone,
-      message: input.message,
-      status: "started",
-      store_id: storeId,
-    } as never)
-    .select("id, status")
-    .maybeSingle();
-
-  if (error) {
-    if (error.code === "23505") return null;
-    throw error;
-  }
-  return data;
+  if (error) throw error;
+  return data[0] || null;
 };
 
 export const updateWhatsAppAttempt = async (input: {
@@ -255,7 +216,10 @@ export const updateWhatsAppAttempt = async (input: {
   const storeId = input.storeId || DEFAULT_STORE_ID;
   const { error } = await supabase
     .from("order_whatsapp_attempts")
-    .update({ status: input.status, error_message: input.error || null } as never)
+    .update({
+      status: input.status,
+      error_message: input.error || null,
+    } satisfies TablesUpdate<"order_whatsapp_attempts">)
     .eq("id", input.id)
     .eq("store_id", storeId);
 
