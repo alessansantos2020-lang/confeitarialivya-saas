@@ -1,260 +1,330 @@
-import { createFileRoute, Outlet, Link, useNavigate, useLocation } from '@tanstack/react-router'
-import { useState, useEffect } from 'react'
-import { useQuery } from '@tanstack/react-query'
-import { supabase } from '@/integrations/supabase/client'
-import { getUserRole } from '@/lib/auth.functions'
-import { getSaasSettings, SAAS_NAME_FALLBACK } from '@/lib/saas-settings.functions'
-import { storeThemeVars } from '@/lib/store-theme'
-import { Button } from '@/components/ui/button'
+import { createFileRoute, Outlet, Link, useNavigate, useLocation } from "@tanstack/react-router";
+import { useState, useEffect } from "react";
+import { useQuery } from "@tanstack/react-query";
+import { supabase } from "@/integrations/supabase/client";
+import { getUserRole } from "@/lib/auth.functions";
+import { getSaasSettings, SAAS_NAME_FALLBACK } from "@/lib/saas-settings.functions";
+import { storeThemeVars } from "@/lib/store-theme";
+import { Button } from "@/components/ui/button";
 import {
-  LogOut,
-  Store as StoreIcon,
-  ShieldCheck,
-  Loader2,
-  Menu,
-  X,
-  User,
-  ShieldAlert,
-  Package,
-  LayoutDashboard,
-  Users,
   Activity,
+  LayoutDashboard,
+  Loader2,
+  LogOut,
   Megaphone,
+  Menu,
+  Package,
   ScrollText,
   Settings,
-} from 'lucide-react'
-import { cn } from '@/lib/utils'
+  ShieldAlert,
+  ShieldCheck,
+  Store as StoreIcon,
+  User,
+  Users,
+  X,
+} from "lucide-react";
+import { cn } from "@/lib/utils";
 
-export const Route = createFileRoute('/super')({
+export const Route = createFileRoute("/super")({
   ssr: false,
   component: SuperAdminLayout,
-})
+});
 
 const NAV_ITEMS = [
-  { to: '/super/dashboard', label: 'Dashboard', icon: LayoutDashboard, exact: false },
-  { to: '/super', label: 'Lojas', icon: StoreIcon, exact: true },
-  { to: '/super/usuarios', label: 'Usuários', icon: Users, exact: false },
-  { to: '/super/monitoramento', label: 'Monitoramento', icon: Activity, exact: false },
-  { to: '/super/avisos', label: 'Avisos', icon: Megaphone, exact: false },
-  { to: '/super/logs', label: 'Logs', icon: ScrollText, exact: false },
-  { to: '/super/planos', label: 'Planos', icon: Package, exact: false },
-  { to: '/super/configuracoes', label: 'Configurações', icon: Settings, exact: false },
-] as const
+  { to: "/super/dashboard", label: "Dashboard", icon: LayoutDashboard, exact: false },
+  { to: "/super", label: "Lojas", icon: StoreIcon, exact: true },
+  { to: "/super/usuarios", label: "Usuários", icon: Users, exact: false },
+  { to: "/super/monitoramento", label: "Monitoramento", icon: Activity, exact: false },
+  { to: "/super/avisos", label: "Avisos", icon: Megaphone, exact: false },
+  { to: "/super/logs", label: "Logs", icon: ScrollText, exact: false },
+  { to: "/super/planos", label: "Planos", icon: Package, exact: false },
+  { to: "/super/configuracoes", label: "Configurações", icon: Settings, exact: false },
+] as const;
 
 function SuperAdminLayout() {
-  const navigate = useNavigate()
-  const { pathname } = useLocation()
-  const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false)
-  const [userEmail, setUserEmail] = useState('')
-  const [isAuthLoading, setIsAuthLoading] = useState(true)
-  const [denied, setDenied] = useState(false)
+  const navigate = useNavigate();
+  const { pathname } = useLocation();
+  const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
+  const [isCollapsed, setIsCollapsed] = useState(false);
+  const [userEmail, setUserEmail] = useState("");
+  const [isAuthLoading, setIsAuthLoading] = useState(true);
+  const [denied, setDenied] = useState(false);
 
-  // Mesma queryKey da tela de Configurações: ao salvar, o invalidate de lá
-  // atualiza nome/logo/cor deste menu na hora, sem recarregar a página.
   const { data: saas } = useQuery({
-    queryKey: ['saas-settings'],
+    queryKey: ["saas-settings"],
     queryFn: getSaasSettings,
     enabled: !isAuthLoading && !denied,
-  })
+  });
 
-  const saasName = saas?.name || SAAS_NAME_FALLBACK
-  const saasLogo = saas?.logo_url ?? null
+  const saasName = saas?.name || SAAS_NAME_FALLBACK;
+  const saasLogo = saas?.logo_url ?? null;
 
-  const currentSection = pathname.startsWith('/super/planos')
-    ? 'Planos e Funcionalidades'
-    : pathname.startsWith('/super/usuarios')
-      ? 'Usuários'
-      : pathname.startsWith('/super/monitoramento')
-        ? 'Monitoramento'
-        : pathname.startsWith('/super/avisos')
-          ? 'Avisos'
-          : pathname.startsWith('/super/logs')
-            ? 'Logs e Auditoria'
-            : pathname.startsWith('/super/configuracoes')
-              ? 'Configurações do Sistema'
-              : pathname.startsWith('/super/dashboard')
-                ? 'Dashboard'
-                : 'Gerenciamento de Lojas'
-
-  const handleLogout = async () => {
-    await supabase.auth.signOut()
-    navigate({ to: '/auth' })
-  }
+  const currentSection = pathname.startsWith("/super/planos")
+    ? "Planos e Funcionalidades"
+    : pathname.startsWith("/super/usuarios")
+      ? "Usuários"
+      : pathname.startsWith("/super/monitoramento")
+        ? "Monitoramento"
+        : pathname.startsWith("/super/avisos")
+          ? "Avisos"
+          : pathname.startsWith("/super/logs")
+            ? "Logs"
+            : pathname.startsWith("/super/configuracoes")
+              ? "Configurações"
+              : pathname.startsWith("/super/dashboard")
+                ? "Dashboard"
+                : "Lojas";
 
   useEffect(() => {
-    let cancelled = false
-
-    const loadAuth = async () => {
-      const { data: { session } } = await supabase.auth.getSession()
-
-      if (!session?.user) {
-        if (!cancelled) navigate({ to: '/auth' })
-        return
-      }
-
-      setUserEmail(session.user.email || '')
-
+    let active = true;
+    const checkAccess = async () => {
       try {
-        const [role, profileRes] = await Promise.all([
-          getUserRole(),
-          supabase.from('profiles').select('status').eq('id', session.user.id).maybeSingle(),
-        ])
-        if (cancelled) return
-
-        if (role !== 'super_admin' || profileRes.data?.status === 'blocked') {
-          setDenied(true)
-          setIsAuthLoading(false)
-          return
+        const { data } = await supabase.auth.getSession();
+        if (!active) return;
+        if (!data.session?.user) {
+          await navigate({ to: "/auth" });
+          return;
         }
-
-        setIsAuthLoading(false)
-      } catch (e) {
-        console.error('Erro ao verificar acesso super admin:', e)
-        if (!cancelled) navigate({ to: '/auth' })
+        setUserEmail(data.session.user.email || "");
+        const [role, profile] = await Promise.all([
+          getUserRole(),
+          supabase.from("profiles").select("status").eq("id", data.session.user.id).maybeSingle(),
+        ]);
+        if (role !== "super_admin" || profile.data?.status === "blocked") {
+          setDenied(true);
+          return;
+        }
+      } catch (error) {
+        console.error("Erro ao verificar acesso super admin:", error);
+        setDenied(true);
+      } finally {
+        if (active) setIsAuthLoading(false);
       }
-    }
-
-    loadAuth()
-
-    const { data: authListener } = supabase.auth.onAuthStateChange((event) => {
-      if (event === 'SIGNED_OUT') navigate({ to: '/auth' })
-    })
-
+    };
+    void checkAccess();
+    const { data: listener } = supabase.auth.onAuthStateChange((event) => {
+      if (event === "SIGNED_OUT") void navigate({ to: "/auth" });
+    });
     return () => {
-      cancelled = true
-      authListener.subscription.unsubscribe()
-    }
-  }, [navigate])
+      active = false;
+      listener.subscription.unsubscribe();
+    };
+  }, [navigate]);
+
+  useEffect(() => {
+    if (!isMobileMenuOpen) return;
+    const closeOnEscape = (event: KeyboardEvent) => {
+      if (event.key === "Escape") setIsMobileMenuOpen(false);
+    };
+    document.addEventListener("keydown", closeOnEscape);
+    return () => document.removeEventListener("keydown", closeOnEscape);
+  }, [isMobileMenuOpen]);
+
+  const handleLogout = async () => {
+    await supabase.auth.signOut();
+    await navigate({ to: "/auth" });
+  };
 
   if (isAuthLoading) {
     return (
-      <div className="min-h-screen flex items-center justify-center bg-slate-950">
-        <div className="text-center space-y-4">
-          <Loader2 className="h-10 w-10 animate-spin text-pink-500 mx-auto" />
-          <p className="text-slate-400 font-medium">Verificando acesso...</p>
-        </div>
+      <div className="super-admin-shell flex min-h-screen items-center justify-center bg-[#08090c] text-slate-400">
+        <Loader2 className="animate-spin text-red-500" size={22} />
       </div>
-    )
+    );
   }
 
   if (denied) {
     return (
-      <div className="min-h-screen flex items-center justify-center bg-slate-950 p-4">
-        <div className="max-w-md w-full bg-slate-900 rounded-2xl p-8 border border-slate-800 text-center space-y-4">
-          <div className="w-16 h-16 bg-red-500/10 text-red-400 rounded-full flex items-center justify-center mx-auto">
-            <ShieldAlert className="w-8 h-8" />
-          </div>
-          <h2 className="text-xl font-bold text-white">Acesso restrito</h2>
-          <p className="text-slate-400 text-sm">
-            Esta área é exclusiva do dono do sistema. Sua conta não tem esse nível de acesso.
+      <div className="super-admin-shell flex min-h-screen items-center justify-center bg-[#08090c] p-6 text-center text-slate-300">
+        <div className="max-w-sm space-y-3">
+          <ShieldAlert className="mx-auto text-red-400" size={30} />
+          <h1 className="text-xl font-semibold text-white">Acesso restrito</h1>
+          <p className="text-sm text-slate-500">
+            Esta área está disponível apenas para administradores do sistema.
           </p>
-          <Button variant="outline" className="w-full" onClick={handleLogout}>
-            <LogOut size={16} className="mr-2" />
-            Sair
-          </Button>
         </div>
       </div>
-    )
+    );
   }
 
   return (
     <div
-      className="flex min-h-screen bg-slate-950 flex-col md:flex-row text-slate-100"
-      style={storeThemeVars(saas?.primary_color)}
+      className={cn(
+        "super-admin-shell min-h-screen bg-[#08090c] text-slate-100",
+        isCollapsed && "super-admin-shell-collapsed",
+      )}
+      style={storeThemeVars()}
     >
-      {/* Mobile Header */}
-      <header className="md:hidden flex items-center justify-between p-4 bg-slate-900 border-b border-slate-800 sticky top-0 z-50">
-        <div className="flex items-center gap-2">
-          <div className="h-8 w-8 rounded-lg bg-pink-600 flex items-center justify-center overflow-hidden">
-            {saasLogo ? (
-              <img src={saasLogo} alt="" className="h-full w-full object-cover" />
-            ) : (
-              <ShieldCheck size={18} />
-            )}
-          </div>
-          <span className="font-bold">{saasName}</span>
-        </div>
-        <button onClick={() => setIsMobileMenuOpen(!isMobileMenuOpen)}>
-          {isMobileMenuOpen ? <X size={24} /> : <Menu size={24} />}
-        </button>
-      </header>
+      {isMobileMenuOpen && (
+        <button
+          type="button"
+          aria-label="Fechar menu"
+          className="fixed inset-0 z-30 bg-black/70 backdrop-blur-[2px] md:hidden"
+          onClick={() => setIsMobileMenuOpen(false)}
+        />
+      )}
 
-      {/* Sidebar */}
-      <aside className={cn(
-        "fixed inset-0 z-40 bg-slate-900 border-r border-slate-800 transition-all duration-300 transform md:translate-x-0 md:static md:inset-auto md:w-64 flex flex-col min-h-screen",
-        isMobileMenuOpen ? "translate-x-0" : "-translate-x-full"
-      )}>
-        <div className="hidden md:flex p-6 items-center gap-3 border-b border-slate-800">
-          <div className="h-10 w-10 rounded-lg bg-pink-600 flex items-center justify-center shrink-0 overflow-hidden">
+      <aside
+        className={cn(
+          "fixed inset-y-0 left-0 z-40 flex w-[268px] flex-col border-r border-white/[0.08] bg-[#0d1016] transition-transform duration-200 md:translate-x-0",
+          isCollapsed && "md:w-[84px]",
+          isMobileMenuOpen ? "translate-x-0" : "-translate-x-full",
+        )}
+        aria-label="Navegação principal"
+      >
+        <div
+          className={cn(
+            "flex h-[88px] items-center border-b border-white/[0.07] px-5",
+            isCollapsed && "md:justify-center md:px-3",
+          )}
+        >
+          <div className="flex min-w-0 items-center gap-3">
             {saasLogo ? (
-              <img src={saasLogo} alt="" className="h-full w-full object-cover" />
+              <img
+                src={saasLogo}
+                alt=""
+                className="size-10 rounded-xl object-cover ring-1 ring-white/10"
+              />
             ) : (
-              <ShieldCheck size={22} />
+              <div className="flex size-10 shrink-0 items-center justify-center rounded-xl bg-red-600 text-white shadow-[0_0_24px_rgba(220,38,38,0.22)]">
+                <ShieldCheck size={21} />
+              </div>
             )}
-          </div>
-          <div className="min-w-0">
-            <div className="font-bold text-lg leading-tight truncate">{saasName}</div>
-            <div className="text-[10px] text-pink-400 uppercase tracking-wider font-semibold">
-              Super Admin
+            <div className={cn("min-w-0", isCollapsed && "md:hidden")}>
+              <p className="truncate text-sm font-semibold tracking-tight text-white">{saasName}</p>
+              <p className="mt-0.5 text-[10px] font-semibold uppercase tracking-[0.18em] text-red-400">
+                Super admin
+              </p>
             </div>
           </div>
+          <button
+            type="button"
+            aria-label="Fechar menu"
+            className="ml-auto rounded-md p-2 text-slate-500 hover:bg-white/[0.06] hover:text-white md:hidden"
+            onClick={() => setIsMobileMenuOpen(false)}
+          >
+            <X size={18} />
+          </button>
         </div>
 
-        <nav className="flex-1 overflow-y-auto py-6 px-4 space-y-1">
-          {NAV_ITEMS.map((item) => (
-            <Link
-              key={item.to}
-              to={item.to}
-              onClick={() => setIsMobileMenuOpen(false)}
-              activeOptions={{ exact: item.exact }}
-              activeProps={{ className: "bg-pink-600 text-white" }}
-              className="flex items-center gap-3 p-3 text-slate-300 hover:bg-slate-800 hover:text-white rounded-lg transition-all"
-            >
-              <item.icon size={20} className="shrink-0" />
-              <span className="font-medium">{item.label}</span>
-            </Link>
-          ))}
+        <nav className="flex-1 space-y-1 overflow-y-auto px-3 py-6">
+          <p
+            className={cn(
+              "px-3 pb-3 text-[10px] font-semibold uppercase tracking-[0.2em] text-slate-600",
+              isCollapsed && "md:hidden",
+            )}
+          >
+            Workspace
+          </p>
+          {NAV_ITEMS.map(({ to, label, icon: Icon, exact }) => {
+            const active = exact ? pathname === to : pathname.startsWith(to);
+            return (
+              <Link
+                key={to}
+                to={to}
+                aria-current={active ? "page" : undefined}
+                title={isCollapsed ? label : undefined}
+                onClick={() => setIsMobileMenuOpen(false)}
+                className={cn(
+                  "group relative flex min-h-11 items-center gap-3 rounded-lg px-3 text-sm font-medium text-slate-500 transition-colors hover:bg-white/[0.05] hover:text-slate-200 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-red-500",
+                  isCollapsed && "md:justify-center md:px-0",
+                  active && "bg-red-500/[0.09] text-white shadow-[inset_3px_0_0_#ef4444]",
+                )}
+              >
+                <Icon
+                  size={18}
+                  className={cn(
+                    "shrink-0 transition-colors",
+                    active ? "text-red-400" : "text-slate-600 group-hover:text-slate-300",
+                  )}
+                />
+                <span className={cn(isCollapsed && "md:hidden")}>{label}</span>
+                {active && (
+                  <span className="absolute right-3 size-1.5 rounded-full bg-red-400 shadow-[0_0_9px_#ef4444]" />
+                )}
+              </Link>
+            );
+          })}
         </nav>
 
-        <div className="p-4 border-t border-slate-800">
-          <Button
-            variant="ghost"
-            className="w-full justify-start gap-3 text-slate-400 hover:text-white hover:bg-slate-800 px-3"
+        <div className={cn("border-t border-white/[0.07] p-3", isCollapsed && "md:px-3")}>
+          <button
+            type="button"
+            title={isCollapsed ? "Sair" : undefined}
+            className={cn(
+              "flex min-h-11 w-full items-center gap-3 rounded-lg px-3 text-sm font-medium text-slate-500 transition-colors hover:bg-red-500/[0.08] hover:text-red-300 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-red-500",
+              isCollapsed && "md:justify-center md:px-0",
+            )}
             onClick={handleLogout}
           >
-            <LogOut size={20} className="shrink-0" />
-            <span>Sair</span>
-          </Button>
+            <LogOut size={18} />
+            <span className={cn(isCollapsed && "md:hidden")}>Sair</span>
+          </button>
         </div>
       </aside>
 
-      {/* Main Content Area */}
-      <div className="flex-1 flex flex-col min-h-screen">
-        <header className="hidden md:flex h-16 items-center justify-between px-8 bg-slate-900 border-b border-slate-800 sticky top-0 z-30">
-          <h1 className="text-xl font-semibold text-white">{currentSection}</h1>
-          <div className="flex items-center gap-4">
-            <div className="flex items-center gap-2 text-sm text-slate-300 bg-slate-800 px-3 py-1.5 rounded-full border border-slate-700">
-              <User size={16} className="text-pink-400" />
-              <span className="max-w-[180px] truncate font-medium">{userEmail}</span>
+      <div
+        className={cn(
+          "min-h-screen transition-[padding] duration-200 md:pl-[268px]",
+          isCollapsed && "md:pl-[84px]",
+        )}
+      >
+        <header className="sticky top-0 z-20 flex min-h-[72px] items-center justify-between gap-4 border-b border-white/[0.08] bg-[#08090c]/90 px-4 backdrop-blur-xl md:px-8">
+          <div className="flex min-w-0 items-center gap-3">
+            <button
+              type="button"
+              aria-label="Abrir menu"
+              aria-expanded={isMobileMenuOpen}
+              className="rounded-lg p-2 text-slate-400 hover:bg-white/[0.06] hover:text-white focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-red-500 md:hidden"
+              onClick={() => setIsMobileMenuOpen(true)}
+            >
+              <Menu size={20} />
+            </button>
+            <button
+              type="button"
+              aria-label={isCollapsed ? "Expandir barra lateral" : "Recolher barra lateral"}
+              aria-expanded={!isCollapsed}
+              className="hidden rounded-lg p-2 text-slate-500 hover:bg-white/[0.06] hover:text-white focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-red-500 md:block"
+              onClick={() => setIsCollapsed((collapsed) => !collapsed)}
+            >
+              <Menu size={19} />
+            </button>
+            <div className="min-w-0">
+              <p className="truncate text-sm font-medium text-slate-300">{currentSection}</p>
+              <p className="hidden text-xs text-slate-600 sm:block">
+                Console de gestão da plataforma
+              </p>
+            </div>
+          </div>
+          <div className="flex items-center gap-3">
+            <div className="hidden items-center gap-2 rounded-full border border-emerald-500/15 bg-emerald-500/[0.06] px-3 py-1.5 text-xs text-emerald-400 sm:flex">
+              <span className="size-1.5 rounded-full bg-emerald-400 shadow-[0_0_8px_#34d399]" />
+              Sistema protegido
+            </div>
+            <div className="flex max-w-[180px] items-center gap-2 rounded-full border border-white/[0.08] bg-[#11151c] px-3 py-1.5 text-xs text-slate-300">
+              <span className="flex size-6 shrink-0 items-center justify-center rounded-full bg-red-500/10 text-red-400">
+                <User size={13} />
+              </span>
+              <span className="truncate">{userEmail}</span>
             </div>
             <Button
               size="sm"
               variant="outline"
-              className="gap-2 border-slate-700 text-slate-300 hover:bg-red-500/10 hover:text-red-400 hover:border-red-500/40"
+              className="hidden gap-2 border-white/[0.1] bg-transparent text-slate-400 hover:border-red-500/40 hover:bg-red-500/10 hover:text-red-300 sm:inline-flex"
               onClick={handleLogout}
             >
-              <LogOut size={16} />
+              <LogOut size={15} />
               Sair
             </Button>
           </div>
         </header>
 
-        <main className="flex-1 p-4 md:p-8">
-          <div className="max-w-6xl mx-auto">
+        <main className="min-h-[calc(100vh-72px)] bg-[radial-gradient(circle_at_80%_0%,rgba(127,29,29,0.1),transparent_28rem)] p-4 md:p-8">
+          <div className="mx-auto max-w-7xl">
             <Outlet />
           </div>
         </main>
       </div>
     </div>
-  )
+  );
 }

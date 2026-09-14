@@ -46,3 +46,4 @@ supabase/.temp/
 RELATORIO-E-TESTE.md
 
 .vercel
+.env*

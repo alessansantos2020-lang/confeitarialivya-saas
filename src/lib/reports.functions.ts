@@ -7,11 +7,44 @@ type ReportItem = Pick<Tables<"order_items">, "quantity" | "product_id" | "price
   products: { name: string } | null;
 };
 
-type ReportOrder = Pick<
+export type ReportOrder = Pick<
   Tables<"orders">,
-  "status" | "total_amount" | "created_at" | "customer_phone" | "customer_name"
+  | "id"
+  | "status"
+  | "total_amount"
+  | "delivery_fee"
+  | "payment_method"
+  | "created_at"
+  | "customer_phone"
+  | "customer_name"
 > & {
   order_items: ReportItem[];
+};
+
+export type FinancialPayment = {
+  method: string;
+  count: number;
+  amount: number;
+};
+
+export type FinancialTransaction = {
+  id: string;
+  created_at: string | null;
+  customer_name: string;
+  customer_phone: string;
+  payment_method: string;
+  delivery_fee: number;
+  total_amount: number;
+  status: string;
+};
+
+export type FinancialSummary = {
+  revenue: number;
+  orderCount: number;
+  averageTicket: number;
+  canceledCount: number;
+  paymentBreakdown: FinancialPayment[];
+  transactions: FinancialTransaction[];
 };
 
 type ReportCustomer = {
@@ -70,6 +103,8 @@ export const getSalesReport = async (input: z.input<typeof reportInput>) => {
     productsSold: {} as Record<string, { name: string; quantity: number; revenue: number }>,
     dailySales: {} as Record<string, number>,
   };
+  const paymentMap = new Map<string, FinancialPayment>();
+  const financialTransactions: FinancialTransaction[] = [];
   const reportOrders = (orders || []) as ReportOrder[];
 
   reportOrders.forEach((order) => {
@@ -79,8 +114,24 @@ export const getSalesReport = async (input: z.input<typeof reportInput>) => {
     const isRevenueOrder = !isCancelled;
 
     if (isRevenueOrder) {
-      stats.totalRevenue += Number(order.total_amount);
+      const amount = Number(order.total_amount || 0);
+      const method = order.payment_method?.trim() || "Não informado";
+      const currentPayment = paymentMap.get(method) || { method, count: 0, amount: 0 };
+      currentPayment.count++;
+      currentPayment.amount += amount;
+      paymentMap.set(method, currentPayment);
+      stats.totalRevenue += amount;
       stats.completedOrders++;
+      financialTransactions.push({
+        id: order.id,
+        created_at: order.created_at,
+        customer_name: order.customer_name,
+        customer_phone: order.customer_phone,
+        payment_method: method,
+        delivery_fee: Number(order.delivery_fee || 0),
+        total_amount: amount,
+        status: order.status,
+      });
     } else {
       stats.canceledOrders++;
     }
@@ -126,22 +177,24 @@ export const getSalesReport = async (input: z.input<typeof reportInput>) => {
 
   // Customers from orders in this period
   const customersMap = new Map<string, ReportCustomer>();
-  reportOrders.forEach((order) => {
-    const phone = order.customer_phone;
-    const existing = customersMap.get(phone);
-    if (existing) {
-      existing.total_orders++;
-      existing.total_spent += Number(order.total_amount);
-      return;
-    }
+  reportOrders
+    .filter((order) => order.status !== "canceled")
+    .forEach((order) => {
+      const phone = order.customer_phone;
+      const existing = customersMap.get(phone);
+      if (existing) {
+        existing.total_orders++;
+        existing.total_spent += Number(order.total_amount);
+        return;
+      }
 
-    customersMap.set(phone, {
-      name: order.customer_name,
-      phone,
-      total_orders: 1,
-      total_spent: Number(order.total_amount),
+      customersMap.set(phone, {
+        name: order.customer_name,
+        phone,
+        total_orders: 1,
+        total_spent: Number(order.total_amount),
+      });
     });
-  });
 
   return {
     summary: {
@@ -154,5 +207,15 @@ export const getSalesReport = async (input: z.input<typeof reportInput>) => {
     salesChart,
     orders: ordersWithDetails,
     customers: Array.from(customersMap.values()),
+    financial: {
+      revenue: stats.totalRevenue,
+      orderCount: financialTransactions.length,
+      averageTicket: financialTransactions.length
+        ? stats.totalRevenue / financialTransactions.length
+        : 0,
+      canceledCount: stats.canceledOrders,
+      paymentBreakdown: Array.from(paymentMap.values()).sort((a, b) => b.amount - a.amount),
+      transactions: financialTransactions,
+    } satisfies FinancialSummary,
   };
 };

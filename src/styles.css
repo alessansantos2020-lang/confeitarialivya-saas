@@ -178,3 +178,33 @@
     color: var(--color-foreground);
   }
 }
+
+.super-admin-shell {
+  --super-bg: #08090c;
+  --super-surface: #11151c;
+  --super-surface-raised: #171b23;
+  --super-text: #f5f7fa;
+  --super-muted: #8993a5;
+  --super-border: rgba(255, 255, 255, 0.08);
+  --super-red: #ef4444;
+}
+
+.super-admin-shell button,
+.super-admin-shell a {
+  -webkit-tap-highlight-color: transparent;
+}
+
+.super-admin-shell-collapsed .super-dashboard {
+  max-width: 100%;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .super-admin-shell *,
+  .super-admin-shell *::before,
+  .super-admin-shell *::after {
+    scroll-behavior: auto !important;
+    transition-duration: 0.01ms !important;
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+  }
+}
