@@ -8,6 +8,7 @@ import { storeThemeVars } from "@/lib/store-theme";
 import { Button } from "@/components/ui/button";
 import {
   Activity,
+  CircleDollarSign,
   LayoutDashboard,
   Loader2,
   LogOut,
@@ -21,6 +22,7 @@ import {
   Store as StoreIcon,
   User,
   Users,
+  WalletCards,
   X,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
@@ -35,6 +37,8 @@ const NAV_ITEMS = [
   { to: "/super", label: "Lojas", icon: StoreIcon, exact: true },
   { to: "/super/usuarios", label: "Usuários", icon: Users, exact: false },
   { to: "/super/monitoramento", label: "Monitoramento", icon: Activity, exact: false },
+  { to: "/super/financeiro", label: "Pedidos", icon: CircleDollarSign, exact: false },
+  { to: "/super/cobrancas", label: "Cobranças", icon: WalletCards, exact: false },
   { to: "/super/avisos", label: "Avisos", icon: Megaphone, exact: false },
   { to: "/super/logs", label: "Logs", icon: ScrollText, exact: false },
   { to: "/super/planos", label: "Planos", icon: Package, exact: false },
@@ -65,15 +69,19 @@ function SuperAdminLayout() {
       ? "Usuários"
       : pathname.startsWith("/super/monitoramento")
         ? "Monitoramento"
-        : pathname.startsWith("/super/avisos")
-          ? "Avisos"
-          : pathname.startsWith("/super/logs")
-            ? "Logs"
-            : pathname.startsWith("/super/configuracoes")
-              ? "Configurações"
-              : pathname.startsWith("/super/dashboard")
-                ? "Dashboard"
-                : "Lojas";
+        : pathname.startsWith("/super/cobrancas")
+          ? "Cobranças"
+          : pathname.startsWith("/super/financeiro")
+            ? "Pedidos"
+            : pathname.startsWith("/super/avisos")
+              ? "Avisos"
+              : pathname.startsWith("/super/logs")
+                ? "Logs"
+                : pathname.startsWith("/super/configuracoes")
+                  ? "Configurações"
+                  : pathname.startsWith("/super/dashboard")
+                    ? "Dashboard"
+                    : "Lojas";
 
   useEffect(() => {
     let active = true;

@@ -803,6 +803,276 @@ export type Database = {
         };
         Relationships: [];
       };
+      billing_adjustments: {
+        Row: {
+          amount_cents: number;
+          created_at: string;
+          created_by: string | null;
+          id: string;
+          invoice_id: string;
+          kind: string;
+          reason: string;
+          store_id: string;
+        };
+        Insert: {
+          amount_cents: number;
+          created_at?: string;
+          created_by?: string | null;
+          id?: string;
+          invoice_id: string;
+          kind: string;
+          reason: string;
+          store_id: string;
+        };
+        Update: {
+          amount_cents?: number;
+          created_at?: string;
+          created_by?: string | null;
+          id?: string;
+          invoice_id?: string;
+          kind?: string;
+          reason?: string;
+          store_id?: string;
+        };
+        Relationships: [];
+      };
+      billing_customer_profiles: {
+        Row: {
+          address: string | null;
+          city: string | null;
+          created_at: string;
+          email: string | null;
+          id: string;
+          legal_name: string;
+          phone: string | null;
+          postal_code: string | null;
+          provider: string;
+          provider_customer_id: string | null;
+          state: string | null;
+          status: string;
+          store_id: string;
+          tax_id: string | null;
+          updated_at: string;
+        };
+        Insert: {
+          address?: string | null;
+          city?: string | null;
+          created_at?: string;
+          email?: string | null;
+          id?: string;
+          legal_name: string;
+          phone?: string | null;
+          postal_code?: string | null;
+          provider?: string;
+          provider_customer_id?: string | null;
+          state?: string | null;
+          status?: string;
+          store_id: string;
+          tax_id?: string | null;
+          updated_at?: string;
+        };
+        Update: {
+          address?: string | null;
+          city?: string | null;
+          created_at?: string;
+          email?: string | null;
+          id?: string;
+          legal_name?: string;
+          phone?: string | null;
+          postal_code?: string | null;
+          provider?: string;
+          provider_customer_id?: string | null;
+          state?: string;
+          status?: string;
+          store_id?: string;
+          tax_id?: string | null;
+          updated_at?: string;
+        };
+        Relationships: [];
+      };
+      billing_invoices: {
+        Row: {
+          amount_cents: number;
+          created_at: string;
+          due_date: string;
+          failure_reason: string | null;
+          id: string;
+          invoice_url: string | null;
+          bank_slip_url: string | null;
+          bank_slip_barcode: string | null;
+          bank_slip_digitable_line: string | null;
+          pix_qr_code: string | null;
+          pix_copy_paste: string | null;
+          metadata: Json;
+          paid_at: string | null;
+          payment_method: string | null;
+          period_end: string;
+          period_start: string;
+          provider: string;
+          provider_invoice_id: string | null;
+          provider_payment_id: string | null;
+          refunded_at: string | null;
+          status: string;
+          store_id: string;
+          subscription_id: string;
+          updated_at: string;
+        };
+        Insert: {
+          amount_cents: number;
+          created_at?: string;
+          due_date: string;
+          failure_reason?: string | null;
+          id?: string;
+          invoice_url?: string | null;
+          bank_slip_url?: string | null;
+          bank_slip_barcode?: string | null;
+          bank_slip_digitable_line?: string | null;
+          pix_qr_code?: string | null;
+          pix_copy_paste?: string | null;
+          metadata?: Json;
+          paid_at?: string | null;
+          payment_method?: string | null;
+          period_end: string;
+          period_start: string;
+          provider?: string;
+          provider_invoice_id?: string | null;
+          provider_payment_id?: string | null;
+          refunded_at?: string | null;
+          status?: string;
+          store_id: string;
+          subscription_id: string;
+          updated_at?: string;
+        };
+        Update: {
+          amount_cents?: number;
+          created_at?: string;
+          due_date?: string;
+          failure_reason?: string | null;
+          id?: string;
+          invoice_url?: string | null;
+          bank_slip_url?: string | null;
+          bank_slip_barcode?: string | null;
+          bank_slip_digitable_line?: string | null;
+          pix_qr_code?: string | null;
+          pix_copy_paste?: string | null;
+          metadata?: Json;
+          paid_at?: string | null;
+          payment_method?: string | null;
+          period_end?: string;
+          period_start?: string;
+          provider?: string;
+          provider_invoice_id?: string | null;
+          provider_payment_id?: string | null;
+          refunded_at?: string | null;
+          status?: string;
+          store_id?: string;
+          subscription_id?: string;
+          updated_at?: string;
+        };
+        Relationships: [];
+      };
+      billing_subscriptions: {
+        Row: {
+          amount_cents: number;
+          billing_period: string;
+          canceled_at: string | null;
+          created_at: string;
+          current_period_end: string | null;
+          current_period_start: string | null;
+          id: string;
+          idempotency_key: string;
+          metadata: Json;
+          next_due_date: string | null;
+          plan_id: string | null;
+          provider: string;
+          provider_customer_id: string | null;
+          provider_subscription_id: string | null;
+          started_at: string | null;
+          status: string;
+          store_id: string;
+          updated_at: string;
+        };
+        Insert: {
+          amount_cents: number;
+          billing_period: string;
+          canceled_at?: string | null;
+          created_at?: string;
+          current_period_end?: string | null;
+          current_period_start?: string | null;
+          id?: string;
+          idempotency_key: string;
+          metadata?: Json;
+          next_due_date?: string | null;
+          plan_id?: string | null;
+          provider?: string;
+          provider_customer_id?: string | null;
+          provider_subscription_id?: string | null;
+          started_at?: string | null;
+          status?: string;
+          store_id: string;
+          updated_at?: string;
+        };
+        Update: {
+          amount_cents?: number;
+          billing_period?: string;
+          canceled_at?: string | null;
+          created_at?: string;
+          current_period_end?: string | null;
+          current_period_start?: string | null;
+          id?: string;
+          idempotency_key?: string;
+          metadata?: Json;
+          next_due_date?: string | null;
+          plan_id?: string | null;
+          provider?: string;
+          provider_customer_id?: string | null;
+          provider_subscription_id?: string | null;
+          started_at?: string | null;
+          status?: string;
+          store_id?: string;
+          updated_at?: string;
+        };
+        Relationships: [];
+      };
+      billing_webhook_events: {
+        Row: {
+          created_at: string;
+          event_type: string;
+          id: string;
+          payload: Json;
+          processed_at: string | null;
+          processing_error: string | null;
+          provider: string;
+          provider_event_id: string;
+          signature_valid: boolean;
+          status: string;
+        };
+        Insert: {
+          created_at?: string;
+          event_type: string;
+          id?: string;
+          payload: Json;
+          processed_at?: string | null;
+          processing_error?: string | null;
+          provider?: string;
+          provider_event_id: string;
+          signature_valid?: boolean;
+          status?: string;
+        };
+        Update: {
+          created_at?: string;
+          event_type?: string;
+          id?: string;
+          payload?: Json;
+          processed_at?: string | null;
+          processing_error?: string | null;
+          provider?: string;
+          provider_event_id?: string;
+          signature_valid?: boolean;
+          status?: string;
+        };
+        Relationships: [];
+      };
       plan_features: {
         Row: {
           feature_id: string;
@@ -1296,6 +1566,56 @@ export type Database = {
           id: string;
           status: string;
         }[];
+      };
+      create_billing_subscription: {
+        Args: {
+          _amount_cents: number;
+          _billing_period: string;
+          _idempotency_key: string;
+          _next_due_date: string;
+          _plan_id: string;
+          _starts_on: string;
+          _store_id: string;
+        };
+        Returns: string;
+      };
+      record_billing_manual_event: {
+        Args: {
+          _invoice_id: string;
+          _paid_at?: string;
+          _reason: string;
+          _status: string;
+        };
+        Returns: undefined;
+      };
+      record_billing_provider_payment: {
+        Args: {
+          _bank_slip_barcode?: string;
+          _bank_slip_digitable_line?: string;
+          _bank_slip_url?: string;
+          _invoice_url?: string;
+          _paid_at?: string;
+          _payment_method?: string;
+          _pix_copy_paste?: string;
+          _pix_qr_code?: string;
+          _provider_payment_id: string;
+          _status: string;
+        };
+        Returns: string;
+      };
+      upsert_billing_customer_profile: {
+        Args: {
+          _address?: string;
+          _city?: string;
+          _email?: string;
+          _legal_name: string;
+          _phone?: string;
+          _postal_code?: string;
+          _state?: string;
+          _store_id: string;
+          _tax_id?: string;
+        };
+        Returns: string;
       };
       create_order: { Args: { _payload: Json }; Returns: Json };
       effective_price: {

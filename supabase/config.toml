@@ -1,1 +1,7 @@
 project_id = "zdbimcwedbdjkbldtxbs"
+
+[functions.billing-create-subscription]
+verify_jwt = true
+
+[functions.billing-webhook]
+verify_jwt = false

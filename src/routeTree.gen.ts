@@ -18,6 +18,7 @@ import { Route as SuperRouteRouteImport } from './routes/super/route'
 import { Route as AdminIndexRouteImport } from './routes/admin/index'
 import { Route as AdminAddOnsRouteImport } from './routes/admin/add-ons'
 import { Route as AdminCategoriesRouteImport } from './routes/admin/categories'
+import { Route as AdminCobrancasRouteImport } from './routes/admin/cobrancas'
 import { Route as AdminCustomersRouteImport } from './routes/admin/customers'
 import { Route as AdminDeliveryRouteImport } from './routes/admin/delivery'
 import { Route as AdminOrdersRouteImport } from './routes/admin/orders'
@@ -29,8 +30,10 @@ import { Route as StaffIndexRouteImport } from './routes/staff/index'
 import { Route as StaffHistoryRouteImport } from './routes/staff/history'
 import { Route as SuperIndexRouteImport } from './routes/super/index'
 import { Route as SuperAvisosRouteImport } from './routes/super/avisos'
+import { Route as SuperCobrancasRouteImport } from './routes/super/cobrancas'
 import { Route as SuperConfiguracoesRouteImport } from './routes/super/configuracoes'
 import { Route as SuperDashboardRouteImport } from './routes/super/dashboard'
+import { Route as SuperFinanceiroRouteImport } from './routes/super/financeiro'
 import { Route as SuperLogsRouteImport } from './routes/super/logs'
 import { Route as SuperMonitoramentoRouteImport } from './routes/super/monitoramento'
 import { Route as SuperPlanosRouteImport } from './routes/super/planos'
@@ -79,6 +82,11 @@ const AdminAddOnsRoute = AdminAddOnsRouteImport.update({
 const AdminCategoriesRoute = AdminCategoriesRouteImport.update({
   id: '/categories',
   path: '/categories',
+  getParentRoute: () => AdminRouteRoute,
+} as any)
+const AdminCobrancasRoute = AdminCobrancasRouteImport.update({
+  id: '/cobrancas',
+  path: '/cobrancas',
   getParentRoute: () => AdminRouteRoute,
 } as any)
 const AdminCustomersRoute = AdminCustomersRouteImport.update({
@@ -136,6 +144,11 @@ const SuperAvisosRoute = SuperAvisosRouteImport.update({
   path: '/avisos',
   getParentRoute: () => SuperRouteRoute,
 } as any)
+const SuperCobrancasRoute = SuperCobrancasRouteImport.update({
+  id: '/cobrancas',
+  path: '/cobrancas',
+  getParentRoute: () => SuperRouteRoute,
+} as any)
 const SuperConfiguracoesRoute = SuperConfiguracoesRouteImport.update({
   id: '/configuracoes',
   path: '/configuracoes',
@@ -144,6 +157,11 @@ const SuperConfiguracoesRoute = SuperConfiguracoesRouteImport.update({
 const SuperDashboardRoute = SuperDashboardRouteImport.update({
   id: '/dashboard',
   path: '/dashboard',
+  getParentRoute: () => SuperRouteRoute,
+} as any)
+const SuperFinanceiroRoute = SuperFinanceiroRouteImport.update({
+  id: '/financeiro',
+  path: '/financeiro',
   getParentRoute: () => SuperRouteRoute,
 } as any)
 const SuperLogsRoute = SuperLogsRouteImport.update({
@@ -176,6 +194,7 @@ export interface FileRoutesByFullPath {
   '/auth': typeof AuthRouteWithChildren
   '/admin/add-ons': typeof AdminAddOnsRoute
   '/admin/categories': typeof AdminCategoriesRoute
+  '/admin/cobrancas': typeof AdminCobrancasRoute
   '/admin/customers': typeof AdminCustomersRoute
   '/admin/delivery': typeof AdminDeliveryRoute
   '/admin/orders': typeof AdminOrdersRoute
@@ -185,8 +204,10 @@ export interface FileRoutesByFullPath {
   '/auth/reset-password': typeof AuthResetPasswordRoute
   '/staff/history': typeof StaffHistoryRoute
   '/super/avisos': typeof SuperAvisosRoute
+  '/super/cobrancas': typeof SuperCobrancasRoute
   '/super/configuracoes': typeof SuperConfiguracoesRoute
   '/super/dashboard': typeof SuperDashboardRoute
+  '/super/financeiro': typeof SuperFinanceiroRoute
   '/super/logs': typeof SuperLogsRoute
   '/super/monitoramento': typeof SuperMonitoramentoRoute
   '/super/planos': typeof SuperPlanosRoute
@@ -201,6 +222,7 @@ export interface FileRoutesByTo {
   '/auth': typeof AuthRouteWithChildren
   '/admin/add-ons': typeof AdminAddOnsRoute
   '/admin/categories': typeof AdminCategoriesRoute
+  '/admin/cobrancas': typeof AdminCobrancasRoute
   '/admin/customers': typeof AdminCustomersRoute
   '/admin/delivery': typeof AdminDeliveryRoute
   '/admin/orders': typeof AdminOrdersRoute
@@ -210,8 +232,10 @@ export interface FileRoutesByTo {
   '/auth/reset-password': typeof AuthResetPasswordRoute
   '/staff/history': typeof StaffHistoryRoute
   '/super/avisos': typeof SuperAvisosRoute
+  '/super/cobrancas': typeof SuperCobrancasRoute
   '/super/configuracoes': typeof SuperConfiguracoesRoute
   '/super/dashboard': typeof SuperDashboardRoute
+  '/super/financeiro': typeof SuperFinanceiroRoute
   '/super/logs': typeof SuperLogsRoute
   '/super/monitoramento': typeof SuperMonitoramentoRoute
   '/super/planos': typeof SuperPlanosRoute
@@ -230,6 +254,7 @@ export interface FileRoutesById {
   '/auth': typeof AuthRouteWithChildren
   '/admin/add-ons': typeof AdminAddOnsRoute
   '/admin/categories': typeof AdminCategoriesRoute
+  '/admin/cobrancas': typeof AdminCobrancasRoute
   '/admin/customers': typeof AdminCustomersRoute
   '/admin/delivery': typeof AdminDeliveryRoute
   '/admin/orders': typeof AdminOrdersRoute
@@ -239,8 +264,10 @@ export interface FileRoutesById {
   '/auth/reset-password': typeof AuthResetPasswordRoute
   '/staff/history': typeof StaffHistoryRoute
   '/super/avisos': typeof SuperAvisosRoute
+  '/super/cobrancas': typeof SuperCobrancasRoute
   '/super/configuracoes': typeof SuperConfiguracoesRoute
   '/super/dashboard': typeof SuperDashboardRoute
+  '/super/financeiro': typeof SuperFinanceiroRoute
   '/super/logs': typeof SuperLogsRoute
   '/super/monitoramento': typeof SuperMonitoramentoRoute
   '/super/planos': typeof SuperPlanosRoute
@@ -260,6 +287,7 @@ export interface FileRouteTypes {
     | '/auth'
     | '/admin/add-ons'
     | '/admin/categories'
+    | '/admin/cobrancas'
     | '/admin/customers'
     | '/admin/delivery'
     | '/admin/orders'
@@ -269,8 +297,10 @@ export interface FileRouteTypes {
     | '/auth/reset-password'
     | '/staff/history'
     | '/super/avisos'
+    | '/super/cobrancas'
     | '/super/configuracoes'
     | '/super/dashboard'
+    | '/super/financeiro'
     | '/super/logs'
     | '/super/monitoramento'
     | '/super/planos'
@@ -285,6 +315,7 @@ export interface FileRouteTypes {
     | '/auth'
     | '/admin/add-ons'
     | '/admin/categories'
+    | '/admin/cobrancas'
     | '/admin/customers'
     | '/admin/delivery'
     | '/admin/orders'
@@ -294,8 +325,10 @@ export interface FileRouteTypes {
     | '/auth/reset-password'
     | '/staff/history'
     | '/super/avisos'
+    | '/super/cobrancas'
     | '/super/configuracoes'
     | '/super/dashboard'
+    | '/super/financeiro'
     | '/super/logs'
     | '/super/monitoramento'
     | '/super/planos'
@@ -313,6 +346,7 @@ export interface FileRouteTypes {
     | '/auth'
     | '/admin/add-ons'
     | '/admin/categories'
+    | '/admin/cobrancas'
     | '/admin/customers'
     | '/admin/delivery'
     | '/admin/orders'
@@ -322,8 +356,10 @@ export interface FileRouteTypes {
     | '/auth/reset-password'
     | '/staff/history'
     | '/super/avisos'
+    | '/super/cobrancas'
     | '/super/configuracoes'
     | '/super/dashboard'
+    | '/super/financeiro'
     | '/super/logs'
     | '/super/monitoramento'
     | '/super/planos'
@@ -407,6 +443,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AdminCategoriesRouteImport
       parentRoute: typeof AdminRouteRoute
     }
+    '/admin/cobrancas': {
+      id: '/admin/cobrancas'
+      path: '/cobrancas'
+      fullPath: '/admin/cobrancas'
+      preLoaderRoute: typeof AdminCobrancasRouteImport
+      parentRoute: typeof AdminRouteRoute
+    }
     '/admin/customers': {
       id: '/admin/customers'
       path: '/customers'
@@ -484,6 +527,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof SuperAvisosRouteImport
       parentRoute: typeof SuperRouteRoute
     }
+    '/super/cobrancas': {
+      id: '/super/cobrancas'
+      path: '/cobrancas'
+      fullPath: '/super/cobrancas'
+      preLoaderRoute: typeof SuperCobrancasRouteImport
+      parentRoute: typeof SuperRouteRoute
+    }
     '/super/configuracoes': {
       id: '/super/configuracoes'
       path: '/configuracoes'
@@ -496,6 +546,13 @@ declare module '@tanstack/react-router' {
       path: '/dashboard'
       fullPath: '/super/dashboard'
       preLoaderRoute: typeof SuperDashboardRouteImport
+      parentRoute: typeof SuperRouteRoute
+    }
+    '/super/financeiro': {
+      id: '/super/financeiro'
+      path: '/financeiro'
+      fullPath: '/super/financeiro'
+      preLoaderRoute: typeof SuperFinanceiroRouteImport
       parentRoute: typeof SuperRouteRoute
     }
     '/super/logs': {
@@ -532,6 +589,7 @@ declare module '@tanstack/react-router' {
 interface AdminRouteRouteChildren {
   AdminAddOnsRoute: typeof AdminAddOnsRoute
   AdminCategoriesRoute: typeof AdminCategoriesRoute
+  AdminCobrancasRoute: typeof AdminCobrancasRoute
   AdminCustomersRoute: typeof AdminCustomersRoute
   AdminDeliveryRoute: typeof AdminDeliveryRoute
   AdminOrdersRoute: typeof AdminOrdersRoute
@@ -544,6 +602,7 @@ interface AdminRouteRouteChildren {
 const AdminRouteRouteChildren: AdminRouteRouteChildren = {
   AdminAddOnsRoute: AdminAddOnsRoute,
   AdminCategoriesRoute: AdminCategoriesRoute,
+  AdminCobrancasRoute: AdminCobrancasRoute,
   AdminCustomersRoute: AdminCustomersRoute,
   AdminDeliveryRoute: AdminDeliveryRoute,
   AdminOrdersRoute: AdminOrdersRoute,
@@ -573,8 +632,10 @@ const StaffRouteRouteWithChildren = StaffRouteRoute._addFileChildren(
 
 interface SuperRouteRouteChildren {
   SuperAvisosRoute: typeof SuperAvisosRoute
+  SuperCobrancasRoute: typeof SuperCobrancasRoute
   SuperConfiguracoesRoute: typeof SuperConfiguracoesRoute
   SuperDashboardRoute: typeof SuperDashboardRoute
+  SuperFinanceiroRoute: typeof SuperFinanceiroRoute
   SuperLogsRoute: typeof SuperLogsRoute
   SuperMonitoramentoRoute: typeof SuperMonitoramentoRoute
   SuperPlanosRoute: typeof SuperPlanosRoute
@@ -584,8 +645,10 @@ interface SuperRouteRouteChildren {
 
 const SuperRouteRouteChildren: SuperRouteRouteChildren = {
   SuperAvisosRoute: SuperAvisosRoute,
+  SuperCobrancasRoute: SuperCobrancasRoute,
   SuperConfiguracoesRoute: SuperConfiguracoesRoute,
   SuperDashboardRoute: SuperDashboardRoute,
+  SuperFinanceiroRoute: SuperFinanceiroRoute,
   SuperLogsRoute: SuperLogsRoute,
   SuperMonitoramentoRoute: SuperMonitoramentoRoute,
   SuperPlanosRoute: SuperPlanosRoute,

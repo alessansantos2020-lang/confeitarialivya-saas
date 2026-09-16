@@ -56,6 +56,7 @@ import {
   Megaphone,
   Wrench,
   Store as StoreIcon,
+  WalletCards,
 } from "lucide-react";
 import { useState, useEffect } from "react";
 import { useQuery } from "@tanstack/react-query";
@@ -71,6 +72,7 @@ const ROUTE_FEATURE: Record<string, FeatureId> = {
   "/admin/reports": "reports",
   "/admin/settings": "settings",
   "/admin/orders": "orders",
+  "/admin/cobrancas": "settings",
 };
 
 // Faixa de aviso: cores por gravidade e ordem de prioridade (só uma aparece
@@ -367,6 +369,12 @@ function AdminLayout() {
       to: "/admin/reports",
       icon: BarChart3,
       permission: "view_reports",
+    },
+    {
+      label: "Minha mensalidade",
+      to: "/admin/cobrancas",
+      icon: WalletCards,
+      permission: "manage_settings",
     },
     {
       label: "Configurações",

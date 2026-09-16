@@ -15,4 +15,6 @@ export const queryKeys = {
   superPlans: () => ["super-plans"] as const,
   superFeatures: () => ["super-features"] as const,
   saasSettings: () => ["saas-settings"] as const,
+  superBilling: (filters: Record<string, string | undefined>) =>
+    ["super-billing", filters] as const,
 } as const;
