@@ -30,12 +30,14 @@ import {
   Globe,
   Palette,
   MessageCircle,
+  CreditCard,
 } from "lucide-react";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Copy } from "lucide-react";
 import { StoreGeneralSettings } from "@/components/admin/settings/store-general-settings";
 import { WhatsAppSettings } from "@/components/admin/settings/whatsapp-settings";
 import { NfceSettings, type FiscalSettingsForm } from "@/components/admin/settings/nfce-settings";
+import { StorePaymentSettings } from "@/components/admin/settings/store-payment-settings";
 
 const EMPTY_FISCAL_SETTINGS: FiscalSettingsForm = {
   cnpj: "",
@@ -258,6 +260,10 @@ function AdminSettings() {
             <Palette className="w-4 h-4" />
             Visual
           </TabsTrigger>
+          <TabsTrigger value="payments" className="flex items-center gap-2">
+            <CreditCard className="w-4 h-4" />
+            Pagamentos
+          </TabsTrigger>
           {hasNfce && (
             <TabsTrigger value="nfce" className="flex items-center gap-2">
               <FileText className="w-4 h-4" />
@@ -381,6 +387,10 @@ function AdminSettings() {
             section="visual"
           />
         </TabsContent>
+
+        <TabsContent value="payments" className="space-y-6 outline-none">
+          <StorePaymentSettings storeId={storeId} />
+        </TabsContent>
         {hasNfce && (
           <TabsContent value="nfce" className="space-y-6 outline-none">
             <NfceSettings
@@ -392,6 +402,10 @@ function AdminSettings() {
             />
           </TabsContent>
         )}
+
+        <TabsContent value="payments" className="space-y-6 outline-none">
+          <StorePaymentSettings storeId={storeId} />
+        </TabsContent>
 
         <TabsContent value="whatsapp" className="space-y-6 outline-none">
           <WhatsAppSettings settings={settings} setSettings={setSettings} />

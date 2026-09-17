@@ -124,7 +124,7 @@ export function OrderDetailsDialog({
             <div className="flex justify-between border-t border-slate-800 pt-1 text-xs text-slate-300">
               <span>Pagamento</span>
               <span className="font-bold uppercase">
-                {paymentMethodLabel(order.payment_method)}
+                {paymentMethodLabel(order.payment_method, order.change_for, order.total_amount)}
               </span>
             </div>
             <div className="flex justify-between border-t border-slate-800 pt-1 text-base font-black text-pink-400">

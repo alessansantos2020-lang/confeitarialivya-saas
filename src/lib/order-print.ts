@@ -70,7 +70,7 @@ body { font-family: Arial, sans-serif; padding: 20px; line-height: 1.4; color: #
 <div class="header"><h1>${escapeHtml(storeName)}</h1><p>Pedido #${escapeHtml(order.id.slice(0, 8).toUpperCase())}</p><p>${escapeHtml(new Date(order.created_at || Date.now()).toLocaleString("pt-BR"))}</p></div>
 <div class="order-info"><strong>Cliente:</strong> ${escapeHtml(order.customer_name)}<br><strong>Telefone:</strong> ${escapeHtml(order.customer_phone)}<br><strong>Endereço:</strong> ${address || escapeHtml(order.address)}${order.observation ? `<br><strong>Observação:</strong> ${escapeHtml(order.observation)}` : ""}</div>
 <div class="section-title">Itens do pedido</div>${items || "<p>Nenhum item informado.</p>"}
-<div class="total-section"><div class="total-row"><span>Subtotal dos produtos:</span><span>${money(order.total_amount - Number(order.delivery_fee || 0))}</span></div><div class="total-row"><span>Frete:</span><span>${money(order.delivery_fee)}</span></div><div class="total-row"><span>Pagamento:</span><span>${escapeHtml(paymentMethodLabel(order.payment_method))}</span></div><div class="final-total">TOTAL: ${money(order.total_amount)}</div></div>
+<div class="total-section"><div class="total-row"><span>Subtotal dos produtos:</span><span>${money(order.total_amount - Number(order.delivery_fee || 0))}</span></div><div class="total-row"><span>Frete:</span><span>${money(order.delivery_fee)}</span></div><div class="total-row"><span>Pagamento:</span><span>${escapeHtml(paymentMethodLabel(order.payment_method, order.change_for, order.total_amount))}</span></div><div class="final-total">TOTAL: ${money(order.total_amount)}</div></div>
 <script>window.onload = function () { window.print(); window.close(); };</script></body></html>`;
 
   printWindow.document.write(html);

@@ -103,7 +103,7 @@ export function OperationalOrderCard({
         <div className="flex items-center justify-between border-t border-slate-100 pt-1 text-xs">
           <span className="text-sm font-black text-pink-600">{money(order.total_amount)}</span>
           <span className="rounded bg-slate-100 px-1.5 py-0.5 text-[10px] font-bold uppercase tracking-wider text-slate-500">
-            {paymentMethodLabel(order.payment_method)}
+            {paymentMethodLabel(order.payment_method, order.change_for, order.total_amount)}
           </span>
         </div>
 

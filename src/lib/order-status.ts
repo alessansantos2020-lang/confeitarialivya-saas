@@ -1,12 +1,5 @@
 import type { LucideIcon } from "lucide-react";
-import {
-  CheckCircle,
-  CheckCircle2,
-  Clock,
-  Loader2,
-  Truck,
-  XCircle,
-} from "lucide-react";
+import { CheckCircle, CheckCircle2, Clock, Loader2, Truck, XCircle } from "lucide-react";
 
 export const ORDER_STATUS = [
   "pending",
@@ -69,12 +62,42 @@ export const isOperationalStatus = (status: OrderStatus): boolean =>
   operationalTabFor(status) !== null;
 
 export const ORDER_STATUS_STYLE: Record<OrderStatus, OrderStatusMeta> = {
-  pending: { label: "Novo Pedido", color: "bg-blue-500 text-white", icon: Clock, nextLabel: "Aceitar Pedido" },
-  confirmed: { label: "Aceito", color: "bg-indigo-500 text-white", icon: CheckCircle2, nextLabel: "Iniciar Preparo" },
-  preparing: { label: "Em Preparo", color: "bg-orange-500 text-white", icon: Loader2, nextLabel: "Pedido Pronto" },
-  ready: { label: "Pronto", color: "bg-green-600 text-white", icon: CheckCircle2, nextLabel: "Sair para Entrega" },
-  out_for_delivery: { label: "Saiu para Entrega", color: "bg-purple-600 text-white", icon: Truck, nextLabel: "Confirmar Entrega" },
-  delivered: { label: "Entregue", color: "bg-green-700 text-white", icon: CheckCircle, nextLabel: null },
+  pending: {
+    label: "Novo Pedido",
+    color: "bg-blue-500 text-white",
+    icon: Clock,
+    nextLabel: "Aceitar Pedido",
+  },
+  confirmed: {
+    label: "Aceito",
+    color: "bg-indigo-500 text-white",
+    icon: CheckCircle2,
+    nextLabel: "Iniciar Preparo",
+  },
+  preparing: {
+    label: "Em Preparo",
+    color: "bg-orange-500 text-white",
+    icon: Loader2,
+    nextLabel: "Pedido Pronto",
+  },
+  ready: {
+    label: "Pronto",
+    color: "bg-green-600 text-white",
+    icon: CheckCircle2,
+    nextLabel: "Sair para Entrega",
+  },
+  out_for_delivery: {
+    label: "Saiu para Entrega",
+    color: "bg-purple-600 text-white",
+    icon: Truck,
+    nextLabel: "Confirmar Entrega",
+  },
+  delivered: {
+    label: "Entregue",
+    color: "bg-green-700 text-white",
+    icon: CheckCircle,
+    nextLabel: null,
+  },
   canceled: { label: "Cancelado", color: "bg-red-500 text-white", icon: XCircle, nextLabel: null },
 };
 
@@ -105,8 +128,7 @@ const PREVIOUS_STATUS: Partial<Record<OrderStatus, OrderStatus>> = {
   canceled: "pending",
 };
 
-export const nextStatus = (status: OrderStatus): OrderStatus | null =>
-  NEXT_STATUS[status] ?? null;
+export const nextStatus = (status: OrderStatus): OrderStatus | null => NEXT_STATUS[status] ?? null;
 
 export const previousStatus = (status: OrderStatus): OrderStatus | null =>
   PREVIOUS_STATUS[status] ?? null;
@@ -114,17 +136,34 @@ export const previousStatus = (status: OrderStatus): OrderStatus | null =>
 export const canCancel = (status: OrderStatus): boolean =>
   ["pending", "confirmed", "preparing", "ready"].includes(status);
 
-export const isActiveStatus = (status: OrderStatus): boolean =>
-  operationalTabFor(status) !== null;
+export const isActiveStatus = (status: OrderStatus): boolean => operationalTabFor(status) !== null;
 
 export const PAYMENT_METHOD_LABEL: Record<string, string> = {
   pix: "PIX",
   card: "Cartão",
   cash: "Dinheiro",
+  money: "Dinheiro",
 };
 
-export const paymentMethodLabel = (method: string | null | undefined): string =>
-  PAYMENT_METHOD_LABEL[method || ""] || method || "Não informado";
+export const paymentMethodLabel = (
+  method: string | null | undefined,
+  changeFor?: number | null,
+  totalAmount?: number | null,
+): string => {
+  const base = PAYMENT_METHOD_LABEL[method || ""] || method || "Não informado";
+  if ((method === "money" || method === "cash") && changeFor && changeFor > 0) {
+    const moneyFormat = (val: number) =>
+      new Intl.NumberFormat("pt-BR", { style: "currency", currency: "BRL" }).format(val);
+    if (totalAmount && changeFor > totalAmount) {
+      return `${base} (Troco para ${moneyFormat(changeFor)} — Levar ${moneyFormat(changeFor - totalAmount)})`;
+    }
+    return `${base} (Troco para ${moneyFormat(changeFor)})`;
+  }
+  if (method === "money" || method === "cash") {
+    return `${base} (Sem troco)`;
+  }
+  return base;
+};
 
 export const isOrderStatus = (value: string | null | undefined): value is OrderStatus =>
   typeof value === "string" && (ORDER_STATUS as readonly string[]).includes(value);

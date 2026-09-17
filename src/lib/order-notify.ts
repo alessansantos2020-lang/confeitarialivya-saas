@@ -50,10 +50,10 @@ const fallbackMessage = (
   const store = settings.name || "Loja";
 
   if (event === "received") {
-    return `Olá, *${name}*! Seu pedido *#${number}* foi recebido pela *${store}*.\n\n🛍️ *Itens:*\n${itemSummary(order)}\n\n💰 *Total:* ${money(order.total_amount)}\n💳 *Pagamento:* ${paymentMethodLabel(order.payment_method)}\n📍 *Endereço:* ${order.address}\n\nObrigado pela preferência!`;
+    return `Olá, *${name}*! Seu pedido *#${number}* foi recebido pela *${store}*.\n\n🛍️ *Itens:*\n${itemSummary(order)}\n\n💰 *Total:* ${money(order.total_amount)}\n💳 *Pagamento:* ${paymentMethodLabel(order.payment_method, order.change_for, order.total_amount)}\n📍 *Endereço:* ${order.address}\n\nObrigado pela preferência!`;
   }
   if (event === "accepted") {
-    return `🟢 PEDIDO ACEITO\n\nOlá, ${name}!\n\nSeu pedido #${number} foi aceito e já está sendo preparado.\n\n🧾 RESUMO DO PEDIDO:\n${itemSummary(order)}\n\n💰 Total: ${money(order.total_amount)}\n💳 Pagamento: ${paymentMethodLabel(order.payment_method)}\n\nObrigado pela preferência!`;
+    return `🟢 PEDIDO ACEITO\n\nOlá, ${name}!\n\nSeu pedido #${number} foi aceito e já está sendo preparado.\n\n🧾 RESUMO DO PEDIDO:\n${itemSummary(order)}\n\n💰 Total: ${money(order.total_amount)}\n💳 Pagamento:* ${paymentMethodLabel(order.payment_method, order.change_for, order.total_amount)}\n\nObrigado pela preferência!`;
   }
   if (event === "canceled") {
     const reason = order.cancel_reason?.trim();
@@ -97,8 +97,12 @@ const buildMessage = (
     "{numero_pedido}": order.id.slice(0, 8).toUpperCase(),
     "{itens}": itemSummary(order),
     "{total}": money(order.total_amount),
-    "{pagamento}": paymentMethodLabel(order.payment_method),
-    "{forma_pagamento}": paymentMethodLabel(order.payment_method),
+    "{pagamento}": paymentMethodLabel(order.payment_method, order.change_for, order.total_amount),
+    "{forma_pagamento}": paymentMethodLabel(
+      order.payment_method,
+      order.change_for,
+      order.total_amount,
+    ),
     "{endereco}": order.address || "Não informado",
     "{loja}": settings.name || "Loja",
     "{nome_estabelecimento}": settings.name || "Loja",

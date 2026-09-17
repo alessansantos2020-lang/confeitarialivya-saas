@@ -726,6 +726,7 @@ export type Database = {
           number: string | null;
           observation: string | null;
           payment_method: string | null;
+          change_for: number | null;
           reference: string | null;
           status: string;
           store_id: string;
@@ -751,6 +752,7 @@ export type Database = {
           store_id?: string;
           street?: string | null;
           total_amount: number;
+          change_for?: number | null;
         };
         Update: {
           address?: string;
@@ -771,6 +773,7 @@ export type Database = {
           store_id?: string;
           street?: string | null;
           total_amount?: number;
+          change_for?: number | null;
         };
         Relationships: [
           {
@@ -1358,6 +1361,77 @@ export type Database = {
           },
         ];
       };
+      store_payment_gateways: {
+        Row: {
+          accept_card_delivery: boolean;
+          accept_cash: boolean;
+          accept_manual_pix: boolean;
+          asaas_api_key: string | null;
+          asaas_enabled: boolean;
+          asaas_sandbox: boolean;
+          card_provider: string;
+          created_at: string;
+          id: string;
+          manual_pix_key: string | null;
+          manual_pix_key_type: string | null;
+          mp_access_token: string | null;
+          mp_enabled: boolean;
+          mp_public_key: string | null;
+          mp_sandbox: boolean;
+          pix_provider: string;
+          store_id: string;
+          updated_at: string;
+        };
+        Insert: {
+          accept_card_delivery?: boolean;
+          accept_cash?: boolean;
+          accept_manual_pix?: boolean;
+          asaas_api_key?: string | null;
+          asaas_enabled?: boolean;
+          asaas_sandbox?: boolean;
+          card_provider?: string;
+          created_at?: string;
+          id?: string;
+          manual_pix_key?: string | null;
+          manual_pix_key_type?: string | null;
+          mp_access_token?: string | null;
+          mp_enabled?: boolean;
+          mp_public_key?: string | null;
+          mp_sandbox?: boolean;
+          pix_provider?: string;
+          store_id: string;
+          updated_at?: string;
+        };
+        Update: {
+          accept_card_delivery?: boolean;
+          accept_cash?: boolean;
+          accept_manual_pix?: boolean;
+          asaas_api_key?: string | null;
+          asaas_enabled?: boolean;
+          asaas_sandbox?: boolean;
+          card_provider?: string;
+          created_at?: string;
+          id?: string;
+          manual_pix_key?: string | null;
+          manual_pix_key_type?: string | null;
+          mp_access_token?: string | null;
+          mp_enabled?: boolean;
+          mp_public_key?: string | null;
+          mp_sandbox?: boolean;
+          pix_provider?: string;
+          store_id?: string;
+          updated_at?: string;
+        };
+        Relationships: [
+          {
+            foreignKeyName: "store_payment_gateways_store_id_fkey";
+            columns: ["store_id"];
+            isOneToOne: true;
+            referencedRelation: "stores";
+            referencedColumns: ["id"];
+          },
+        ];
+      };
       store_settings: {
         Row: {
           address: string | null;
@@ -1616,6 +1690,10 @@ export type Database = {
           _tax_id?: string;
         };
         Returns: string;
+      };
+      get_public_store_payment_methods: {
+        Args: { _store_id: string };
+        Returns: Json;
       };
       create_order: { Args: { _payload: Json }; Returns: Json };
       effective_price: {

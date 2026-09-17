@@ -24,6 +24,7 @@ export type CreateOrderInput = {
   complement?: string | null;
   reference?: string | null;
   payment_method: string;
+  change_for?: number | null;
   observation?: string | null;
   items: Array<{
     product_id: string;
@@ -42,6 +43,7 @@ export type CreatedOrder = {
   total_amount: number;
   delivery_fee: number;
   payment_method: string;
+  change_for?: number | null;
   observation: string | null;
   status: string;
   created_at: string;
@@ -71,6 +73,7 @@ export const createOrder = async (data: CreateOrderInput): Promise<CreatedOrder>
       complement: data.complement || null,
       reference: data.reference || null,
       payment_method: data.payment_method,
+      change_for: data.change_for !== undefined ? data.change_for : null,
       observation: data.observation || null,
       items: data.items,
     },

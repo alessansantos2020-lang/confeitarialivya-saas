@@ -192,6 +192,7 @@ export function StorePage({ storeId }: { storeId: string }) {
     complement: "",
     reference: "",
     payment_method: "pix",
+    change_for: "",
     observation: "",
   });
 
@@ -247,6 +248,21 @@ export function StorePage({ storeId }: { storeId: string }) {
       return;
     }
 
+    const totalOrderAmount = scopedGetTotal();
+    let changeForNum: number | null = null;
+    if (orderInfo.payment_method === "money" && orderInfo.change_for) {
+      const parsed = parseFloat(String(orderInfo.change_for).replace(",", "."));
+      if (!Number.isNaN(parsed) && parsed > 0) {
+        if (parsed < totalOrderAmount) {
+          toast.error(
+            `O valor para troco (${formatCurrency(parsed)}) não pode ser menor que o total do pedido (${formatCurrency(totalOrderAmount)}).`,
+          );
+          return;
+        }
+        changeForNum = parsed;
+      }
+    }
+
     setIsSubmitting(true);
     try {
       const orderData = {
@@ -260,6 +276,7 @@ export function StorePage({ storeId }: { storeId: string }) {
         complement: orderInfo.complement || null,
         reference: orderInfo.reference || null,
         payment_method: orderInfo.payment_method,
+        change_for: changeForNum,
         observation: orderInfo.observation || null,
         items: items.map((item) => ({
           product_id: item.product_id,

@@ -78,7 +78,33 @@ export function StorePageCart({
       style: "currency",
       currency: "BRL",
     }).format(lastCreatedOrder.total_amount);
-    const paymentMethod = lastCreatedOrder.payment_method.toUpperCase();
+    let paymentMethod = lastCreatedOrder.payment_method.toUpperCase();
+    if (lastCreatedOrder.payment_method === "money") {
+      paymentMethod = "DINHEIRO";
+      if (
+        lastCreatedOrder.change_for &&
+        lastCreatedOrder.change_for > lastCreatedOrder.total_amount
+      ) {
+        const diff = lastCreatedOrder.change_for - lastCreatedOrder.total_amount;
+        const changeForFormatted = new Intl.NumberFormat("pt-BR", {
+          style: "currency",
+          currency: "BRL",
+        }).format(lastCreatedOrder.change_for);
+        const diffFormatted = new Intl.NumberFormat("pt-BR", {
+          style: "currency",
+          currency: "BRL",
+        }).format(diff);
+        paymentMethod += ` (Troco para ${changeForFormatted} - Levar ${diffFormatted})`;
+      } else if (lastCreatedOrder.change_for) {
+        const changeForFormatted = new Intl.NumberFormat("pt-BR", {
+          style: "currency",
+          currency: "BRL",
+        }).format(lastCreatedOrder.change_for);
+        paymentMethod += ` (Troco para ${changeForFormatted})`;
+      } else {
+        paymentMethod += " (Não precisa de troco)";
+      }
+    }
     const observations = lastCreatedOrder.observation
       ? `\n*Observações:* ${lastCreatedOrder.observation}`
       : "";
@@ -115,6 +141,32 @@ _Pedido realizado via Delivery Online._`;
         <p className="text-slate-500 mt-2 mb-8">
           Recebemos seu pedido com sucesso. Em breve iniciaremos o preparo!
         </p>
+
+        {lastCreatedOrder && (
+          <div className="w-full rounded-2xl bg-slate-50 border border-slate-200/80 p-4 text-left text-xs space-y-2 mb-6">
+            <div className="flex justify-between items-center text-slate-600">
+              <span>Forma de Pagamento</span>
+              <span className="font-black text-slate-800 uppercase">
+                {lastCreatedOrder.payment_method === "money"
+                  ? "Dinheiro"
+                  : lastCreatedOrder.payment_method === "pix"
+                    ? "Pix"
+                    : "Cartão"}
+              </span>
+            </div>
+            {lastCreatedOrder.payment_method === "money" && (
+              <div className="flex justify-between items-center pt-2 border-t border-slate-200/60 text-slate-700">
+                <span className="font-semibold">Troco:</span>
+                <span className="font-black text-emerald-700">
+                  {lastCreatedOrder.change_for &&
+                  lastCreatedOrder.change_for > lastCreatedOrder.total_amount
+                    ? `Troco para ${new Intl.NumberFormat("pt-BR", { style: "currency", currency: "BRL" }).format(lastCreatedOrder.change_for)} (Levar ${new Intl.NumberFormat("pt-BR", { style: "currency", currency: "BRL" }).format(lastCreatedOrder.change_for - lastCreatedOrder.total_amount)})`
+                    : "Não precisa de troco"}
+                </span>
+              </div>
+            )}
+          </div>
+        )}
 
         <div className="w-full space-y-3">
           {settings.whatsapp && (
@@ -381,6 +433,97 @@ _Pedido realizado via Delivery Online._`;
                   <span className="font-bold text-slate-700">Cartão</span>
                 </button>
               </div>
+
+              {/* Pergunta de Troco para Dinheiro */}
+              {orderInfo.payment_method === "money" && (
+                <div className="p-4 bg-amber-50/80 border border-amber-200 rounded-xl space-y-3">
+                  <div className="flex items-center justify-between">
+                    <Label className="text-sm font-bold text-amber-900">
+                      Vai precisar de troco?
+                    </Label>
+                    <div className="flex gap-1.5">
+                      <button
+                        type="button"
+                        onClick={() => setOrderInfo({ ...orderInfo, change_for: "" })}
+                        className={cn(
+                          "px-3 py-1.5 text-xs rounded-lg font-bold transition-all cursor-pointer",
+                          !orderInfo.change_for
+                            ? "bg-amber-600 text-white shadow-sm"
+                            : "bg-white text-slate-700 border border-slate-200 hover:bg-slate-50",
+                        )}
+                      >
+                        Não preciso
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => {
+                          if (!orderInfo.change_for) {
+                            const totalVal = getTotal ? getTotal() : 0;
+                            const rounded = Math.ceil(totalVal / 10) * 10;
+                            setOrderInfo({
+                              ...orderInfo,
+                              change_for: String(rounded > totalVal ? rounded : rounded + 10),
+                            });
+                          }
+                        }}
+                        className={cn(
+                          "px-3 py-1.5 text-xs rounded-lg font-bold transition-all cursor-pointer",
+                          orderInfo.change_for
+                            ? "bg-amber-600 text-white shadow-sm"
+                            : "bg-white text-slate-700 border border-slate-200 hover:bg-slate-50",
+                        )}
+                      >
+                        Sim, preciso
+                      </button>
+                    </div>
+                  </div>
+
+                  {orderInfo.change_for !== "" && (
+                    <div className="space-y-1.5 pt-1 border-t border-amber-200/60">
+                      <Label className="text-xs text-amber-950 font-bold">
+                        Troco para quanto em dinheiro?
+                      </Label>
+                      <div className="relative">
+                        <span className="absolute left-3 top-2.5 text-xs font-bold text-slate-400">
+                          R$
+                        </span>
+                        <Input
+                          type="number"
+                          step="0.50"
+                          min={getTotal ? getTotal() : 0}
+                          value={orderInfo.change_for || ""}
+                          onChange={(e) =>
+                            setOrderInfo({ ...orderInfo, change_for: e.target.value })
+                          }
+                          placeholder="Ex: 50,00"
+                          className="pl-9 bg-white text-slate-900 border-amber-300 font-bold focus:border-amber-600"
+                        />
+                      </div>
+                      {(() => {
+                        const totalVal = getTotal ? getTotal() : 0;
+                        const parsed = parseFloat(orderInfo.change_for);
+                        if (!parsed || Number.isNaN(parsed)) return null;
+                        if (parsed < totalVal) {
+                          return (
+                            <p className="text-[11px] font-bold text-red-600">
+                              O valor informado é menor que o total ({formatCurrency(totalVal)}).
+                            </p>
+                          );
+                        }
+                        const changeAmount = parsed - totalVal;
+                        return (
+                          <div className="text-xs font-semibold text-amber-950 flex items-center justify-between pt-0.5">
+                            <span>Troco a devolver:</span>
+                            <span className="text-sm font-black text-emerald-700">
+                              {formatCurrency(changeAmount)}
+                            </span>
+                          </div>
+                        );
+                      })()}
+                    </div>
+                  )}
+                </div>
+              )}
             </div>
 
             <div className="space-y-2 pb-6">
