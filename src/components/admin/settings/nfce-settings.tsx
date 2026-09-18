@@ -111,7 +111,7 @@ export function NfceSettings({
               </div>
             </div>
             <div className="flex justify-end">
-              <Button type="submit" disabled={isSaving} className="gap-2">
+              <Button type="submit" disabled={isSaving} className="gap-2 w-full sm:w-auto">
                 {isSaving ? (
                   <Loader2 className="w-4 h-4 animate-spin" />
                 ) : (

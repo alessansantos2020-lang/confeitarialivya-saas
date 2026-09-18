@@ -112,8 +112,8 @@ export function StorePaymentSettings({ storeId }: { storeId: string }) {
       <Card>
         <CardHeader>
           <CardTitle className="flex items-center gap-2">
-            <Banknote className="w-5 h-5 text-emerald-600" />
-            Pagamentos na Entrega e Chave Pix Manual
+            <Banknote className="w-5 h-5 text-emerald-600 shrink-0" />
+            <span>Pagamentos na Entrega e Chave Pix Manual</span>
           </CardTitle>
           <CardDescription>
             Opções em que o cliente paga no ato da entrega ou faz transferência direta para sua
@@ -122,60 +122,63 @@ export function StorePaymentSettings({ storeId }: { storeId: string }) {
         </CardHeader>
         <CardContent className="space-y-4">
           <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-            <div className="flex items-center justify-between gap-3 rounded-xl border border-slate-200 bg-slate-50 p-4">
-              <div>
+            <div className="flex items-start sm:items-center justify-between gap-3 rounded-xl border border-slate-200 bg-slate-50 p-3.5 sm:p-4">
+              <div className="min-w-0 pr-1">
                 <Label
                   htmlFor="accept_cash"
-                  className="font-semibold text-slate-800 cursor-pointer"
+                  className="font-semibold text-slate-800 cursor-pointer block"
                 >
                   Aceitar Dinheiro
                 </Label>
-                <p className="text-xs text-slate-500 mt-0.5">
+                <p className="text-xs text-slate-500 mt-0.5 leading-snug">
                   Pergunta ao cliente se precisa de troco e calcula quanto levar.
                 </p>
               </div>
               <Switch
                 id="accept_cash"
+                className="shrink-0 mt-0.5 sm:mt-0"
                 checked={form.accept_cash}
                 onCheckedChange={(checked) => setForm({ ...form, accept_cash: checked })}
               />
             </div>
 
-            <div className="flex items-center justify-between gap-3 rounded-xl border border-slate-200 bg-slate-50 p-4">
-              <div>
+            <div className="flex items-start sm:items-center justify-between gap-3 rounded-xl border border-slate-200 bg-slate-50 p-3.5 sm:p-4">
+              <div className="min-w-0 pr-1">
                 <Label
                   htmlFor="accept_card_delivery"
-                  className="font-semibold text-slate-800 cursor-pointer"
+                  className="font-semibold text-slate-800 cursor-pointer block"
                 >
                   Cartão na Maquininha
                 </Label>
-                <p className="text-xs text-slate-500 mt-0.5">
+                <p className="text-xs text-slate-500 mt-0.5 leading-snug">
                   O entregador leva a maquininha para o cliente passar débito/crédito.
                 </p>
               </div>
               <Switch
                 id="accept_card_delivery"
+                className="shrink-0 mt-0.5 sm:mt-0"
                 checked={form.accept_card_delivery}
                 onCheckedChange={(checked) => setForm({ ...form, accept_card_delivery: checked })}
               />
             </div>
           </div>
 
-          <div className="rounded-xl border border-slate-200 p-4 space-y-3">
-            <div className="flex items-center justify-between">
-              <div>
+          <div className="rounded-xl border border-slate-200 p-3.5 sm:p-4 space-y-3">
+            <div className="flex items-start sm:items-center justify-between gap-3">
+              <div className="min-w-0 pr-1">
                 <Label
                   htmlFor="accept_manual_pix"
-                  className="font-semibold text-slate-800 cursor-pointer"
+                  className="font-semibold text-slate-800 cursor-pointer block"
                 >
                   Chave Pix Direta da Loja (Sem Gateway)
                 </Label>
-                <p className="text-xs text-slate-500 mt-0.5">
+                <p className="text-xs text-slate-500 mt-0.5 leading-snug">
                   Exibe a sua chave Pix para o cliente pagar e enviar o comprovante no WhatsApp.
                 </p>
               </div>
               <Switch
                 id="accept_manual_pix"
+                className="shrink-0 mt-0.5 sm:mt-0"
                 checked={form.accept_manual_pix}
                 onCheckedChange={(checked) => setForm({ ...form, accept_manual_pix: checked })}
               />
@@ -191,7 +194,7 @@ export function StorePaymentSettings({ storeId }: { storeId: string }) {
                       setForm({ ...form, manual_pix_key_type: val })
                     }
                   >
-                    <SelectTrigger className="mt-1">
+                    <SelectTrigger className="mt-1 w-full">
                       <SelectValue placeholder="Selecione" />
                     </SelectTrigger>
                     <SelectContent>
@@ -206,7 +209,7 @@ export function StorePaymentSettings({ storeId }: { storeId: string }) {
                 <div className="md:col-span-2">
                   <Label className="text-xs text-slate-600">Sua Chave Pix</Label>
                   <Input
-                    className="mt-1"
+                    className="mt-1 w-full"
                     placeholder="Cole aqui sua chave Pix"
                     value={form.manual_pix_key || ""}
                     onChange={(e) => setForm({ ...form, manual_pix_key: e.target.value })}
@@ -221,22 +224,23 @@ export function StorePaymentSettings({ storeId }: { storeId: string }) {
       {/* 3. Mercado Pago */}
       <Card>
         <CardHeader>
-          <div className="flex items-center justify-between">
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
             <div className="flex items-center gap-2">
-              <div className="flex size-7 items-center justify-center rounded-lg bg-sky-50 text-sky-600 font-black text-xs">
+              <div className="flex size-7 items-center justify-center rounded-lg bg-sky-50 text-sky-600 font-black text-xs shrink-0">
                 MP
               </div>
-              <div>
-                <CardTitle>Mercado Pago</CardTitle>
-                <CardDescription>
+              <div className="min-w-0">
+                <CardTitle className="text-base sm:text-lg">Mercado Pago</CardTitle>
+                <CardDescription className="text-xs sm:text-sm">
                   Receba pagamentos com Pix transparente e Cartão de Crédito direto na sua conta
                   Mercado Pago.
                 </CardDescription>
               </div>
             </div>
-            <div className="flex items-center gap-2">
-              <span className="text-xs text-slate-500 font-medium">Habilitar Mercado Pago</span>
+            <div className="flex items-center justify-between sm:justify-end gap-2 pt-1 sm:pt-0 border-t sm:border-t-0 border-slate-100">
+              <span className="text-xs text-slate-600 font-medium">Habilitar Mercado Pago</span>
               <Switch
+                className="shrink-0"
                 checked={form.mp_enabled}
                 onCheckedChange={(checked) => setForm({ ...form, mp_enabled: checked })}
               />
@@ -250,6 +254,7 @@ export function StorePaymentSettings({ storeId }: { storeId: string }) {
                 <Label htmlFor="mp_public_key">Public Key (Chave Pública)</Label>
                 <Input
                   id="mp_public_key"
+                  className="w-full font-mono text-xs sm:text-sm"
                   placeholder="APP_USR-xxxxxxxx..."
                   value={form.mp_public_key || ""}
                   onChange={(e) => setForm({ ...form, mp_public_key: e.target.value })}
@@ -274,6 +279,7 @@ export function StorePaymentSettings({ storeId }: { storeId: string }) {
                 <Input
                   id="mp_access_token"
                   type={showMpToken ? "text" : "password"}
+                  className="w-full font-mono text-xs sm:text-sm"
                   placeholder="APP_USR-xxxxxxxx..."
                   value={form.mp_access_token || ""}
                   onChange={(e) => setForm({ ...form, mp_access_token: e.target.value })}
@@ -284,20 +290,21 @@ export function StorePaymentSettings({ storeId }: { storeId: string }) {
               </div>
             </div>
 
-            <div className="flex items-center justify-between rounded-lg bg-slate-50 border p-3">
-              <div>
+            <div className="flex items-start sm:items-center justify-between gap-3 rounded-lg bg-slate-50 border p-3">
+              <div className="min-w-0 pr-1">
                 <Label
                   htmlFor="mp_sandbox"
-                  className="font-medium text-xs text-slate-800 cursor-pointer"
+                  className="font-medium text-xs text-slate-800 cursor-pointer block"
                 >
                   Modo Teste (Sandbox)
                 </Label>
-                <p className="text-[11px] text-slate-500">
+                <p className="text-[11px] text-slate-500 leading-snug">
                   Desative para aceitar pagamentos reais de clientes.
                 </p>
               </div>
               <Switch
                 id="mp_sandbox"
+                className="shrink-0 mt-0.5 sm:mt-0"
                 checked={form.mp_sandbox}
                 onCheckedChange={(checked) => setForm({ ...form, mp_sandbox: checked })}
               />
@@ -309,21 +316,22 @@ export function StorePaymentSettings({ storeId }: { storeId: string }) {
       {/* 4. Asaas */}
       <Card>
         <CardHeader>
-          <div className="flex items-center justify-between">
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
             <div className="flex items-center gap-2">
-              <div className="flex size-7 items-center justify-center rounded-lg bg-blue-50 text-blue-600 font-black text-xs">
+              <div className="flex size-7 items-center justify-center rounded-lg bg-blue-50 text-blue-600 font-black text-xs shrink-0">
                 AS
               </div>
-              <div>
-                <CardTitle>Asaas</CardTitle>
-                <CardDescription>
+              <div className="min-w-0">
+                <CardTitle className="text-base sm:text-lg">Asaas</CardTitle>
+                <CardDescription className="text-xs sm:text-sm">
                   Receba pagamentos com Pix transparente e Cartão de Crédito na sua conta Asaas.
                 </CardDescription>
               </div>
             </div>
-            <div className="flex items-center gap-2">
-              <span className="text-xs text-slate-500 font-medium">Habilitar Asaas</span>
+            <div className="flex items-center justify-between sm:justify-end gap-2 pt-1 sm:pt-0 border-t sm:border-t-0 border-slate-100">
+              <span className="text-xs text-slate-600 font-medium">Habilitar Asaas</span>
               <Switch
+                className="shrink-0"
                 checked={form.asaas_enabled}
                 onCheckedChange={(checked) => setForm({ ...form, asaas_enabled: checked })}
               />
@@ -347,6 +355,7 @@ export function StorePaymentSettings({ storeId }: { storeId: string }) {
               <Input
                 id="asaas_api_key"
                 type={showAsaasKey ? "text" : "password"}
+                className="w-full font-mono text-xs sm:text-sm"
                 placeholder="$aact_xxxxxxxx..."
                 value={form.asaas_api_key || ""}
                 onChange={(e) => setForm({ ...form, asaas_api_key: e.target.value })}
@@ -356,20 +365,21 @@ export function StorePaymentSettings({ storeId }: { storeId: string }) {
               </p>
             </div>
 
-            <div className="flex items-center justify-between rounded-lg bg-slate-50 border p-3">
-              <div>
+            <div className="flex items-start sm:items-center justify-between gap-3 rounded-lg bg-slate-50 border p-3">
+              <div className="min-w-0 pr-1">
                 <Label
                   htmlFor="asaas_sandbox"
-                  className="font-medium text-xs text-slate-800 cursor-pointer"
+                  className="font-medium text-xs text-slate-800 cursor-pointer block"
                 >
                   Modo Sandbox (Ambiente de Testes)
                 </Label>
-                <p className="text-[11px] text-slate-500">
+                <p className="text-[11px] text-slate-500 leading-snug">
                   Desative quando utilizar as credenciais de produção do Asaas.
                 </p>
               </div>
               <Switch
                 id="asaas_sandbox"
+                className="shrink-0 mt-0.5 sm:mt-0"
                 checked={form.asaas_sandbox}
                 onCheckedChange={(checked) => setForm({ ...form, asaas_sandbox: checked })}
               />
@@ -382,8 +392,8 @@ export function StorePaymentSettings({ storeId }: { storeId: string }) {
       <Card>
         <CardHeader>
           <CardTitle className="flex items-center gap-2">
-            <QrCode className="w-5 h-5 text-pink-600" />
-            Preferências de Processamento Online
+            <QrCode className="w-5 h-5 text-pink-600 shrink-0" />
+            <span>Preferências de Processamento Online</span>
           </CardTitle>
           <CardDescription>
             Defina qual gateway processará os pagamentos dos clientes quando online.
@@ -398,7 +408,7 @@ export function StorePaymentSettings({ storeId }: { storeId: string }) {
                 setForm({ ...form, pix_provider: val })
               }
             >
-              <SelectTrigger>
+              <SelectTrigger className="w-full">
                 <SelectValue />
               </SelectTrigger>
               <SelectContent>
@@ -424,7 +434,7 @@ export function StorePaymentSettings({ storeId }: { storeId: string }) {
                 setForm({ ...form, card_provider: val })
               }
             >
-              <SelectTrigger>
+              <SelectTrigger className="w-full">
                 <SelectValue />
               </SelectTrigger>
               <SelectContent>
@@ -445,9 +455,9 @@ export function StorePaymentSettings({ storeId }: { storeId: string }) {
       </Card>
 
       {/* Nota de conformidade */}
-      <div className="rounded-xl border border-sky-100 bg-sky-50/60 p-4 flex gap-3 text-xs text-sky-800">
+      <div className="rounded-xl border border-sky-100 bg-sky-50/60 p-4 flex items-start gap-3 text-xs text-sky-800">
         <ShieldCheck className="shrink-0 text-sky-600 mt-0.5" size={17} />
-        <div>
+        <div className="min-w-0">
           <span className="font-semibold block text-sky-900">Agilidade no Delivery:</span>O checkout
           de pedidos foi projetado exclusivamente para <strong>Dinheiro</strong> (com troco),{" "}
           <strong>Pix</strong> e <strong>Cartão</strong>. Boleto bancário não é disponibilizado para
@@ -458,7 +468,7 @@ export function StorePaymentSettings({ storeId }: { storeId: string }) {
       <div className="flex justify-end">
         <Button
           type="submit"
-          className="bg-pink-600 hover:bg-pink-700 text-white gap-2 px-6 h-11"
+          className="bg-pink-600 hover:bg-pink-700 text-white gap-2 w-full sm:w-auto px-6 h-11"
           disabled={mutation.isPending}
         >
           {mutation.isPending ? <Loader2 className="animate-spin" size={18} /> : <Save size={18} />}

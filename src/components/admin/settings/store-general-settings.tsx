@@ -107,20 +107,21 @@ export function StoreGeneralSettings({
                   />
                 </div>
               </div>
-              <div className="flex items-center justify-between p-4 bg-pink-50 rounded-xl border border-pink-100">
-                <div className="space-y-0.5">
-                  <Label className="text-base font-bold text-pink-900">Status da Loja</Label>
-                  <CardDescription className="text-pink-700">
+              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 p-4 bg-pink-50 rounded-xl border border-pink-100">
+                <div className="space-y-0.5 min-w-0 pr-1">
+                  <Label className="text-base font-bold text-pink-900 block">Status da Loja</Label>
+                  <CardDescription className="text-pink-700 text-xs sm:text-sm">
                     Define se a loja está aberta para pedidos agora.
                   </CardDescription>
                 </div>
-                <div className="flex items-center gap-3">
+                <div className="flex items-center justify-between sm:justify-end gap-3 pt-2 sm:pt-0 border-t sm:border-t-0 border-pink-200/50">
                   <span
-                    className={`text-sm font-bold ${settings.is_open ? "text-green-600" : "text-slate-500"}`}
+                    className={`text-xs sm:text-sm font-bold ${settings.is_open ? "text-green-600" : "text-slate-500"}`}
                   >
                     {settings.is_open ? "ABERTA" : "FECHADA"}
                   </span>
                   <Switch
+                    className="shrink-0"
                     checked={settings.is_open}
                     onCheckedChange={(checked) => setSettings({ ...settings, is_open: checked })}
                   />

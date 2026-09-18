@@ -40,11 +40,12 @@ export function WhatsAppSettings({
                 key={id}
                 className="flex items-center justify-between gap-3 rounded-lg bg-white border border-slate-200 p-3"
               >
-                <Label htmlFor={id} className="text-sm cursor-pointer">
+                <Label htmlFor={id} className="text-xs sm:text-sm cursor-pointer min-w-0 pr-1">
                   {label}
                 </Label>
                 <Switch
                   id={id}
+                  className="shrink-0"
                   checked={settings[id]}
                   onCheckedChange={(checked) => setSettings({ ...settings, [id]: checked })}
                 />

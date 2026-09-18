@@ -222,14 +222,16 @@ function AdminSettings() {
 
   return (
     <div className="space-y-6 max-w-5xl">
-      <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
         <div>
-          <h1 className="text-2xl font-bold text-slate-800">Configurações</h1>
-          <p className="text-slate-500">Gerencie as informações públicas e visuais da sua loja.</p>
+          <h1 className="text-xl sm:text-2xl font-bold text-slate-800">Configurações</h1>
+          <p className="text-xs sm:text-sm text-slate-500">
+            Gerencie as informações públicas e visuais da sua loja.
+          </p>
         </div>
         <Button
           onClick={handleSubmit}
-          className="bg-pink-600 hover:bg-pink-700 min-w-[150px]"
+          className="bg-pink-600 hover:bg-pink-700 w-full sm:w-auto min-w-[150px] shrink-0"
           disabled={isSaving}
         >
           {isSaving ? (
@@ -247,36 +249,57 @@ function AdminSettings() {
       </div>
 
       <Tabs defaultValue="general" className="w-full">
-        <TabsList className="grid w-full grid-cols-2 sm:grid-cols-3 md:w-auto md:inline-flex mb-4">
-          <TabsTrigger value="general" className="flex items-center gap-2">
-            <Layout className="w-4 h-4" />
-            Geral
+        <TabsList className="grid w-full grid-cols-2 sm:grid-cols-4 md:w-auto md:inline-flex mb-4 h-auto p-1.5 gap-1 bg-slate-100/80 rounded-xl">
+          <TabsTrigger
+            value="general"
+            className="flex items-center justify-center gap-1.5 text-xs sm:text-sm py-2 px-2.5 rounded-lg data-[state=active]:bg-white data-[state=active]:shadow-sm"
+          >
+            <Layout className="w-3.5 h-3.5 sm:w-4 sm:h-4 shrink-0" />
+            <span className="truncate">Geral</span>
           </TabsTrigger>
-          <TabsTrigger value="contact" className="flex items-center gap-2">
-            <Globe className="w-4 h-4" />
-            Contato & Redes
+          <TabsTrigger
+            value="contact"
+            className="flex items-center justify-center gap-1.5 text-xs sm:text-sm py-2 px-2.5 rounded-lg data-[state=active]:bg-white data-[state=active]:shadow-sm"
+          >
+            <Globe className="w-3.5 h-3.5 sm:w-4 sm:h-4 shrink-0" />
+            <span className="truncate">Contato</span>
           </TabsTrigger>
-          <TabsTrigger value="visual" className="flex items-center gap-2">
-            <Palette className="w-4 h-4" />
-            Visual
+          <TabsTrigger
+            value="visual"
+            className="flex items-center justify-center gap-1.5 text-xs sm:text-sm py-2 px-2.5 rounded-lg data-[state=active]:bg-white data-[state=active]:shadow-sm"
+          >
+            <Palette className="w-3.5 h-3.5 sm:w-4 sm:h-4 shrink-0" />
+            <span className="truncate">Visual</span>
           </TabsTrigger>
-          <TabsTrigger value="payments" className="flex items-center gap-2">
-            <CreditCard className="w-4 h-4" />
-            Pagamentos
+          <TabsTrigger
+            value="payments"
+            className="flex items-center justify-center gap-1.5 text-xs sm:text-sm py-2 px-2.5 rounded-lg data-[state=active]:bg-white data-[state=active]:shadow-sm"
+          >
+            <CreditCard className="w-3.5 h-3.5 sm:w-4 sm:h-4 shrink-0" />
+            <span className="truncate">Pagamentos</span>
           </TabsTrigger>
           {hasNfce && (
-            <TabsTrigger value="nfce" className="flex items-center gap-2">
-              <FileText className="w-4 h-4" />
-              NFC-e
+            <TabsTrigger
+              value="nfce"
+              className="flex items-center justify-center gap-1.5 text-xs sm:text-sm py-2 px-2.5 rounded-lg data-[state=active]:bg-white data-[state=active]:shadow-sm"
+            >
+              <FileText className="w-3.5 h-3.5 sm:w-4 sm:h-4 shrink-0" />
+              <span className="truncate">NFC-e</span>
             </TabsTrigger>
           )}
-          <TabsTrigger value="whatsapp" className="flex items-center gap-2">
-            <MessageCircle className="w-4 h-4" />
-            Mensagens WhatsApp
+          <TabsTrigger
+            value="whatsapp"
+            className="flex items-center justify-center gap-1.5 text-xs sm:text-sm py-2 px-2.5 rounded-lg data-[state=active]:bg-white data-[state=active]:shadow-sm"
+          >
+            <MessageCircle className="w-3.5 h-3.5 sm:w-4 sm:h-4 shrink-0" />
+            <span className="truncate">WhatsApp</span>
           </TabsTrigger>
-          <TabsTrigger value="links" className="flex items-center gap-2">
-            <Globe className="w-4 h-4" />
-            Links do Painel
+          <TabsTrigger
+            value="links"
+            className="flex items-center justify-center gap-1.5 text-xs sm:text-sm py-2 px-2.5 rounded-lg data-[state=active]:bg-white data-[state=active]:shadow-sm"
+          >
+            <Globe className="w-3.5 h-3.5 sm:w-4 sm:h-4 shrink-0" />
+            <span className="truncate">Links</span>
           </TabsTrigger>
         </TabsList>
 
@@ -292,11 +315,17 @@ function AdminSettings() {
               <div className="space-y-4">
                 <div className="space-y-2">
                   <Label>Link do Delivery (Oficial)</Label>
-                  <div className="flex gap-2">
-                    <Input readOnly value={publicStoreUrl} />
+                  <div className="flex items-center gap-2">
+                    <Input
+                      readOnly
+                      value={publicStoreUrl}
+                      className="min-w-0 flex-1 truncate text-xs sm:text-sm font-mono bg-slate-50"
+                    />
                     <Button
                       variant="outline"
                       size="icon"
+                      className="shrink-0"
+                      aria-label="Copiar link oficial do delivery"
                       onClick={() => {
                         navigator.clipboard.writeText(publicStoreUrl);
                         toast.success("Link oficial copiado!");
@@ -305,18 +334,24 @@ function AdminSettings() {
                       <Copy className="h-4 w-4" />
                     </Button>
                   </div>
-                  <p className="text-[10px] text-slate-400">
+                  <p className="text-[10px] sm:text-xs text-slate-400">
                     Este é o endereço público para os seus clientes.
                   </p>
                 </div>
 
                 <div className="space-y-2">
                   <Label>Link do Painel Administrativo</Label>
-                  <div className="flex gap-2">
-                    <Input readOnly value={`${siteOrigin}/admin`} />
+                  <div className="flex items-center gap-2">
+                    <Input
+                      readOnly
+                      value={`${siteOrigin}/admin`}
+                      className="min-w-0 flex-1 truncate text-xs sm:text-sm font-mono bg-slate-50"
+                    />
                     <Button
                       variant="outline"
                       size="icon"
+                      className="shrink-0"
+                      aria-label="Copiar link do painel administrativo"
                       onClick={() => {
                         navigator.clipboard.writeText(`${siteOrigin}/admin`);
                         toast.success("Link do painel copiado!");
@@ -329,11 +364,17 @@ function AdminSettings() {
 
                 <div className="space-y-2">
                   <Label>Link do Painel de Pedidos</Label>
-                  <div className="flex gap-2">
-                    <Input readOnly value={`${siteOrigin}/staff`} />
+                  <div className="flex items-center gap-2">
+                    <Input
+                      readOnly
+                      value={`${siteOrigin}/staff`}
+                      className="min-w-0 flex-1 truncate text-xs sm:text-sm font-mono bg-slate-50"
+                    />
                     <Button
                       variant="outline"
                       size="icon"
+                      className="shrink-0"
+                      aria-label="Copiar link do painel de pedidos"
                       onClick={() => {
                         navigator.clipboard.writeText(`${siteOrigin}/staff`);
                         toast.success("Link do painel de pedidos copiado!");
@@ -342,7 +383,7 @@ function AdminSettings() {
                       <Copy className="h-4 w-4" />
                     </Button>
                   </div>
-                  <p className="text-[10px] text-slate-400">
+                  <p className="text-[10px] sm:text-xs text-slate-400">
                     Tela pra sua equipe acompanhar e atualizar os pedidos.
                   </p>
                 </div>
@@ -402,10 +443,6 @@ function AdminSettings() {
             />
           </TabsContent>
         )}
-
-        <TabsContent value="payments" className="space-y-6 outline-none">
-          <StorePaymentSettings storeId={storeId} />
-        </TabsContent>
 
         <TabsContent value="whatsapp" className="space-y-6 outline-none">
           <WhatsAppSettings settings={settings} setSettings={setSettings} />
