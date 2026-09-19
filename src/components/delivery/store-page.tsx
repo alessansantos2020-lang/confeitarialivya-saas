@@ -1,5 +1,5 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
-import { useSuspenseQuery, useQueryClient } from "@tanstack/react-query";
+import { useSuspenseQuery, useQuery, useQueryClient } from "@tanstack/react-query";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent } from "@/components/ui/card";
@@ -30,6 +30,7 @@ import {
 import { getCatalogPricing } from "@/lib/promotions";
 import { createOrder } from "@/lib/orders.functions";
 import { getActiveDeliveryFees } from "@/lib/delivery-fees.functions";
+import { getPublicStorePaymentMethods } from "@/lib/store-payments";
 import { useCart } from "@/lib/cart.store";
 import { queryOptions } from "@tanstack/react-query";
 import { useState, useMemo, useEffect } from "react";
@@ -116,6 +117,10 @@ export function StorePage({ storeId }: { storeId: string }) {
   };
   const { data: categories } = useSuspenseQuery(categoriesWithProductsOptions(storeId));
   const { data: deliveryFees } = useSuspenseQuery(activeDeliveryFeesOptions(storeId));
+  const { data: paymentMethods } = useQuery({
+    queryKey: ["publicPaymentMethods", storeId],
+    queryFn: () => getPublicStorePaymentMethods(storeId),
+  });
 
   const isCartReady = cartStoreId === storeId;
 
@@ -245,6 +250,20 @@ export function StorePage({ storeId }: { storeId: string }) {
 
     if (items.length === 0) {
       toast.error("Sua sacola está vazia.");
+      return;
+    }
+
+    // Respeita os métodos que a loja habilitou (defesa extra; o RPC também valida no banco).
+    const methodAllowed =
+      (orderInfo.payment_method === "pix" &&
+        (paymentMethods?.accept_manual_pix !== false ||
+          paymentMethods?.online_pix_available === true ||
+          paymentMethods?.mp_enabled === true ||
+          paymentMethods?.asaas_enabled === true)) ||
+      (orderInfo.payment_method === "money" && paymentMethods?.accept_cash !== false) ||
+      (orderInfo.payment_method === "card" && paymentMethods?.accept_card_delivery !== false);
+    if (paymentMethods && !methodAllowed) {
+      toast.error("Esta forma de pagamento não está disponível nesta loja.");
       return;
     }
 
@@ -549,6 +568,7 @@ export function StorePage({ storeId }: { storeId: string }) {
               settings={settings}
               lastCreatedOrder={lastCreatedOrder}
               isHydrated={isHydrated}
+              paymentMethods={paymentMethods}
             />
           </SheetContent>
         </Sheet>
@@ -600,6 +620,7 @@ export function StorePage({ storeId }: { storeId: string }) {
               settings={settings}
               lastCreatedOrder={lastCreatedOrder}
               isHydrated={isHydrated}
+              paymentMethods={paymentMethods}
             />
           </SheetContent>
         </Sheet>

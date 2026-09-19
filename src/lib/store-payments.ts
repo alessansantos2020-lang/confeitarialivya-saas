@@ -42,6 +42,23 @@ export type PublicStorePaymentMethods = {
   mp_public_key: string | null;
   mp_enabled: boolean;
   asaas_enabled: boolean;
+  online_pix_available?: boolean;
+  online_card_available?: boolean;
+};
+
+export const DEFAULT_PUBLIC_PAYMENT_METHODS: PublicStorePaymentMethods = {
+  accept_cash: true,
+  accept_card_delivery: true,
+  accept_manual_pix: true,
+  manual_pix_key: null,
+  manual_pix_key_type: null,
+  pix_provider: "manual",
+  card_provider: "delivery",
+  mp_public_key: null,
+  mp_enabled: false,
+  asaas_enabled: false,
+  online_pix_available: false,
+  online_card_available: false,
 };
 
 export const DEFAULT_STORE_PAYMENT_GATEWAYS: StorePaymentGateways = {
@@ -154,21 +171,10 @@ export const getPublicStorePaymentMethods = async (
   });
 
   if (error || !data) {
-    return {
-      accept_cash: true,
-      accept_card_delivery: true,
-      accept_manual_pix: true,
-      manual_pix_key: null,
-      manual_pix_key_type: null,
-      pix_provider: "manual",
-      card_provider: "delivery",
-      mp_public_key: null,
-      mp_enabled: false,
-      asaas_enabled: false,
-    };
+    return DEFAULT_PUBLIC_PAYMENT_METHODS;
   }
 
-  return data as unknown as PublicStorePaymentMethods;
+  return { ...DEFAULT_PUBLIC_PAYMENT_METHODS, ...(data as Partial<PublicStorePaymentMethods>) };
 };
 
 /**

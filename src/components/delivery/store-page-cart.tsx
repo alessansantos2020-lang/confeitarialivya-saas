@@ -1,4 +1,5 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
+import { useEffect } from "react";
 import { Button } from "@/components/ui/button";
 import {
   CheckCircle2,
@@ -48,7 +49,29 @@ export function StorePageCart({
   settings,
   lastCreatedOrder,
   isHydrated,
+  paymentMethods,
 }: any) {
+  const acceptCash = paymentMethods ? paymentMethods.accept_cash !== false : true;
+  const acceptCard = paymentMethods ? paymentMethods.accept_card_delivery !== false : true;
+  const acceptPix = paymentMethods
+    ? paymentMethods.accept_manual_pix !== false ||
+      paymentMethods.online_pix_available === true ||
+      paymentMethods.mp_enabled === true ||
+      paymentMethods.asaas_enabled === true
+    : true;
+  const availableMethods = [
+    ...(acceptPix ? ["pix"] : []),
+    ...(acceptCash ? ["money"] : []),
+    ...(acceptCard ? ["card"] : []),
+  ];
+
+  // Garante um método válido selecionado quando a loja desativa o atual.
+  useEffect(() => {
+    if (!availableMethods.length || availableMethods.includes(orderInfo.payment_method)) return;
+    setOrderInfo({ ...orderInfo, payment_method: availableMethods[0], change_for: "" });
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [acceptPix, acceptCash, acceptCard]);
+
   const handleSendWhatsApp = () => {
     if (!lastCreatedOrder || !settings.whatsapp) return;
 
@@ -395,44 +418,59 @@ _Pedido realizado via Delivery Online._`;
 
             <div className="space-y-4">
               <h3 className="font-bold text-slate-900 text-lg">Forma de Pagamento</h3>
-              <div className="grid grid-cols-3 gap-2">
-                <button
-                  type="button"
-                  onClick={() => setOrderInfo({ ...orderInfo, payment_method: "pix" })}
-                  className={cn(
-                    "flex flex-col items-center justify-center p-4 border-2 rounded-xl cursor-pointer transition-all",
-                    orderInfo.payment_method === "pix"
-                      ? "border-[var(--primary-color)] bg-[var(--secondary-color)]"
-                      : "border-slate-100 hover:border-slate-200",
+              {!availableMethods.length ? (
+                <Alert>
+                  <AlertCircle className="h-4 w-4" />
+                  <AlertDescription>
+                    Esta loja não está aceitando pagamentos no momento. Fale com o estabelecimento.
+                  </AlertDescription>
+                </Alert>
+              ) : (
+                <div className="grid grid-cols-3 gap-2">
+                  {acceptPix && (
+                    <button
+                      type="button"
+                      onClick={() => setOrderInfo({ ...orderInfo, payment_method: "pix" })}
+                      className={cn(
+                        "flex flex-col items-center justify-center p-4 border-2 rounded-xl cursor-pointer transition-all",
+                        orderInfo.payment_method === "pix"
+                          ? "border-[var(--primary-color)] bg-[var(--secondary-color)]"
+                          : "border-slate-100 hover:border-slate-200",
+                      )}
+                    >
+                      <span className="font-bold text-slate-700">Pix</span>
+                    </button>
                   )}
-                >
-                  <span className="font-bold text-slate-700">Pix</span>
-                </button>
-                <button
-                  type="button"
-                  onClick={() => setOrderInfo({ ...orderInfo, payment_method: "money" })}
-                  className={cn(
-                    "flex flex-col items-center justify-center p-4 border-2 rounded-xl cursor-pointer transition-all",
-                    orderInfo.payment_method === "money"
-                      ? "border-[var(--primary-color)] bg-[var(--secondary-color)]"
-                      : "border-slate-100 hover:border-slate-200",
+                  {acceptCash && (
+                    <button
+                      type="button"
+                      onClick={() => setOrderInfo({ ...orderInfo, payment_method: "money" })}
+                      className={cn(
+                        "flex flex-col items-center justify-center p-4 border-2 rounded-xl cursor-pointer transition-all",
+                        orderInfo.payment_method === "money"
+                          ? "border-[var(--primary-color)] bg-[var(--secondary-color)]"
+                          : "border-slate-100 hover:border-slate-200",
+                      )}
+                    >
+                      <span className="font-bold text-slate-700">Dinheiro</span>
+                    </button>
                   )}
-                >
-                  <span className="font-bold text-slate-700">Dinheiro</span>
-                </button>
-                <button
-                  type="button"
-                  onClick={() => setOrderInfo({ ...orderInfo, payment_method: "card" })}
-                  className={cn(
-                    "flex flex-col items-center justify-center p-4 border-2 rounded-xl cursor-pointer transition-all",
-                    orderInfo.payment_method === "card"
-                      ? "border-[var(--primary-color)] bg-[var(--secondary-color)]"
-                      : "border-slate-100 hover:border-slate-200",
+                  {acceptCard && (
+                    <button
+                      type="button"
+                      onClick={() => setOrderInfo({ ...orderInfo, payment_method: "card" })}
+                      className={cn(
+                        "flex flex-col items-center justify-center p-4 border-2 rounded-xl cursor-pointer transition-all",
+                        orderInfo.payment_method === "card"
+                          ? "border-[var(--primary-color)] bg-[var(--secondary-color)]"
+                          : "border-slate-100 hover:border-slate-200",
+                      )}
+                    >
+                      <span className="font-bold text-slate-700">Cartão</span>
+                    </button>
                   )}
-                >
-                  <span className="font-bold text-slate-700">Cartão</span>
-                </button>
-              </div>
+                </div>
+              )}
 
               {/* Pergunta de Troco para Dinheiro */}
               {orderInfo.payment_method === "money" && (
