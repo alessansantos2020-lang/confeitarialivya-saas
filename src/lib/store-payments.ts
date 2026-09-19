@@ -1,4 +1,5 @@
 import { supabase } from "@/integrations/supabase/client";
+import type { Database } from "@/integrations/supabase/types";
 import { logAudit } from "./audit.functions";
 
 export type PixKeyType = "cpf" | "cnpj" | "phone" | "email" | "random";
@@ -61,16 +62,22 @@ export const DEFAULT_STORE_PAYMENT_GATEWAYS: StorePaymentGateways = {
   card_provider: "delivery",
 };
 
+const MASKED_MP_TOKEN = "••••••••";
+const MASKED_ASAAS_KEY = "••••••••";
+
 export const getStorePaymentGateways = async (storeId: string): Promise<StorePaymentGateways> => {
   const { data, error } = await supabase
     .from("store_payment_gateways")
-    .select("*")
+    .select(
+      "id, store_id, accept_cash, accept_card_delivery, accept_manual_pix, manual_pix_key, manual_pix_key_type, mp_enabled, mp_public_key, mp_sandbox, asaas_enabled, asaas_sandbox, pix_provider, card_provider",
+    )
     .eq("store_id", storeId)
     .maybeSingle();
 
   if (error) {
-    console.error("Falha ao buscar gateways de pagamento da loja:", error);
-    return { ...DEFAULT_STORE_PAYMENT_GATEWAYS, store_id: storeId };
+    throw new Error(
+      "Não foi possível carregar as configurações de pagamento. Tente novamente antes de salvar.",
+    );
   }
 
   if (!data) {
@@ -80,6 +87,8 @@ export const getStorePaymentGateways = async (storeId: string): Promise<StorePay
   return {
     ...DEFAULT_STORE_PAYMENT_GATEWAYS,
     ...data,
+    mp_access_token: data.mp_public_key || data.mp_enabled ? MASKED_MP_TOKEN : null,
+    asaas_api_key: data.asaas_enabled ? MASKED_ASAAS_KEY : null,
     manual_pix_key_type: (data.manual_pix_key_type as PixKeyType) || null,
     pix_provider: (data.pix_provider as "manual" | "mercadopago" | "asaas") || "manual",
     card_provider: (data.card_provider as "delivery" | "mercadopago" | "asaas") || "delivery",
@@ -91,7 +100,9 @@ export const saveStorePaymentGateways = async (
   storeId: string,
   settings: Partial<StorePaymentGateways>,
 ): Promise<void> => {
-  const payload = {
+  const masked = (value: string | null | undefined, mask: string) => !value || value === mask;
+
+  const payload: Database["public"]["Tables"]["store_payment_gateways"]["Insert"] = {
     store_id: storeId,
     accept_cash: settings.accept_cash ?? true,
     accept_card_delivery: settings.accept_card_delivery ?? true,
@@ -100,14 +111,20 @@ export const saveStorePaymentGateways = async (
     manual_pix_key_type: settings.manual_pix_key_type || null,
     mp_enabled: settings.mp_enabled ?? false,
     mp_public_key: settings.mp_public_key ? settings.mp_public_key.trim() : null,
-    mp_access_token: settings.mp_access_token ? settings.mp_access_token.trim() : null,
     mp_sandbox: settings.mp_sandbox ?? true,
     asaas_enabled: settings.asaas_enabled ?? false,
-    asaas_api_key: settings.asaas_api_key ? settings.asaas_api_key.trim() : null,
     asaas_sandbox: settings.asaas_sandbox ?? true,
     pix_provider: settings.pix_provider || "manual",
     card_provider: settings.card_provider || "delivery",
   };
+
+  // Segredos mascarados significam "mantém o valor atual" — nunca sobrescrever.
+  if (!masked(settings.mp_access_token, MASKED_MP_TOKEN)) {
+    payload.mp_access_token = settings.mp_access_token?.trim() ?? null;
+  }
+  if (!masked(settings.asaas_api_key, MASKED_ASAAS_KEY)) {
+    payload.asaas_api_key = settings.asaas_api_key?.trim() ?? null;
+  }
 
   const { error } = await supabase
     .from("store_payment_gateways")
@@ -121,10 +138,10 @@ export const saveStorePaymentGateways = async (
     storeId,
     description: "Configurações de pagamento (Mercado Pago / Asaas / Entrega) atualizadas.",
     metadata: {
-      mp_enabled: payload.mp_enabled,
-      asaas_enabled: payload.asaas_enabled,
-      pix_provider: payload.pix_provider,
-      card_provider: payload.card_provider,
+      mp_enabled: payload.mp_enabled ?? false,
+      asaas_enabled: payload.asaas_enabled ?? false,
+      pix_provider: payload.pix_provider ?? "manual",
+      card_provider: payload.card_provider ?? "delivery",
     },
   });
 };

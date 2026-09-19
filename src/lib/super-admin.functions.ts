@@ -46,6 +46,7 @@ export {
   getCompanyBilling,
   paymentMethodLabel,
   isPaymentReceived,
+  isSafePaymentUrl,
   createAsaasSubscription,
 } from "./super-admin-billing";
 export type {

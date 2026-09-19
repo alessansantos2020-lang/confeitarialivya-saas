@@ -30,6 +30,29 @@ type PaymentPayload = {
 };
 type WebhookPayload = { id?: string; event?: string; payment?: PaymentPayload };
 
+const safeUrl = (value: string | undefined): string | undefined => {
+  if (!value) return undefined;
+  try {
+    const url = new URL(value);
+    return url.protocol === "https:" ? url.toString() : undefined;
+  } catch {
+    return undefined;
+  }
+};
+
+const tokensMatch = async (received: string, expected: string): Promise<boolean> => {
+  const encoder = new TextEncoder();
+  const [receivedHash, expectedHash] = await Promise.all([
+    crypto.subtle.digest("SHA-256", encoder.encode(received)),
+    crypto.subtle.digest("SHA-256", encoder.encode(expected)),
+  ]);
+  const a = new Uint8Array(receivedHash);
+  const b = new Uint8Array(expectedHash);
+  let diff = 0;
+  for (let i = 0; i < a.length; i++) diff |= a[i]! ^ b[i]!;
+  return diff === 0;
+};
+
 Deno.serve(async (request) => {
   if (request.method === "OPTIONS") return new Response("ok", { headers: corsHeaders });
   if (request.method !== "POST") return json({ error: "Método não permitido." }, 405);
@@ -37,7 +60,7 @@ Deno.serve(async (request) => {
   try {
     const expectedToken = Deno.env.get("ASAAS_WEBHOOK_TOKEN");
     const receivedToken = request.headers.get("asaas-access-token");
-    if (!expectedToken || !receivedToken || receivedToken !== expectedToken) {
+    if (!expectedToken || !receivedToken || !(await tokensMatch(receivedToken, expectedToken))) {
       return json({ error: "Webhook não autorizado." }, 401);
     }
 
@@ -78,8 +101,8 @@ Deno.serve(async (request) => {
         _provider_payment_id: body.payment.id,
         _status: nextStatus,
         _payment_method: methodMap[body.payment.billingType || ""],
-        _invoice_url: body.payment.invoiceUrl,
-        _bank_slip_url: body.payment.bankSlipUrl,
+        _invoice_url: safeUrl(body.payment.invoiceUrl),
+        _bank_slip_url: safeUrl(body.payment.bankSlipUrl),
         _bank_slip_barcode: body.payment.bankSlipBarcode,
         _bank_slip_digitable_line: body.payment.identificationField,
         _pix_qr_code: body.payment.pixQrCode,

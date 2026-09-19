@@ -49,6 +49,7 @@ import {
   createBillingSubscription,
   createAsaasSubscription,
   getBillingOverview,
+  isSafePaymentUrl,
   moneyFromCents,
   upsertBillingCustomer,
   type BillingFilters,
@@ -458,7 +459,7 @@ function BillingPage() {
                         </Badge>
                       </TableCell>
                       <TableCell className="text-right">
-                        {invoice.invoice_url && (
+                        {isSafePaymentUrl(invoice.invoice_url) && (
                           <Button asChild size="sm" variant="ghost" className="text-slate-400">
                             <a href={invoice.invoice_url} target="_blank" rel="noreferrer">
                               <ExternalLink size={14} /> Abrir

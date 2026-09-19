@@ -279,6 +279,15 @@ export const paymentMethodLabel = (value: string | null) =>
 
 export const isPaymentReceived = (status: string) => status === "received";
 
+export const isSafePaymentUrl = (url: string | null | undefined): url is string => {
+  if (!url) return false;
+  try {
+    return new URL(url).protocol === "https:";
+  } catch {
+    return false;
+  }
+};
+
 export const getCompanyBilling = async (storeId: string) => {
   const [invoicesResult, profileResult, subscriptionResult] = await Promise.all([
     supabase

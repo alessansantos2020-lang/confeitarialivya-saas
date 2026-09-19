@@ -2,6 +2,7 @@ import { describe, expect, it } from "vitest";
 import {
   isBillingPaymentMethod,
   isPaymentReceived,
+  isSafePaymentUrl,
   paymentMethodLabel,
   summarizeBilling,
 } from "./super-admin-billing";
@@ -50,5 +51,15 @@ describe("summarizeBilling", () => {
     expect(paymentMethodLabel("PIX")).toBe("Pix");
     expect(isPaymentReceived("confirmed")).toBe(false);
     expect(isPaymentReceived("received")).toBe(true);
+  });
+
+  it("accepts only https payment links", () => {
+    expect(isSafePaymentUrl("https://sandbox.asaas.com/i/abc")).toBe(true);
+    expect(isSafePaymentUrl(null)).toBe(false);
+    expect(isSafePaymentUrl("")).toBe(false);
+    expect(isSafePaymentUrl("javascript:alert(1)")).toBe(false);
+    expect(isSafePaymentUrl("http://inseguro.com")).toBe(false);
+    expect(isSafePaymentUrl("data:text/html,x")).toBe(false);
+    expect(isSafePaymentUrl("nao-e-url")).toBe(false);
   });
 });

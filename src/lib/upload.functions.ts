@@ -1,4 +1,7 @@
 import { supabase } from "@/integrations/supabase/client";
+
+const ALLOWED_IMAGE_EXTENSIONS = ["png", "jpg", "jpeg", "webp", "gif"] as const;
+
 export const uploadFile = async (
   file: File,
   folder: "store" | "products" | "categories",
@@ -14,8 +17,8 @@ export const uploadFile = async (
   }
 
   const fileExt = file.name.split(".").pop()?.toLowerCase();
-  if (!fileExt || !/^[a-z0-9]+$/.test(fileExt)) {
-    throw new Error("Extensão de imagem inválida.");
+  if (!fileExt || !(ALLOWED_IMAGE_EXTENSIONS as readonly string[]).includes(fileExt)) {
+    throw new Error("Extensão de imagem inválida. Use PNG, JPG, WEBP ou GIF.");
   }
   const fileName = `${crypto.randomUUID()}.${fileExt}`;
   const filePath = `${storeId}/${folder}/${fileName}`;

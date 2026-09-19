@@ -17,6 +17,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import {
   billingStatusLabel,
   getCompanyBilling,
+  isSafePaymentUrl,
   moneyFromCents,
   paymentMethodLabel,
 } from "@/lib/super-admin.functions";
@@ -129,7 +130,7 @@ function CompanyBillingPage() {
                   onCopy={() =>
                     latest.pix_copy_paste && copy(latest.pix_copy_paste, "Pix copia e cola")
                   }
-                  href={latest.invoice_url}
+                  href={isSafePaymentUrl(latest.invoice_url) ? latest.invoice_url : null}
                 />
                 <PaymentAction
                   label="Pagar com boleto"
@@ -139,7 +140,13 @@ function CompanyBillingPage() {
                     latest.bank_slip_digitable_line &&
                     copy(latest.bank_slip_digitable_line, "Linha digitável")
                   }
-                  href={latest.bank_slip_url || latest.invoice_url}
+                  href={
+                    isSafePaymentUrl(latest.bank_slip_url)
+                      ? latest.bank_slip_url
+                      : isSafePaymentUrl(latest.invoice_url)
+                        ? latest.invoice_url
+                        : null
+                  }
                 />
               </div>
             )}
@@ -200,7 +207,7 @@ function CompanyBillingPage() {
                       </Badge>
                     </td>
                     <td className="px-3 py-3 text-right">
-                      {invoice.invoice_url && (
+                      {isSafePaymentUrl(invoice.invoice_url) && (
                         <Button asChild size="sm" variant="ghost" className="text-pink-600">
                           <a href={invoice.invoice_url} target="_blank" rel="noreferrer">
                             <ExternalLink size={14} /> Abrir

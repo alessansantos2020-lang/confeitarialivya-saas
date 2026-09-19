@@ -25,7 +25,8 @@ const asaasRequest = async <T>(path: string, apiKey: string, init: RequestInit):
   });
   const body = (await response.json()) as T & { errors?: unknown };
   if (!response.ok) {
-    throw new Error(`Asaas recusou a operação: ${JSON.stringify(body.errors || body)}`);
+    console.error(`Asaas recusou ${path}:`, JSON.stringify(body.errors || body));
+    throw new Error("O provedor de pagamento recusou a operação. Verifique as credenciais.");
   }
   return body;
 };
@@ -36,6 +37,9 @@ Deno.serve(async (request) => {
 
   try {
     const { adminClient } = await getAdminContext(request);
+    const payload = (await request.json()) as Payload;
+    if (!payload.subscriptionId) return json({ error: "Assinatura não informada." }, 400);
+
     const apiKey = Deno.env.get("ASAAS_API_KEY");
     if (!apiKey) {
       return json({
@@ -45,9 +49,6 @@ Deno.serve(async (request) => {
         paymentOptions: ["PIX", "BOLETO"],
       });
     }
-
-    const payload = (await request.json()) as Payload;
-    if (!payload.subscriptionId) return json({ error: "Assinatura não informada." }, 400);
 
     const { data: subscription, error: subscriptionError } = await adminClient
       .from("billing_subscriptions")
