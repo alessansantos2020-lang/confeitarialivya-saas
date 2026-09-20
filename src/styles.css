@@ -208,3 +208,357 @@
     animation-iteration-count: 1 !important;
   }
 }
+
+/* ── Painel do dono (admin): identidade premium clara, escopada ao shell ── */
+.admin-shell {
+  --adm-bg: #f6f8fb;
+  --adm-surface: #ffffff;
+  --adm-surface-soft: #f8fafc;
+  --adm-border: #e6eaf1;
+  --adm-text: #0f172a;
+  --adm-muted: #64748b;
+  --adm-sidebar: #101828;
+  --adm-sidebar-hover: rgba(255, 255, 255, 0.06);
+  --adm-accent: var(--primary-color, #1d4ed8);
+  background-color: var(--adm-bg);
+}
+
+.admin-shell button,
+.admin-shell a {
+  -webkit-tap-highlight-color: transparent;
+}
+
+/* Cabeçalho mobile */
+.admin-mobile-header {
+  background:
+    radial-gradient(120% 140% at 0% 0%, rgba(255, 255, 255, 0.12) 0%, rgba(255, 255, 255, 0) 46%),
+    var(--adm-sidebar);
+  color: #fff;
+  box-shadow: 0 10px 30px -18px rgba(15, 23, 42, 0.55);
+}
+
+.admin-menu-button {
+  color: #fff;
+  transition: background-color 160ms ease;
+}
+.admin-menu-button:hover,
+.admin-menu-button:focus-visible {
+  background: var(--adm-sidebar-hover);
+}
+
+.admin-mobile-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 40;
+  background: rgba(15, 23, 42, 0.5);
+  backdrop-filter: blur(2px);
+}
+
+/* Marca */
+.admin-brand-mark {
+  background: linear-gradient(135deg, var(--adm-accent), color-mix(in oklch, var(--adm-accent), black 22%));
+  color: #fff;
+  box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.22);
+}
+
+/* Sidebar */
+.admin-sidebar {
+  background:
+    radial-gradient(140% 110% at 0% 0%, rgba(255, 255, 255, 0.07) 0%, rgba(255, 255, 255, 0) 42%),
+    var(--adm-sidebar);
+  box-shadow: 20px 0 60px -40px rgba(15, 23, 42, 0.6);
+}
+
+.admin-role-label {
+  color: rgba(255, 255, 255, 0.62);
+}
+
+.admin-collapse-button {
+  background: var(--adm-accent);
+  transition: filter 160ms ease, transform 160ms ease;
+}
+.admin-collapse-button:hover {
+  filter: brightness(1.08);
+  transform: scale(1.06);
+}
+
+.admin-nav-item {
+  color: rgba(255, 255, 255, 0.78);
+  position: relative;
+}
+.admin-nav-item:hover {
+  background: var(--adm-sidebar-hover);
+  color: #fff;
+}
+.admin-nav-item:focus-visible {
+  outline: 2px solid rgba(255, 255, 255, 0.6);
+  outline-offset: 2px;
+}
+.admin-nav-item-active {
+  background: var(--adm-accent);
+  color: #fff;
+  box-shadow: 0 10px 24px -14px color-mix(in oklch, var(--adm-accent), black 30%);
+}
+.admin-nav-item-active:hover {
+  background: var(--adm-accent);
+  color: #fff;
+}
+
+.admin-logout-button {
+  color: rgba(255, 255, 255, 0.66);
+}
+.admin-logout-button:hover {
+  background: var(--adm-sidebar-hover);
+  color: #fff;
+}
+
+/* Barra superior */
+.admin-topbar {
+  background: color-mix(in oklch, var(--adm-surface), transparent 4%);
+  backdrop-filter: blur(8px);
+  border-bottom: 1px solid var(--adm-border);
+  box-shadow: 0 14px 30px -26px rgba(15, 23, 42, 0.35);
+  row-gap: 0.5rem;
+  padding-top: 0.6rem;
+  padding-bottom: 0.6rem;
+}
+
+@media (max-width: 1279px) {
+  .admin-user-chip {
+    display: none;
+  }
+}
+
+.admin-eyebrow {
+  font-size: 10px;
+  letter-spacing: 0.18em;
+  text-transform: uppercase;
+  font-weight: 700;
+  color: var(--adm-muted);
+}
+
+.admin-plan-badge {
+  border: 1px solid var(--adm-border);
+  background: var(--adm-surface-soft);
+  color: var(--adm-muted);
+  font-weight: 600;
+}
+
+.admin-open-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+}
+.admin-open-badge .admin-status-dot {
+  width: 7px;
+  height: 7px;
+  border-radius: 999px;
+  background: currentColor;
+}
+.admin-open-badge.is-open {
+  border: 1px solid #b7e4c7;
+  background: #f0faf3;
+  color: #15803d;
+}
+.admin-open-badge.is-closed {
+  border: 1px solid var(--adm-border);
+  background: var(--adm-surface-soft);
+  color: var(--adm-muted);
+}
+
+.admin-store-select {
+  background: var(--adm-surface);
+  border-color: var(--adm-border);
+}
+
+.admin-user-chip {
+  border: 1px solid var(--adm-border);
+  background: var(--adm-surface-soft);
+  color: var(--adm-muted);
+}
+.admin-user-chip svg {
+  color: var(--adm-accent);
+}
+
+.admin-topbar-link {
+  color: var(--adm-accent);
+}
+.admin-topbar-link:hover {
+  background: color-mix(in oklch, var(--adm-accent), white 88%);
+  color: var(--adm-accent);
+}
+
+.admin-orders-button {
+  background: var(--adm-accent);
+  color: #fff;
+}
+.admin-orders-button:hover {
+  background: color-mix(in oklch, var(--adm-accent), black 10%);
+  color: #fff;
+}
+
+.admin-exit-button {
+  color: var(--adm-muted);
+}
+.admin-exit-button:hover {
+  background: #fdf2f2;
+  color: #b91c1c;
+}
+
+/* Conteúdo */
+.admin-shell main {
+  background: transparent;
+}
+
+.admin-page {
+  color: var(--adm-text);
+}
+
+.admin-page-subtitle {
+  margin-top: 0.35rem;
+  color: var(--adm-muted);
+  font-size: 0.875rem;
+}
+
+.admin-section-title {
+  margin-bottom: 0.75rem;
+  color: var(--adm-text);
+  font-size: 0.9rem;
+  font-weight: 700;
+}
+
+.admin-kpi-card {
+  min-height: 126px;
+  border: 1px solid var(--adm-border);
+  border-radius: 1rem;
+  background: var(--adm-surface);
+  padding: 1.25rem;
+  box-shadow: 0 12px 32px -26px rgba(15, 23, 42, 0.4);
+  transition: transform 160ms ease, box-shadow 160ms ease, border-color 160ms ease;
+}
+
+.admin-kpi-card:hover {
+  border-color: color-mix(in oklch, var(--adm-accent), white 62%);
+  box-shadow: 0 18px 38px -25px rgba(15, 23, 42, 0.35);
+  transform: translateY(-2px);
+}
+
+.admin-kpi-card-accent {
+  border-color: color-mix(in oklch, var(--adm-accent), white 65%);
+  background: linear-gradient(135deg, color-mix(in oklch, var(--adm-accent), white 94%), var(--adm-surface));
+}
+
+.admin-kpi-label {
+  color: var(--adm-muted);
+  font-size: 0.72rem;
+  font-weight: 700;
+  letter-spacing: 0.02em;
+  text-transform: uppercase;
+}
+
+.admin-kpi-icon {
+  display: flex;
+  height: 2.5rem;
+  width: 2.5rem;
+  align-items: center;
+  justify-content: center;
+  border-radius: 0.8rem;
+  background: color-mix(in oklch, var(--adm-accent), white 88%);
+  color: var(--adm-accent);
+}
+
+.admin-status-card {
+  display: flex;
+  min-height: 76px;
+  align-items: center;
+  gap: 0.7rem;
+  border: 1px solid var(--adm-border);
+  border-radius: 0.85rem;
+  background: var(--adm-surface);
+  padding: 0.85rem;
+  box-shadow: 0 8px 24px -24px rgba(15, 23, 42, 0.35);
+}
+
+.admin-status-card-danger {
+  border-color: #fee2e2;
+  background: #fffafa;
+}
+
+.admin-status-icon {
+  display: flex;
+  height: 2rem;
+  width: 2rem;
+  flex-shrink: 0;
+  align-items: center;
+  justify-content: center;
+  border-radius: 0.65rem;
+  background: color-mix(in oklch, var(--adm-accent), white 90%);
+  color: var(--adm-accent);
+}
+
+.admin-status-card-danger .admin-status-icon {
+  background: #fef2f2;
+  color: #dc2626;
+}
+
+.admin-welcome-card {
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+  border: 1px solid color-mix(in oklch, var(--adm-accent), white 78%);
+  border-radius: 1.15rem;
+  background: linear-gradient(115deg, color-mix(in oklch, var(--adm-accent), white 94%), var(--adm-surface) 62%);
+  padding: 1.5rem;
+  box-shadow: 0 16px 38px -30px color-mix(in oklch, var(--adm-accent), black 35%);
+}
+
+.admin-welcome-icon {
+  display: flex;
+  height: 3.25rem;
+  width: 3.25rem;
+  flex-shrink: 0;
+  align-items: center;
+  justify-content: center;
+  border-radius: 1rem;
+  background: var(--adm-accent);
+  color: #fff;
+  box-shadow: 0 12px 24px -16px var(--adm-accent);
+}
+
+.admin-outline-button {
+  border-color: var(--adm-border);
+  background: var(--adm-surface);
+  color: var(--adm-text);
+}
+
+.admin-outline-button:hover {
+  border-color: color-mix(in oklch, var(--adm-accent), white 50%);
+  background: color-mix(in oklch, var(--adm-accent), white 94%);
+  color: var(--adm-accent);
+}
+
+@media (max-width: 767px) {
+  .admin-shell main {
+    padding-bottom: 1.5rem;
+  }
+
+  .admin-welcome-card {
+    align-items: flex-start;
+    flex-direction: column;
+  }
+
+  .admin-welcome-card > div:last-child {
+    width: 100%;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .admin-shell *,
+  .admin-shell *::before,
+  .admin-shell *::after {
+    scroll-behavior: auto !important;
+    transition-duration: 0.01ms !important;
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+  }
+}
