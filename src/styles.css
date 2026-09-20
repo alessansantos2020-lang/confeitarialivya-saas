@@ -539,16 +539,37 @@
 
 @media (max-width: 767px) {
   .admin-shell main {
-    padding-bottom: 1.5rem;
+    padding-bottom: 2rem;
+  }
+
+  .admin-kpi-card {
+    min-height: auto;
+    padding: 1rem;
+    border-radius: 0.85rem;
+  }
+
+  .admin-status-card {
+    min-height: auto;
+    padding: 0.75rem;
   }
 
   .admin-welcome-card {
     align-items: flex-start;
     flex-direction: column;
+    padding: 1.15rem;
+    border-radius: 1rem;
   }
 
   .admin-welcome-card > div:last-child {
     width: 100%;
+    display: flex;
+    flex-direction: column;
+    gap: 0.5rem;
+  }
+
+  .admin-welcome-card > div:last-child a {
+    width: 100%;
+    justify-content: center;
   }
 }
 

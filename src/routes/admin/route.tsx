@@ -465,35 +465,55 @@ function AdminLayout() {
         style={storeThemeVars(storeTheme.primary, storeTheme.secondary)}
       >
         {/* Mobile Header */}
-        <header className="admin-mobile-header md:hidden flex items-center justify-between px-4 py-3 sticky top-0 z-50">
-          <div className="flex items-center gap-3 min-w-0">
+        <header className="admin-mobile-header md:hidden flex items-center justify-between gap-2 px-3.5 py-2.5 sticky top-0 z-50">
+          <div className="flex items-center gap-2.5 min-w-0 flex-1">
             {storeLogo ? (
               <img
                 src={storeLogo}
                 alt={storeName}
-                className="h-9 w-9 rounded-xl object-cover ring-2 ring-white/20"
+                className="h-8 w-8 rounded-lg object-cover ring-1 ring-white/20 shrink-0"
               />
             ) : (
-              <div className="admin-brand-mark h-9 w-9 rounded-xl flex items-center justify-center text-xs font-bold">
+              <div className="admin-brand-mark h-8 w-8 rounded-lg flex items-center justify-center text-xs font-bold shrink-0">
                 {(storeName || "L").slice(0, 2).toUpperCase()}
               </div>
             )}
-            <div className="min-w-0">
-              <span className="block truncate text-sm font-bold">{storeName}</span>
-              <span className="block text-[10px] font-semibold uppercase tracking-[0.16em] text-white/60">
-                Painel da loja
+            <div className="min-w-0 flex-1">
+              <div className="flex items-center gap-1.5">
+                <span className="block truncate text-xs font-bold leading-tight">{storeName}</span>
+                <span
+                  className={cn(
+                    "inline-block w-2 h-2 rounded-full shrink-0",
+                    storeIsOpen ? "bg-emerald-400" : "bg-slate-400",
+                  )}
+                  title={storeIsOpen ? "Aberta" : "Fechada"}
+                />
+              </div>
+              <span className="block text-[9px] font-semibold uppercase tracking-[0.14em] text-white/60">
+                {storeIsOpen ? "Aberta agora" : "Fechada"}
               </span>
             </div>
           </div>
-          <button
-            type="button"
-            aria-label={isMobileMenuOpen ? "Fechar menu" : "Abrir menu"}
-            aria-expanded={isMobileMenuOpen}
-            onClick={() => setIsMobileMenuOpen(!isMobileMenuOpen)}
-            className="admin-menu-button rounded-xl p-2.5"
-          >
-            {isMobileMenuOpen ? <X size={21} /> : <Menu size={21} />}
-          </button>
+
+          <div className="flex items-center gap-1 shrink-0">
+            <Button
+              size="sm"
+              className="admin-orders-button h-8 px-2.5 text-xs gap-1.5"
+              onClick={() => navigate({ to: "/staff" })}
+            >
+              <ShoppingBag size={14} />
+              <span className="hidden xs:inline">Pedidos</span>
+            </Button>
+            <button
+              type="button"
+              aria-label={isMobileMenuOpen ? "Fechar menu" : "Abrir menu"}
+              aria-expanded={isMobileMenuOpen}
+              onClick={() => setIsMobileMenuOpen(!isMobileMenuOpen)}
+              className="admin-menu-button rounded-lg p-2"
+            >
+              {isMobileMenuOpen ? <X size={20} /> : <Menu size={20} />}
+            </button>
+          </div>
         </header>
 
         {isMobileMenuOpen && (
@@ -733,7 +753,7 @@ function AdminLayout() {
           </header>
 
           {/* Content */}
-          <main className="flex-1 p-4 md:p-8">
+          <main className="flex-1 px-3.5 py-4 sm:px-6 md:p-8">
             <div className="max-w-7xl mx-auto">
               {blockedFeature ? (
                 <div className="max-w-md mx-auto bg-white rounded-2xl p-8 border text-center space-y-4 mt-8">
