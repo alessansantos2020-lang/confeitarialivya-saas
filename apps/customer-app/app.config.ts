@@ -21,6 +21,9 @@ const config: ExpoConfig = {
     },
     plugins: ["expo-router"],
     extra: {
+      eas: {
+        projectId: "062565e3-eb67-4708-bed9-df6e8df6173a",
+      },
       storeSlug: STORE_SLUG,
       primaryColor: PRIMARY_COLOR,
       secondaryColor: SECONDARY_COLOR,
