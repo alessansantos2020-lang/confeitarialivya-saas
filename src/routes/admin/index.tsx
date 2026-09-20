@@ -179,7 +179,7 @@ function AdminDashboard() {
       {/* Status dos pedidos de hoje */}
       <section>
         <h2 className="admin-section-title">Pedidos de hoje por status</h2>
-        <div className="grid grid-cols-2 gap-3 md:grid-cols-3 lg:grid-cols-6">
+        <div className="grid grid-cols-2 gap-2.5 sm:grid-cols-3 lg:grid-cols-6">
           {[
             { label: "Aceitos", value: stats?.confirmed, icon: CheckCircle2 },
             { label: "Em preparo", value: stats?.preparing, icon: PackageOpen },
@@ -194,14 +194,14 @@ function AdminDashboard() {
                 item.danger ? "admin-status-card admin-status-card-danger" : "admin-status-card"
               }
             >
-              <div className="admin-status-icon">
+              <div className="admin-status-icon shrink-0">
                 <item.icon size={16} />
               </div>
-              <div className="min-w-0">
-                <p className="truncate text-[11px] font-medium text-slate-500">{item.label}</p>
-                <p className="text-lg font-bold leading-tight text-slate-900">
+              <div className="min-w-0 flex-1">
+                <p className="text-[11px] font-medium text-slate-500 leading-tight">{item.label}</p>
+                <div className="text-base sm:text-lg font-bold leading-tight text-slate-900 mt-0.5">
                   {statsLoading ? <Skeleton className="h-5 w-8" /> : item.value || 0}
-                </p>
+                </div>
               </div>
             </div>
           ))}
