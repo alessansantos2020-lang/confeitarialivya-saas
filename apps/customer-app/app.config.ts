@@ -7,29 +7,27 @@ const SECONDARY_COLOR = process.env.EXPO_PUBLIC_SECONDARY_COLOR || "#fff7ed";
 const PACKAGE_NAME = process.env.EXPO_PUBLIC_PACKAGE_NAME || "com.quentinhaexpres.app";
 
 const config: ExpoConfig = {
-  expo: {
-    name: APP_NAME,
-    slug: STORE_SLUG,
-    version: "1.0.0",
-    orientation: "portrait",
-    userInterfaceStyle: "light",
-    splash: { resizeMode: "contain", backgroundColor: PRIMARY_COLOR },
-    ios: { supportsTablet: false, bundleIdentifier: PACKAGE_NAME },
-    android: {
-      package: PACKAGE_NAME,
-      adaptiveIcon: { backgroundColor: PRIMARY_COLOR },
+  name: APP_NAME,
+  slug: STORE_SLUG,
+  version: "1.0.0",
+  orientation: "portrait",
+  userInterfaceStyle: "light",
+  splash: { resizeMode: "contain", backgroundColor: PRIMARY_COLOR },
+  ios: { supportsTablet: false, bundleIdentifier: PACKAGE_NAME },
+  android: {
+    package: PACKAGE_NAME,
+    adaptiveIcon: { backgroundColor: PRIMARY_COLOR },
+  },
+  plugins: ["expo-router"],
+  extra: {
+    eas: {
+      projectId: "062565e3-eb67-4708-bed9-df6e8df6173a",
     },
-    plugins: ["expo-router"],
-    extra: {
-      eas: {
-        projectId: "062565e3-eb67-4708-bed9-df6e8df6173a",
-      },
-      storeSlug: STORE_SLUG,
-      primaryColor: PRIMARY_COLOR,
-      secondaryColor: SECONDARY_COLOR,
-      supabaseUrl: process.env.EXPO_PUBLIC_SUPABASE_URL,
-      supabaseAnonKey: process.env.EXPO_PUBLIC_SUPABASE_ANON_KEY,
-    },
+    storeSlug: STORE_SLUG,
+    primaryColor: PRIMARY_COLOR,
+    secondaryColor: SECONDARY_COLOR,
+    supabaseUrl: process.env.EXPO_PUBLIC_SUPABASE_URL,
+    supabaseAnonKey: process.env.EXPO_PUBLIC_SUPABASE_ANON_KEY,
   },
 };
 

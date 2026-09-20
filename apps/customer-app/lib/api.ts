@@ -41,6 +41,7 @@ export type AddonGroup = {
   min_quantity: number;
   max_quantity: number;
   is_required: boolean;
+  status?: string | null;
   items: Array<{ id: string; name: string; price: number }>;
 };
 
@@ -66,8 +67,10 @@ export async function fetchStore(): Promise<{ store: StoreInfo; settings: StoreS
   const { data, error } = await supabase
     .rpc("get_public_store_by_slug", { _slug: STORE_SLUG })
     .maybeSingle();
-  if (error || !data?.store) return null;
-  return data;
+  if (error || !data) return null;
+  const result = data as { store: StoreInfo; settings: StoreSettings };
+  if (!result.store) return null;
+  return result;
 }
 
 export async function fetchCatalog(): Promise<CatalogCategory[]> {
