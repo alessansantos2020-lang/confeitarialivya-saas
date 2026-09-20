@@ -1,4 +1,4 @@
-import { supabase } from "./supabase";
+import { STORE_SLUG, supabase } from "./supabase";
 
 export type StoreInfo = {
   id: string;
@@ -64,19 +64,11 @@ export type PaymentMethods = {
 
 export async function fetchStore(): Promise<{ store: StoreInfo; settings: StoreSettings } | null> {
   const { data, error } = await supabase
-    .rpc("get_public_store_by_slug", { _slug: STORE_SLUG_SAFE })
+    .rpc("get_public_store_by_slug", { _slug: STORE_SLUG })
     .maybeSingle();
   if (error || !data?.store) return null;
   return data;
 }
-
-const STORE_SLUG_SAFE = (() => {
-  // resolved lazily to avoid circular init; overwritten below after import
-  return "";
-})();
-import { STORE_SLUG } from "./supabase";
-void STORE_SLUG_SAFE;
-void STORE_SLUG;
 
 export async function fetchCatalog(): Promise<CatalogCategory[]> {
   const { data, error } = await supabase.rpc("get_public_catalog", {

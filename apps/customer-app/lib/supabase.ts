@@ -22,7 +22,33 @@ if (!supabaseUrl || !supabaseAnonKey) {
   throw new Error("EXPO_PUBLIC_SUPABASE_URL e EXPO_PUBLIC_SUPABASE_ANON_KEY são obrigatórias.");
 }
 
+function isPublishableSupabaseApiKey(value: string): boolean {
+  return value.startsWith("sb_publishable_");
+}
+
+function createSupabaseFetch(supabaseKey: string): typeof fetch {
+  return (input, init) => {
+    const headers = new Headers(
+      typeof Request !== "undefined" && input instanceof Request ? input.headers : undefined,
+    );
+    if (init?.headers) {
+      new Headers(init.headers).forEach((value, key) => headers.set(key, value));
+    }
+    if (
+      isPublishableSupabaseApiKey(supabaseKey) &&
+      headers.get("Authorization") === `Bearer ${supabaseKey}`
+    ) {
+      headers.delete("Authorization");
+    }
+    headers.set("apikey", supabaseKey);
+    return fetch(input, { ...init, headers });
+  };
+}
+
 export const supabase = createClient(supabaseUrl, supabaseAnonKey, {
+  global: {
+    fetch: createSupabaseFetch(supabaseAnonKey),
+  },
   auth: {
     storage: AsyncStorage,
     persistSession: true,

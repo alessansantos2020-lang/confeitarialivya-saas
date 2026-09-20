@@ -1,0 +1,37 @@
+{
+  "cli": {
+    "version": ">= 10.0.0"
+  },
+  "build": {
+    "preview": {
+      "distribution": "internal",
+      "android": {
+        "buildType": "apk"
+      },
+      "env": {
+        "EXPO_PUBLIC_APP_NAME": "QUENTINHA EXPRES",
+        "EXPO_PUBLIC_STORE_SLUG": "quentinha-expres",
+        "EXPO_PUBLIC_PRIMARY_COLOR": "#ea580c",
+        "EXPO_PUBLIC_SECONDARY_COLOR": "#fff7ed",
+        "EXPO_PUBLIC_PACKAGE_NAME": "com.quentinhaexpres.app",
+        "EXPO_PUBLIC_SUPABASE_URL": "https://uivmsigagtzsqomdayys.supabase.co",
+        "EXPO_PUBLIC_SUPABASE_ANON_KEY": "sb_publishable_ScBnMI8jIsMkJVRMYGzQIw_sj5O1hoS"
+      }
+    },
+    "production": {
+      "distribution": "store",
+      "android": {
+        "buildType": "app-bundle"
+      },
+      "env": {
+        "EXPO_PUBLIC_APP_NAME": "QUENTINHA EXPRES",
+        "EXPO_PUBLIC_STORE_SLUG": "quentinha-expres",
+        "EXPO_PUBLIC_PRIMARY_COLOR": "#ea580c",
+        "EXPO_PUBLIC_SECONDARY_COLOR": "#fff7ed",
+        "EXPO_PUBLIC_PACKAGE_NAME": "com.quentinhaexpres.app",
+        "EXPO_PUBLIC_SUPABASE_URL": "https://uivmsigagtzsqomdayys.supabase.co",
+        "EXPO_PUBLIC_SUPABASE_ANON_KEY": "sb_publishable_ScBnMI8jIsMkJVRMYGzQIw_sj5O1hoS"
+      }
+    }
+  }
+}
