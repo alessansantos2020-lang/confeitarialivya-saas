@@ -420,6 +420,27 @@ export default function CheckoutScreen() {
               />
             ) : null}
           </View>
+          {paymentMethod === "pix" && methods?.manual_pix_key ? (
+            <View style={styles.pixBox}>
+              <Text style={styles.pixTitle}>Chave Pix da loja</Text>
+              <View style={styles.pixKeyRow}>
+                <Text style={styles.pixKey} numberOfLines={1} selectable>
+                  {methods.manual_pix_key}
+                </Text>
+              </View>
+              <Text style={styles.pixHint}>
+                Após confirmar o pedido, faça o Pix para essa chave e envie o comprovante pelo
+                WhatsApp.
+              </Text>
+            </View>
+          ) : null}
+          {paymentMethod === "card" ? (
+            <View style={styles.cardBox}>
+              <Text style={styles.cardText}>
+                💳 Cartão na entrega: o entregador levará a maquininha (débito ou crédito).
+              </Text>
+            </View>
+          ) : null}
           {paymentMethod === "money" ? (
             <View style={styles.changeBox}>
               <Text style={styles.changeTitle}>Precisa de troco?</Text>
@@ -556,6 +577,34 @@ const styles = StyleSheet.create({
   paymentButtonActive: { backgroundColor: PRIMARY_COLOR, borderColor: PRIMARY_COLOR },
   paymentButtonText: { color: "#475569", fontWeight: "700", fontSize: 12 },
   paymentButtonTextActive: { color: "#fff" },
+  pixBox: {
+    backgroundColor: "#ecfdf5",
+    padding: 12,
+    borderRadius: 9,
+    marginTop: 10,
+    borderWidth: 1,
+    borderColor: "#a7f3d0",
+  },
+  pixTitle: { color: "#065f46", fontWeight: "800", marginBottom: 8, fontSize: 13 },
+  pixKeyRow: {
+    backgroundColor: "#fff",
+    borderWidth: 1,
+    borderColor: "#a7f3d0",
+    borderRadius: 8,
+    paddingHorizontal: 12,
+    paddingVertical: 10,
+  },
+  pixKey: { color: "#0f172a", fontWeight: "800", fontSize: 14 },
+  pixHint: { color: "#047857", fontSize: 11, marginTop: 8, lineHeight: 16 },
+  cardBox: {
+    backgroundColor: "#f0f9ff",
+    padding: 12,
+    borderRadius: 9,
+    marginTop: 10,
+    borderWidth: 1,
+    borderColor: "#bae6fd",
+  },
+  cardText: { color: "#0c4a6e", fontWeight: "600", fontSize: 12, lineHeight: 18 },
   changeBox: { backgroundColor: "#fff7ed", padding: 12, borderRadius: 9, marginTop: 10 },
   changeTitle: { color: "#9a3412", fontWeight: "800", marginBottom: 8 },
   changeResult: { color: "#15803d", fontWeight: "800", marginTop: 3 },

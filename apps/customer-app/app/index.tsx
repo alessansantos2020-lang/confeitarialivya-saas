@@ -306,7 +306,9 @@ const styles = StyleSheet.create({
     bottom: 0,
     paddingHorizontal: 12,
     paddingTop: 8,
-    backgroundColor: "transparent",
+    backgroundColor: "#f8fafc",
+    borderTopWidth: 1,
+    borderTopColor: "#e2e8f0",
   },
   cartBar: {
     backgroundColor: PRIMARY_COLOR,
