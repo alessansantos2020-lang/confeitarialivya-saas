@@ -362,35 +362,17 @@ export function StorePage({ storeId }: { storeId: string }) {
         {/* Store Info Container */}
         <div className="container mx-auto px-4 pt-12 pb-6 md:pt-16">
           <div className="flex flex-col md:flex-row md:items-start justify-between gap-4">
-            <div className="space-y-1">
-              <div className="flex items-center gap-3">
-                <h1 className="text-2xl md:text-3xl font-black text-slate-900 tracking-tight">
-                  {settings.name}
-                </h1>
-                <Badge
-                  className={`px-2 py-0.5 rounded-full text-[10px] font-black border-none ${
-                    settings.is_open ? "bg-green-100 text-green-700" : "bg-slate-100 text-slate-600"
-                  }`}
-                >
-                  {settings.is_open ? "ABERTO" : "FECHADO"}
-                </Badge>
-              </div>
-              <p className="text-slate-500 text-sm md:text-base font-medium line-clamp-2 max-w-2xl">
-                {settings.description}
-              </p>
-            </div>
-
-            <div className="flex flex-col gap-2 shrink-0 md:text-right">
-              <div className="flex items-center md:justify-end gap-2 text-xs font-bold text-slate-400 uppercase tracking-wider">
-                <Clock className="w-3.5 h-3.5 text-[var(--primary-color)]" />
-                <span>{settings.opening_hours}</span>
-              </div>
-              {settings.address && (
-                <div className="flex items-center md:justify-end gap-2 text-xs font-bold text-slate-400 uppercase tracking-wider">
-                  <MapPin className="w-3.5 h-3.5 text-[var(--primary-color)]" />
-                  <span className="line-clamp-1">{settings.address}</span>
-                </div>
-              )}
+            <div className="flex items-center gap-3">
+              <h1 className="text-2xl md:text-3xl font-black text-slate-900 tracking-tight">
+                {settings.name}
+              </h1>
+              <Badge
+                className={`px-2 py-0.5 rounded-full text-[10px] font-black border-none ${
+                  settings.is_open ? "bg-green-100 text-green-700" : "bg-slate-100 text-slate-600"
+                }`}
+              >
+                {settings.is_open ? "ABERTO" : "FECHADO"}
+              </Badge>
             </div>
           </div>
         </div>
@@ -477,9 +459,24 @@ export function StorePage({ storeId }: { storeId: string }) {
                           )}
                         </div>
                         <Button
+                          type="button"
                           size="sm"
+                          aria-label={`Adicionar ${product.name} à sacola`}
                           className="h-8 w-8 md:h-10 md:w-10 rounded-xl text-white transition-all active:scale-90 hover:text-white hover:brightness-110"
                           style={{ backgroundColor: "var(--primary-color)" }}
+                          onClick={(event) => {
+                            event.stopPropagation();
+                            addItem({
+                              product_id: product.id,
+                              name: product.name,
+                              price: pricing.price,
+                              quantity: 1,
+                              image_url: product.image_url || null,
+                              observation: "",
+                              addons: [],
+                            });
+                            toast.success(`${product.name} adicionado à sacola`);
+                          }}
                         >
                           <Plus className="w-4 h-4 md:w-5 md:h-5 text-white" />
                         </Button>
