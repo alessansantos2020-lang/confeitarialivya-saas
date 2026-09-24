@@ -417,10 +417,11 @@ export function StorePage({ storeId }: { storeId: string }) {
                   <Card
                     key={product.id}
                     className="group relative overflow-hidden rounded-2xl border-slate-100 bg-white hover:border-[var(--primary-color)]/20 transition-all duration-300 cursor-pointer flex p-3 md:p-4 gap-4"
-                    onClick={isCartReady ? () => setSelectedProduct(product) : undefined}
-                    aria-disabled={!isCartReady}
                   >
-                    <div className="flex-1 flex flex-col justify-between py-1">
+                    <div
+                      className="flex-1 flex flex-col justify-between py-1 cursor-pointer"
+                      onClick={() => setSelectedProduct(product)}
+                    >
                       <div className="space-y-1">
                         <div className="flex items-center gap-2">
                           <h3 className="text-base md:text-lg font-black text-slate-900 tracking-tight line-clamp-1">
@@ -462,31 +463,11 @@ export function StorePage({ storeId }: { storeId: string }) {
                           aria-label={`Adicionar ${product.name} à sacola`}
                           className="h-8 w-8 md:h-10 md:w-10 rounded-xl text-white transition-all active:scale-90 hover:text-white hover:brightness-110"
                           style={{ backgroundColor: "var(--primary-color)" }}
-                          onPointerDown={(event) => event.stopPropagation()}
                           onClick={(event) => {
                             event.preventDefault();
                             event.stopPropagation();
                             if (!isCartReady) setStoreContext(storeId);
-
-                            const hasRequiredAddons = (product.addons || []).some(
-                              ({ group }: any) =>
-                                group.status !== "inactive" && group.min_quantity > 0,
-                            );
-                            if (hasRequiredAddons) {
-                              setSelectedProduct(product);
-                              return;
-                            }
-
-                            addItem({
-                              product_id: product.id,
-                              name: product.name,
-                              price: pricing.price,
-                              quantity: 1,
-                              image_url: product.image_url || null,
-                              observation: "",
-                              addons: [],
-                            });
-                            toast.success(`${product.name} adicionado à sacola`);
+                            setSelectedProduct(product);
                           }}
                         >
                           <Plus className="w-4 h-4 md:w-5 md:h-5 text-white" />
@@ -494,7 +475,10 @@ export function StorePage({ storeId }: { storeId: string }) {
                       </div>
                     </div>
 
-                    <div className="relative w-28 h-28 md:w-36 md:h-36 rounded-xl overflow-hidden bg-slate-50 shrink-0 shadow-sm">
+                    <div
+                      className="relative w-28 h-28 md:w-36 md:h-36 rounded-xl overflow-hidden bg-slate-50 shrink-0 shadow-sm cursor-pointer"
+                      onClick={() => setSelectedProduct(product)}
+                    >
                       {product.image_url ? (
                         <img
                           src={product.image_url}
