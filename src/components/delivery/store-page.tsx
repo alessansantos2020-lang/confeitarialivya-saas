@@ -4,7 +4,6 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent } from "@/components/ui/card";
 import {
-  Clock,
   ShoppingBag,
   Plus,
   Minus,
@@ -15,7 +14,6 @@ import {
   Loader2,
   AlertCircle,
   Phone,
-  MapPin,
   Instagram,
   Heart,
   Star,
@@ -464,8 +462,21 @@ export function StorePage({ storeId }: { storeId: string }) {
                           aria-label={`Adicionar ${product.name} à sacola`}
                           className="h-8 w-8 md:h-10 md:w-10 rounded-xl text-white transition-all active:scale-90 hover:text-white hover:brightness-110"
                           style={{ backgroundColor: "var(--primary-color)" }}
+                          onPointerDown={(event) => event.stopPropagation()}
                           onClick={(event) => {
+                            event.preventDefault();
                             event.stopPropagation();
+                            if (!isCartReady) setStoreContext(storeId);
+
+                            const hasRequiredAddons = (product.addons || []).some(
+                              ({ group }: any) =>
+                                group.status !== "inactive" && group.min_quantity > 0,
+                            );
+                            if (hasRequiredAddons) {
+                              setSelectedProduct(product);
+                              return;
+                            }
+
                             addItem({
                               product_id: product.id,
                               name: product.name,
