@@ -2,10 +2,11 @@ import { fetchCatalog, fetchStore, type CatalogCategory, type StoreSettings } fr
 import { PRIMARY_COLOR, SECONDARY_COLOR, STORE_SLUG } from "@/lib/supabase";
 import { useCart } from "@/lib/cart";
 import { useQuery } from "@tanstack/react-query";
-import { Link, Stack } from "expo-router";
+import { Link, router, Stack } from "expo-router";
 import { useMemo, useRef, useState } from "react";
 import {
   ActivityIndicator,
+  Alert,
   FlatList,
   Image,
   Pressable,
@@ -35,6 +36,32 @@ export default function StoreScreen() {
         category.products.some((product) => product.is_available !== false),
       ),
     [catalogQuery.data],
+  );
+  const allProducts = useMemo(
+    () => catalog.flatMap((category) => category.products),
+    [catalog],
+  );
+  const now = Date.now();
+  const featuredProducts = useMemo(
+    () =>
+      allProducts
+        .filter((product) => {
+          if (product.is_featured !== true) return false;
+          if (product.is_available === false) return false;
+          if (product.featured_start_at && new Date(product.featured_start_at).getTime() > now) {
+            return false;
+          }
+          if (product.featured_end_at && new Date(product.featured_end_at).getTime() <= now) {
+            return false;
+          }
+          return true;
+        })
+        .sort(
+          (first, second) =>
+            (first.featured_sort_order ?? 0) - (second.featured_sort_order ?? 0) ||
+            first.name.localeCompare(second.name),
+        ),
+    [allProducts, now],
   );
   const totalItems = cart.getTotalItems();
   const total = cart.getTotal();
@@ -136,6 +163,87 @@ export default function StoreScreen() {
                 <Text style={styles.menuHint}>Escolha seus produtos</Text>
               </View>
               {catalog.length > 0 ? categoryNavigation : null}
+              {featuredProducts.length > 0 ? (
+                <View style={styles.featuredSection}>
+                  <Text style={styles.featuredSectionTitle}>
+                    {settings.featured_section_title || "Em destaque"}
+                  </Text>
+                  <ScrollView
+                    horizontal
+                    showsHorizontalScrollIndicator={false}
+                    contentContainerStyle={styles.featuredList}
+                  >
+                    {featuredProducts.map((product) => {
+                      const hasAddons = product.addons.some(
+                        ({ group }) => group.status !== "inactive" && (group.items?.length ?? 0) > 0,
+                      );
+                      return (
+                        <View key={`feat-${product.id}`} style={styles.featuredCardWrap}>
+                          <Link href={`/product/${product.id}`} asChild>
+                            <Pressable style={styles.featuredCard}>
+                              {product.image_url ? (
+                                <Image
+                                  source={{ uri: product.image_url }}
+                                  style={styles.featuredImage}
+                                />
+                              ) : (
+                                <View
+                                  style={[styles.featuredImage, { backgroundColor: "#f1f5f9" }]}
+                                />
+                              )}
+                              {product.featured_badge ? (
+                                <View style={styles.featuredBadge}>
+                                  <Text style={styles.featuredBadgeText}>
+                                    {product.featured_badge}
+                                  </Text>
+                                </View>
+                              ) : null}
+                              <View style={styles.featuredInfo}>
+                                <Text style={styles.featuredName} numberOfLines={1}>
+                                  {product.name}
+                                </Text>
+                                <View style={styles.featuredPriceRow}>
+                                  <Text style={styles.featuredPrice}>
+                                    {money(product.effective_price)}
+                                  </Text>
+                                  <Pressable
+                                    accessibilityLabel={`Adicionar ${product.name} à sacola`}
+                                    accessibilityRole="button"
+                                    onPress={(e) => {
+                                      e.stopPropagation();
+                                      if (hasAddons) {
+                                        router.push({
+                                          pathname: `/product/${product.id}`,
+                                          params: { quickAdd: "true" },
+                                        });
+                                        return;
+                                      }
+                                      cart.addItem({
+                                        product_id: product.id,
+                                        name: product.name,
+                                        unit_price: product.effective_price,
+                                        image_url: product.image_url,
+                                        quantity: 1,
+                                        observation: "",
+                                        addon_ids: [],
+                                        addons: [],
+                                      });
+                                      Alert.alert("Adicionado", `${product.name} foi adicionado à sacola.`);
+                                    }}
+                                    style={styles.featuredAddButton}
+                                  >
+                                    <Text style={styles.featuredAddText}>+</Text>
+                                  </Pressable>
+                                </View>
+                              </View>
+                            </Pressable>
+                          </Link>
+                        </View>
+                      );
+                    })}
+                  </ScrollView>
+                </View>
+              ) : null}
             </View>
           }
           ListFooterComponent={
@@ -177,38 +285,69 @@ export default function StoreScreen() {
               {item.products
                 .filter((product) => product.is_available !== false)
                 .map((product) => (
-                  <Link key={product.id} href={`/product/${product.id}`} asChild>
-                    <Pressable style={styles.productCard}>
-                      <View style={styles.productInfo}>
-                        <Text style={styles.productName}>{product.name}</Text>
-                        {product.description ? (
-                          <Text style={styles.productDescription} numberOfLines={2}>
-                            {product.description}
-                          </Text>
-                        ) : null}
-                        <Text style={styles.productPrice}>{money(product.effective_price)}</Text>
-                      </View>
-                      {product.image_url ? (
-                        <Image source={{ uri: product.image_url }} style={styles.productImage} />
-                      ) : null}
+                  <View key={product.id} style={styles.productRow}>
+                    <Pressable
+                      accessibilityLabel={`Adicionar ${product.name}`}
+                      accessibilityRole="button"
+                      hitSlop={8}
+                      onPress={() => {
+                        const hasAddons = product.addons.some(
+                          ({ group }) => group.status !== "inactive" && (group.items?.length ?? 0) > 0,
+                        );
+                        if (hasAddons) {
+                          router.push({
+                            pathname: `/product/${product.id}`,
+                            params: { quickAdd: "true" },
+                          });
+                          return;
+                        }
+                        cart.addItem({
+                          product_id: product.id,
+                          name: product.name,
+                          unit_price: product.effective_price,
+                          image_url: product.image_url,
+                          quantity: 1,
+                          observation: "",
+                          addon_ids: [],
+                          addons: [],
+                        });
+                        Alert.alert("Adicionado", `${product.name} foi adicionado à sacola.`);
+                      }}
+                      style={styles.addProductButton}
+                    >
+                      <Text style={styles.addProductText}>+</Text>
                     </Pressable>
-                  </Link>
+                    <Link href={`/product/${product.id}`} asChild>
+                      <Pressable style={styles.productCard}>
+                        <View style={styles.productInfo}>
+                          <Text style={styles.productName}>{product.name}</Text>
+                          {product.description ? (
+                            <Text style={styles.productDescription} numberOfLines={2}>
+                              {product.description}
+                            </Text>
+                          ) : null}
+                          <Text style={styles.productPrice}>{money(product.effective_price)}</Text>
+                        </View>
+                        {product.image_url ? (
+                          <Image source={{ uri: product.image_url }} style={styles.productImage} />
+                        ) : null}
+                      </Pressable>
+                    </Link>
+                  </View>
                 ))}
             </View>
           )}
         />
 
-        <View style={[styles.cartBarWrap, { paddingBottom: insets.bottom + 8 }]}>
+        <View style={[styles.cartButtonWrap, { bottom: insets.bottom + 14 }]}>
           <Link href="/cart" asChild>
-            <Pressable style={[styles.cartBar, totalItems === 0 && styles.cartBarEmpty]}>
-              <View style={styles.cartIconBox}>
-                <Text style={styles.cartIcon}>🛍️</Text>
-                <Text style={styles.cartBadge}>{totalItems}</Text>
-              </View>
-              <Text style={styles.cartBarText}>
-                {totalItems === 0 ? "SACOLA VAZIA" : "VER SACOLA"}
-              </Text>
-              <Text style={styles.cartBarText}>{money(total)}</Text>
+            <Pressable
+              accessibilityLabel={`Abrir sacola${totalItems > 0 ? ` com ${totalItems} item(ns)` : " vazia"}`}
+              accessibilityRole="button"
+              style={styles.cartButton}
+            >
+              <Text style={styles.cartIcon}>🛍️</Text>
+              {totalItems > 0 ? <Text style={styles.cartBadge}>{totalItems}</Text> : null}
             </Pressable>
           </Link>
         </View>
@@ -222,7 +361,12 @@ const styles = StyleSheet.create({
   center: { flex: 1, alignItems: "center", justifyContent: "center", backgroundColor: "#fff" },
   errorText: { color: "#dc2626", fontSize: 16 },
   listContent: { paddingBottom: 20 },
-  cover: { width: "100%", height: 148, resizeMode: "cover" },
+  cover: {
+    width: "100%",
+    height: 190,
+    resizeMode: "contain",
+    backgroundColor: "#f1f5f9",
+  },
   headerCard: {
     backgroundColor: "#fff",
     marginHorizontal: 12,
@@ -251,6 +395,48 @@ const styles = StyleSheet.create({
     marginTop: 12,
   },
   categoryNavigationContent: { paddingHorizontal: 12, paddingVertical: 9, gap: 8 },
+  featuredSection: { marginTop: 12, paddingHorizontal: 12 },
+  featuredSectionTitle: { fontSize: 17, fontWeight: "800", color: "#0f172a", marginBottom: 8 },
+  featuredList: { gap: 10, paddingVertical: 4 },
+  featuredCardWrap: { width: 168 },
+  featuredCard: {
+    backgroundColor: "#fff",
+    borderRadius: 14,
+    borderWidth: 1,
+    borderColor: "#e2e8f0",
+    overflow: "hidden",
+  },
+  featuredImage: { width: "100%", height: 104 },
+  featuredBadge: {
+    position: "absolute",
+    top: 8,
+    left: 8,
+    backgroundColor: "#fff",
+    borderRadius: 999,
+    paddingHorizontal: 8,
+    paddingVertical: 3,
+    borderWidth: 1,
+    borderColor: "#e2e8f0",
+  },
+  featuredBadgeText: { color: PRIMARY_COLOR, fontSize: 10, fontWeight: "800" },
+  featuredInfo: { padding: 9 },
+  featuredName: { fontWeight: "800", fontSize: 13, color: "#0f172a" },
+  featuredPriceRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
+    marginTop: 5,
+  },
+  featuredPrice: { color: PRIMARY_COLOR, fontWeight: "800", fontSize: 13 },
+  featuredAddButton: {
+    width: 28,
+    height: 28,
+    borderRadius: 14,
+    backgroundColor: PRIMARY_COLOR,
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  featuredAddText: { color: "#fff", fontSize: 20, fontWeight: "400", lineHeight: 23 },
   categoryPill: {
     paddingHorizontal: 14,
     paddingVertical: 8,
@@ -265,12 +451,18 @@ const styles = StyleSheet.create({
   categoryBlock: { paddingHorizontal: 12, paddingTop: 18 },
   categoryTitle: { fontSize: 19, fontWeight: "800", color: "#0f172a" },
   categoryCount: { color: "#94a3b8", fontSize: 12, marginBottom: 8 },
+  productRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 8,
+    marginBottom: 10,
+  },
   productCard: {
+    flex: 1,
     flexDirection: "row",
     borderRadius: 12,
     borderWidth: 1,
     borderColor: "#e2e8f0",
-    marginBottom: 10,
     backgroundColor: "#fff",
     padding: 10,
   },
@@ -285,6 +477,20 @@ const styles = StyleSheet.create({
     backgroundColor: "#f1f5f9",
     marginLeft: 10,
   },
+  addProductButton: {
+    width: 34,
+    height: 34,
+    borderRadius: 17,
+    backgroundColor: PRIMARY_COLOR,
+    alignItems: "center",
+    justifyContent: "center",
+    shadowColor: "#0f172a",
+    shadowOpacity: 0.2,
+    shadowRadius: 5,
+    shadowOffset: { width: 0, height: 2 },
+    elevation: 4,
+  },
+  addProductText: { color: "#fff", fontSize: 24, fontWeight: "400", lineHeight: 27 },
   storeFooter: {
     backgroundColor: "#fff",
     borderTopWidth: 1,
@@ -299,35 +505,33 @@ const styles = StyleSheet.create({
   footerStatus: { fontWeight: "800", fontSize: 13 },
   footerText: { color: "#64748b", textAlign: "center", fontSize: 12, marginTop: 6, lineHeight: 18 },
   footerCopyright: { color: "#94a3b8", fontSize: 10, marginTop: 18 },
-  cartBarWrap: {
+  cartButtonWrap: {
     position: "absolute",
-    left: 0,
-    right: 0,
-    bottom: 0,
-    paddingHorizontal: 12,
-    paddingTop: 8,
-    backgroundColor: "#f8fafc",
-    borderTopWidth: 1,
-    borderTopColor: "#e2e8f0",
+    right: 18,
+    zIndex: 20,
+    elevation: 20,
   },
-  cartBar: {
+  cartButton: {
+    width: 58,
+    height: 58,
+    borderRadius: 29,
     backgroundColor: PRIMARY_COLOR,
-    paddingHorizontal: 16,
-    paddingVertical: 14,
-    borderRadius: 12,
-    flexDirection: "row",
-    justifyContent: "space-between",
+    borderWidth: 2,
+    borderColor: "#fff",
     alignItems: "center",
-    shadowColor: "#000",
-    shadowOpacity: 0.16,
-    shadowRadius: 8,
-    shadowOffset: { width: 0, height: 3 },
-    elevation: 5,
+    justifyContent: "center",
+    shadowColor: "#0f172a",
+    shadowOpacity: 0.32,
+    shadowRadius: 9,
+    shadowOffset: { width: 0, height: 4 },
+    elevation: 10,
   },
-  cartBarEmpty: { backgroundColor: "#64748b" },
-  cartIconBox: { flexDirection: "row", alignItems: "center" },
-  cartIcon: { fontSize: 18 },
+  cartIcon: { fontSize: 25 },
+
   cartBadge: {
+    position: "absolute",
+    top: -4,
+    right: -4,
     color: PRIMARY_COLOR,
     backgroundColor: "#fff",
     fontWeight: "800",
@@ -336,9 +540,7 @@ const styles = StyleSheet.create({
     textAlign: "center",
     borderRadius: 10,
     overflow: "hidden",
-    marginLeft: 5,
     paddingVertical: 2,
     paddingHorizontal: 4,
   },
-  cartBarText: { color: "#fff", fontWeight: "800", fontSize: 13 },
 });

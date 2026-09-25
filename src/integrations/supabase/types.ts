@@ -1191,6 +1191,10 @@ export type Database = {
           category_id: string;
           created_at: string | null;
           description: string | null;
+          featured_badge: string | null;
+          featured_end_at: string | null;
+          featured_sort_order: number;
+          featured_start_at: string | null;
           id: string;
           image_url: string | null;
           is_available: boolean | null;
@@ -1209,6 +1213,10 @@ export type Database = {
           category_id: string;
           created_at?: string | null;
           description?: string | null;
+          featured_badge?: string | null;
+          featured_end_at?: string | null;
+          featured_sort_order?: number;
+          featured_start_at?: string | null;
           id?: string;
           image_url?: string | null;
           is_available?: boolean | null;
@@ -1227,6 +1235,10 @@ export type Database = {
           category_id?: string;
           created_at?: string | null;
           description?: string | null;
+          featured_badge?: string | null;
+          featured_end_at?: string | null;
+          featured_sort_order?: number;
+          featured_start_at?: string | null;
           id?: string;
           image_url?: string | null;
           is_available?: boolean | null;
@@ -1439,6 +1451,7 @@ export type Database = {
           cover_url: string | null;
           created_at: string | null;
           description: string | null;
+          featured_section_title: string;
           id: string;
           instagram: string | null;
           is_open: boolean | null;
@@ -1465,6 +1478,7 @@ export type Database = {
           cover_url?: string | null;
           created_at?: string | null;
           description?: string | null;
+          featured_section_title?: string;
           id?: string;
           instagram?: string | null;
           is_open?: boolean | null;
@@ -1491,6 +1505,7 @@ export type Database = {
           cover_url?: string | null;
           created_at?: string | null;
           description?: string | null;
+          featured_section_title?: string;
           id?: string;
           instagram?: string | null;
           is_open?: boolean | null;

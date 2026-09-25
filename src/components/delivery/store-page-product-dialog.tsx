@@ -17,6 +17,7 @@ import { getCatalogPricing } from "@/lib/promotions";
 
 type ProductDialogProps = {
   product: any;
+  quickAdd?: boolean;
   observation: string;
   setObservation: (value: string) => void;
   selectedAddons: Record<string, string[]>;
@@ -28,6 +29,7 @@ type ProductDialogProps = {
 
 export function StorePageProductDialog({
   product,
+  quickAdd = false,
   observation,
   setObservation,
   selectedAddons,
@@ -47,25 +49,32 @@ export function StorePageProductDialog({
         }
       }}
     >
-      <DialogContent className="w-[95vw] sm:max-w-2xl p-0 overflow-y-auto rounded-2xl gap-0 border-none flex flex-col max-h-[90vh] md:max-h-[85vh]">
+      <DialogContent
+        className={cn(
+          "w-[95vw] p-0 overflow-y-auto rounded-2xl gap-0 border-none flex flex-col max-h-[90vh] md:max-h-[85vh]",
+          quickAdd ? "sm:max-w-lg" : "sm:max-w-2xl",
+        )}
+      >
         {product && (
           <>
             <div className="flex-1 overflow-visible">
-              <div className="relative w-full overflow-hidden bg-slate-100 shrink-0">
-                {product.image_url ? (
-                  <img
-                    src={product.image_url}
-                    alt={product.name}
-                    className="w-full h-44 sm:h-52 md:h-60 object-cover"
-                  />
-                ) : (
-                  <div className="w-full h-44 sm:h-52 md:h-60 bg-[var(--secondary-color)] flex items-center justify-center">
-                    <ShoppingBag className="w-16 h-16 text-[var(--primary-color)]/30" />
-                  </div>
-                )}
-              </div>
+              {!quickAdd && (
+                <div className="relative w-full overflow-hidden bg-slate-100 shrink-0">
+                  {product.image_url ? (
+                    <img
+                      src={product.image_url}
+                      alt={product.name}
+                      className="w-full h-44 sm:h-52 md:h-60 object-cover"
+                    />
+                  ) : (
+                    <div className="w-full h-44 sm:h-52 md:h-60 bg-[var(--secondary-color)] flex items-center justify-center">
+                      <ShoppingBag className="w-16 h-16 text-[var(--primary-color)]/30" />
+                    </div>
+                  )}
+                </div>
+              )}
 
-              <div className="p-4 sm:p-6">
+              <div className={cn("p-4 sm:p-6", quickAdd && "pt-6")}>
                 <DialogHeader className="space-y-3">
                   <div className="flex flex-col sm:flex-row sm:items-start justify-between gap-3">
                     <div className="flex-1 space-y-1.5">
@@ -84,9 +93,16 @@ export function StorePageProductDialog({
                           </Badge>
                         )}
                       </div>
-                      <p className="text-sm text-slate-500 font-medium leading-relaxed">
-                        {product.description}
-                      </p>
+                      {!quickAdd && product.description && (
+                        <p className="text-sm text-slate-500 font-medium leading-relaxed">
+                          {product.description}
+                        </p>
+                      )}
+                      {quickAdd && (
+                        <p className="text-xs font-bold text-[var(--primary-color)] uppercase tracking-wider">
+                          Selecione os adicionais para continuar
+                        </p>
+                      )}
                     </div>
                     <div className="shrink-0">
                       {getCatalogPricing(product).onSale ? (

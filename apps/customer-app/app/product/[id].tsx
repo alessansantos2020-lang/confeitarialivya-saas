@@ -20,7 +20,8 @@ const money = (value: number) =>
   new Intl.NumberFormat("pt-BR", { style: "currency", currency: "BRL" }).format(value);
 
 export default function ProductScreen() {
-  const { id } = useLocalSearchParams<{ id: string }>();
+  const { id, quickAdd } = useLocalSearchParams<{ id: string; quickAdd?: string }>();
+  const isQuickAdd = quickAdd === "true";
   const cart = useCart();
   const [quantity, setQuantity] = useState(1);
   const [observation, setObservation] = useState("");
@@ -114,14 +115,19 @@ export default function ProductScreen() {
 
   return (
     <>
-      <Stack.Screen options={{ title: product.name }} />
+      <Stack.Screen options={{ title: isQuickAdd ? "Adicionais" : product.name }} />
       <ScrollView style={styles.screen} contentContainerStyle={styles.content}>
-        {product.image_url ? (
+        {!isQuickAdd && product.image_url ? (
           <Image source={{ uri: product.image_url }} style={styles.heroImage} />
         ) : null}
-        <Text style={styles.title}>{product.name}</Text>
+        <Text style={[styles.title, isQuickAdd && styles.quickTitle]}>{product.name}</Text>
         <Text style={styles.price}>{money(unitPrice)}</Text>
-        {product.description ? <Text style={styles.description}>{product.description}</Text> : null}
+        {!isQuickAdd && product.description ? (
+          <Text style={styles.description}>{product.description}</Text>
+        ) : null}
+        {isQuickAdd ? (
+          <Text style={styles.quickHint}>Escolha os adicionais para continuar</Text>
+        ) : null}
 
         {groups.map((group) => (
           <View key={group.id} style={styles.group}>
@@ -210,6 +216,19 @@ const styles = StyleSheet.create({
     color: "#0f172a",
     paddingHorizontal: 16,
     marginTop: 18,
+  },
+  quickTitle: {
+    fontSize: 20,
+    marginTop: 14,
+  },
+  quickHint: {
+    color: PRIMARY_COLOR,
+    fontSize: 12,
+    fontWeight: "700",
+    paddingHorizontal: 16,
+    marginTop: 4,
+    textTransform: "uppercase",
+    letterSpacing: 0.5,
   },
   price: {
     color: PRIMARY_COLOR,

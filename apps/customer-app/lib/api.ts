@@ -20,6 +20,7 @@ export type StoreSettings = {
   address: string | null;
   primary_color: string | null;
   secondary_color: string | null;
+  featured_section_title?: string | null;
 };
 
 export type CatalogProduct = {
@@ -31,6 +32,10 @@ export type CatalogProduct = {
   image_url: string | null;
   is_available: boolean | null;
   is_featured: boolean | null;
+  featured_sort_order?: number;
+  featured_badge?: string | null;
+  featured_start_at?: string | null;
+  featured_end_at?: string | null;
   category_id: string;
   addons: Array<{ group: AddonGroup }>;
 };

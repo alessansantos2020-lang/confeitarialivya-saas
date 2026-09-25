@@ -205,6 +205,21 @@ export function StoreGeneralSettings({
             </CardHeader>
             <CardContent className="space-y-6">
               <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                <div className="space-y-2 md:col-span-2">
+                  <Label htmlFor="featured_section_title">Título dos produtos em destaque</Label>
+                  <Input
+                    id="featured_section_title"
+                    maxLength={80}
+                    value={settings.featured_section_title || "Em destaque"}
+                    onChange={(e) =>
+                      setSettings({ ...settings, featured_section_title: e.target.value })
+                    }
+                    placeholder="Em destaque"
+                  />
+                  <p className="text-xs text-slate-400">
+                    A seção só aparece quando há produtos elegíveis.
+                  </p>
+                </div>
                 <div className="space-y-2">
                   <Label htmlFor="primary_color">Cor Principal</Label>
                   <div className="flex gap-2">
