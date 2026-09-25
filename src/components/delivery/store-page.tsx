@@ -4,7 +4,6 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent } from "@/components/ui/card";
 import {
-  Clock,
   ShoppingBag,
   Plus,
   Minus,
@@ -15,7 +14,6 @@ import {
   Loader2,
   AlertCircle,
   Phone,
-  MapPin,
   Instagram,
   Heart,
   Star,
@@ -28,6 +26,7 @@ import {
   type StoreSettings,
 } from "@/lib/delivery.functions";
 import { getCatalogPricing } from "@/lib/promotions";
+import { getEligibleFeaturedProducts } from "@/lib/featured-products";
 import { createOrder } from "@/lib/orders.functions";
 import { getActiveDeliveryFees } from "@/lib/delivery-fees.functions";
 import { getPublicStorePaymentMethods } from "@/lib/store-payments";
@@ -116,6 +115,10 @@ export function StorePage({ storeId }: { storeId: string }) {
     data: StoreSettings;
   };
   const { data: categories } = useSuspenseQuery(categoriesWithProductsOptions(storeId));
+  const featuredProducts = useMemo(
+    () => getEligibleFeaturedProducts(categories.flatMap((category) => category.products)),
+    [categories],
+  );
   const { data: deliveryFees } = useSuspenseQuery(activeDeliveryFeesOptions(storeId));
   const { data: paymentMethods } = useQuery({
     queryKey: ["publicPaymentMethods", storeId],
@@ -129,6 +132,7 @@ export function StorePage({ storeId }: { storeId: string }) {
   }, [setStoreContext, storeId]);
 
   const [selectedProduct, setSelectedProduct] = useState<any>(null);
+  const [isQuickAdd, setIsQuickAdd] = useState(false);
   const [productObservation, setProductObservation] = useState("");
   const [selectedAddons, setSelectedAddons] = useState<Record<string, string[]>>({});
   const [isCartOpen, setIsCartOpen] = useState(false);
@@ -362,35 +366,17 @@ export function StorePage({ storeId }: { storeId: string }) {
         {/* Store Info Container */}
         <div className="container mx-auto px-4 pt-12 pb-6 md:pt-16">
           <div className="flex flex-col md:flex-row md:items-start justify-between gap-4">
-            <div className="space-y-1">
-              <div className="flex items-center gap-3">
-                <h1 className="text-2xl md:text-3xl font-black text-slate-900 tracking-tight">
-                  {settings.name}
-                </h1>
-                <Badge
-                  className={`px-2 py-0.5 rounded-full text-[10px] font-black border-none ${
-                    settings.is_open ? "bg-green-100 text-green-700" : "bg-slate-100 text-slate-600"
-                  }`}
-                >
-                  {settings.is_open ? "ABERTO" : "FECHADO"}
-                </Badge>
-              </div>
-              <p className="text-slate-500 text-sm md:text-base font-medium line-clamp-2 max-w-2xl">
-                {settings.description}
-              </p>
-            </div>
-
-            <div className="flex flex-col gap-2 shrink-0 md:text-right">
-              <div className="flex items-center md:justify-end gap-2 text-xs font-bold text-slate-400 uppercase tracking-wider">
-                <Clock className="w-3.5 h-3.5 text-[var(--primary-color)]" />
-                <span>{settings.opening_hours}</span>
-              </div>
-              {settings.address && (
-                <div className="flex items-center md:justify-end gap-2 text-xs font-bold text-slate-400 uppercase tracking-wider">
-                  <MapPin className="w-3.5 h-3.5 text-[var(--primary-color)]" />
-                  <span className="line-clamp-1">{settings.address}</span>
-                </div>
-              )}
+            <div className="flex items-center gap-3">
+              <h1 className="text-2xl md:text-3xl font-black text-slate-900 tracking-tight">
+                {settings.name}
+              </h1>
+              <Badge
+                className={`px-2 py-0.5 rounded-full text-[10px] font-black border-none ${
+                  settings.is_open ? "bg-green-100 text-green-700" : "bg-slate-100 text-slate-600"
+                }`}
+              >
+                {settings.is_open ? "ABERTO" : "FECHADO"}
+              </Badge>
             </div>
           </div>
         </div>
@@ -406,6 +392,14 @@ export function StorePage({ storeId }: { storeId: string }) {
             >
               Todos
             </a>
+            {featuredProducts.length > 0 && (
+              <a
+                href="#featured-products"
+                className="px-4 py-2 rounded-full text-slate-500 font-bold text-sm whitespace-nowrap transition-all hover:bg-slate-50 hover:text-slate-900"
+              >
+                {settings.featured_section_title || "Em destaque"}
+              </a>
+            )}
             {categories.map((category) => (
               <a
                 key={category.id}
@@ -421,6 +415,120 @@ export function StorePage({ storeId }: { storeId: string }) {
 
       {/* Main Content: Products List */}
       <main id="main" className="container mx-auto px-4 py-8 space-y-12 max-w-7xl">
+        {featuredProducts.length > 0 && (
+          <section id="featured-products" className="scroll-mt-24">
+            <h2 className="text-xl md:text-2xl font-black text-slate-900 tracking-tight mb-6 flex items-center gap-2.5">
+              <span className="flex h-8 w-8 items-center justify-center rounded-xl bg-amber-500/10 text-amber-500">
+                <Star className="h-4 w-4 fill-amber-400 text-amber-500" />
+              </span>
+              {settings.featured_section_title || "Em destaque"}
+              <span className="text-xs font-bold text-slate-400 bg-slate-100 px-2 py-0.5 rounded-md">
+                {featuredProducts.length}
+              </span>
+            </h2>
+
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-2 gap-4">
+              {featuredProducts.map((product) => {
+                const pricing = getCatalogPricing(product);
+                return (
+                  <Card
+                    key={`featured-${product.id}`}
+                    className="group relative overflow-hidden rounded-2xl border-amber-200/60 bg-gradient-to-br from-amber-50/20 via-white to-white hover:border-[var(--primary-color)]/30 hover:shadow-sm transition-all duration-300 cursor-pointer flex p-3 md:p-4 gap-4"
+                  >
+                    <div
+                      className="flex-1 flex flex-col justify-between py-1 cursor-pointer"
+                      onClick={() => {
+                        setIsQuickAdd(false);
+                        setSelectedProduct(product);
+                      }}
+                    >
+                      <div className="space-y-1">
+                        <div className="flex items-center gap-2 flex-wrap">
+                          <h3 className="text-base md:text-lg font-black text-slate-900 tracking-tight line-clamp-1">
+                            {product.name}
+                          </h3>
+                          {product.featured_badge && (
+                            <span className="inline-flex items-center text-[10px] font-bold px-2 py-0.5 rounded-full bg-amber-100 text-amber-800 border border-amber-200">
+                              {product.featured_badge}
+                            </span>
+                          )}
+                          {pricing.onSale && (
+                            <Badge className="bg-rose-500 text-white border-none font-black text-[9px] px-1.5 py-0 gap-0.5 shrink-0">
+                              <Flame className="w-2.5 h-2.5 fill-current" />
+                              OFERTA
+                            </Badge>
+                          )}
+                        </div>
+                        <p className="text-xs md:text-sm text-slate-500 line-clamp-2 leading-relaxed">
+                          {product.description}
+                        </p>
+                      </div>
+
+                      <div className="pt-2 flex items-center justify-between">
+                        <div className="flex items-baseline gap-1.5">
+                          {pricing.onSale && (
+                            <span className="text-xs text-slate-400 line-through font-medium">
+                              {formatCurrency(pricing.fullPrice)}
+                            </span>
+                          )}
+                          <span className="text-base md:text-lg font-black text-[var(--primary-color)] tracking-tight">
+                            {formatCurrency(pricing.price)}
+                          </span>
+                          {pricing.onSale && (
+                            <span className="text-[10px] font-black text-rose-500">
+                              -{pricing.discountPercent}%
+                            </span>
+                          )}
+                        </div>
+                        <Button
+                          type="button"
+                          size="sm"
+                          aria-label={`Adicionar ${product.name} à sacola`}
+                          className="h-8 w-8 md:h-10 md:w-10 rounded-xl text-white transition-all active:scale-90 hover:text-white hover:brightness-110"
+                          style={{ backgroundColor: "var(--primary-color)" }}
+                          onClick={(event) => {
+                            event.preventDefault();
+                            event.stopPropagation();
+                            if (!isCartReady) setStoreContext(storeId);
+                            setIsQuickAdd(true);
+                            setSelectedProduct(product);
+                          }}
+                        >
+                          <Plus className="w-4 h-4 md:w-5 md:h-5 text-white" />
+                        </Button>
+                      </div>
+                    </div>
+
+                    <div
+                      className="relative w-28 h-28 md:w-36 md:h-36 rounded-xl overflow-hidden bg-slate-50 shrink-0 shadow-sm cursor-pointer"
+                      onClick={() => {
+                        setIsQuickAdd(false);
+                        setSelectedProduct(product);
+                      }}
+                    >
+                      {product.image_url ? (
+                        <img
+                          src={product.image_url}
+                          alt={product.name}
+                          className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-105"
+                          onError={(e) => {
+                            (e.target as HTMLImageElement).src =
+                              "https://placehold.co/400x400?text=Imagem";
+                          }}
+                        />
+                      ) : (
+                        <div className="w-full h-full flex items-center justify-center">
+                          <ShoppingBag className="w-8 h-8 md:w-10 md:h-10 text-slate-200" />
+                        </div>
+                      )}
+                    </div>
+                  </Card>
+                );
+              })}
+            </div>
+          </section>
+        )}
+
         {categories.map((category) => (
           <section key={category.id} id={`cat-${category.id}`} className="scroll-mt-24">
             <h2 className="text-xl md:text-2xl font-black text-slate-900 tracking-tight mb-6 flex items-center gap-2">
@@ -437,10 +545,14 @@ export function StorePage({ storeId }: { storeId: string }) {
                   <Card
                     key={product.id}
                     className="group relative overflow-hidden rounded-2xl border-slate-100 bg-white hover:border-[var(--primary-color)]/20 transition-all duration-300 cursor-pointer flex p-3 md:p-4 gap-4"
-                    onClick={isCartReady ? () => setSelectedProduct(product) : undefined}
-                    aria-disabled={!isCartReady}
                   >
-                    <div className="flex-1 flex flex-col justify-between py-1">
+                    <div
+                      className="flex-1 flex flex-col justify-between py-1 cursor-pointer"
+                      onClick={() => {
+                        setIsQuickAdd(false);
+                        setSelectedProduct(product);
+                      }}
+                    >
                       <div className="space-y-1">
                         <div className="flex items-center gap-2">
                           <h3 className="text-base md:text-lg font-black text-slate-900 tracking-tight line-clamp-1">
@@ -477,16 +589,31 @@ export function StorePage({ storeId }: { storeId: string }) {
                           )}
                         </div>
                         <Button
+                          type="button"
                           size="sm"
+                          aria-label={`Adicionar ${product.name} à sacola`}
                           className="h-8 w-8 md:h-10 md:w-10 rounded-xl text-white transition-all active:scale-90 hover:text-white hover:brightness-110"
                           style={{ backgroundColor: "var(--primary-color)" }}
+                          onClick={(event) => {
+                            event.preventDefault();
+                            event.stopPropagation();
+                            if (!isCartReady) setStoreContext(storeId);
+                            setIsQuickAdd(true);
+                            setSelectedProduct(product);
+                          }}
                         >
                           <Plus className="w-4 h-4 md:w-5 md:h-5 text-white" />
                         </Button>
                       </div>
                     </div>
 
-                    <div className="relative w-28 h-28 md:w-36 md:h-36 rounded-xl overflow-hidden bg-slate-50 shrink-0 shadow-sm">
+                    <div
+                      className="relative w-28 h-28 md:w-36 md:h-36 rounded-xl overflow-hidden bg-slate-50 shrink-0 shadow-sm cursor-pointer"
+                      onClick={() => {
+                        setIsQuickAdd(false);
+                        setSelectedProduct(product);
+                      }}
+                    >
                       {product.image_url ? (
                         <img
                           src={product.image_url}
@@ -628,6 +755,7 @@ export function StorePage({ storeId }: { storeId: string }) {
 
       <StorePageProductDialog
         product={selectedProduct}
+        quickAdd={isQuickAdd}
         observation={productObservation}
         setObservation={setProductObservation}
         selectedAddons={selectedAddons}
@@ -636,6 +764,7 @@ export function StorePage({ storeId }: { storeId: string }) {
         addItem={addItem}
         onClose={() => {
           setSelectedProduct(null);
+          setIsQuickAdd(false);
           setProductObservation("");
           setSelectedAddons({});
         }}
