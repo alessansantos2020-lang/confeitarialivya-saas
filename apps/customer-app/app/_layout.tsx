@@ -18,7 +18,7 @@ export default function Layout() {
             headerTitleStyle: { fontWeight: "bold" },
           }}
         >
-          <Stack.Screen name="index" options={{ title: "Início" }} />
+          <Stack.Screen name="index" title="Início" />
         </Stack>
       </SafeAreaProvider>
     </QueryClientProvider>

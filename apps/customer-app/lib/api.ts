@@ -20,7 +20,6 @@ export type StoreSettings = {
   address: string | null;
   primary_color: string | null;
   secondary_color: string | null;
-  featured_section_title?: string | null;
 };
 
 export type CatalogProduct = {
@@ -32,10 +31,6 @@ export type CatalogProduct = {
   image_url: string | null;
   is_available: boolean | null;
   is_featured: boolean | null;
-  featured_sort_order?: number;
-  featured_badge?: string | null;
-  featured_start_at?: string | null;
-  featured_end_at?: string | null;
   category_id: string;
   addons: Array<{ group: AddonGroup }>;
 };
@@ -46,7 +41,6 @@ export type AddonGroup = {
   min_quantity: number;
   max_quantity: number;
   is_required: boolean;
-  status?: string | null;
   items: Array<{ id: string; name: string; price: number }>;
 };
 
@@ -72,10 +66,8 @@ export async function fetchStore(): Promise<{ store: StoreInfo; settings: StoreS
   const { data, error } = await supabase
     .rpc("get_public_store_by_slug", { _slug: STORE_SLUG })
     .maybeSingle();
-  if (error || !data) return null;
-  const result = data as { store: StoreInfo; settings: StoreSettings };
-  if (!result.store) return null;
-  return result;
+  if (error || !data?.store) return null;
+  return data;
 }
 
 export async function fetchCatalog(): Promise<CatalogCategory[]> {

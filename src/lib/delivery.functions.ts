@@ -37,7 +37,6 @@ export type StoreSettings = {
   address: string | null;
   primary_color: string | null;
   secondary_color: string | null;
-  featured_section_title: string;
   auto_notify_whatsapp: boolean;
   whatsapp_accept_enabled: boolean;
   whatsapp_cancel_enabled: boolean;
@@ -81,7 +80,6 @@ const toStoreSettings = (data: StoreSettingsRow): StoreSettings => ({
   address: data.address,
   primary_color: data.primary_color,
   secondary_color: data.secondary_color,
-  featured_section_title: data.featured_section_title || "Em destaque",
   auto_notify_whatsapp: data.auto_notify_whatsapp ?? false,
   whatsapp_accept_enabled: data.whatsapp_accept_enabled ?? true,
   whatsapp_cancel_enabled: data.whatsapp_cancel_enabled ?? true,
@@ -118,10 +116,6 @@ export type PublicCatalogProduct = {
   image_url: string | null;
   is_available: boolean | null;
   is_featured: boolean | null;
-  featured_sort_order: number;
-  featured_badge: string | null;
-  featured_start_at: string | null;
-  featured_end_at: string | null;
   is_on_sale: boolean;
   sale_price: number | null;
   sale_start_at: string | null;
@@ -153,7 +147,6 @@ const defaultSettings = (name = "Minha Loja", store_id = DEFAULT_STORE_ID): Stor
   logo_url: null,
   cover_url: null,
   opening_hours: "Segunda a Sábado: 09:00 - 18:00",
-  featured_section_title: "Em destaque",
   is_open: true,
   phone: null,
   whatsapp: null,

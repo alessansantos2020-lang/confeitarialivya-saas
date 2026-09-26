@@ -472,53 +472,6 @@ _Pedido realizado via Delivery Online._`;
                 </div>
               )}
 
-              {/* Chave Pix Manual da loja */}
-              {orderInfo.payment_method === "pix" && paymentMethods?.manual_pix_key && (
-                <div className="p-4 bg-emerald-50/80 border border-emerald-200 rounded-xl space-y-2">
-                  <Label className="text-sm font-bold text-emerald-900">Chave Pix da loja</Label>
-                  <div className="flex items-center gap-2">
-                    <code className="flex-1 truncate rounded-lg bg-white border border-emerald-200 px-3 py-2 text-sm font-bold text-slate-900">
-                      {paymentMethods.manual_pix_key}
-                    </code>
-                    <Button
-                      type="button"
-                      size="sm"
-                      variant="outline"
-                      className="h-9 shrink-0 border-emerald-300 text-emerald-800 hover:bg-emerald-100"
-                      onClick={() => {
-                        const key = String(paymentMethods.manual_pix_key);
-                        if (navigator?.clipboard?.writeText) {
-                          navigator.clipboard.writeText(key).then(
-                            () => toast.success("Chave Pix copiada!"),
-                            () =>
-                              toast.error(
-                                "Não foi possível copiar. Selecione a chave e copie manualmente.",
-                              ),
-                          );
-                        } else {
-                          toast.error("Selecione a chave e copie manualmente.");
-                        }
-                      }}
-                    >
-                      Copiar
-                    </Button>
-                  </div>
-                  <p className="text-[11px] text-emerald-800/90">
-                    Após confirmar o pedido, faça o Pix para essa chave e envie o comprovante pelo
-                    WhatsApp.
-                  </p>
-                </div>
-              )}
-
-              {/* Cartão na entrega (maquininha) */}
-              {orderInfo.payment_method === "card" && (
-                <div className="p-4 bg-sky-50/80 border border-sky-200 rounded-xl">
-                  <p className="text-sm font-semibold text-sky-900">
-                    💳 Cartão na entrega: o entregador levará a maquininha (débito ou crédito).
-                  </p>
-                </div>
-              )}
-
               {/* Pergunta de Troco para Dinheiro */}
               {orderInfo.payment_method === "money" && (
                 <div className="p-4 bg-amber-50/80 border border-amber-200 rounded-xl space-y-3">

@@ -20,10 +20,6 @@ export type Product = {
   category_id: string;
   is_available: boolean;
   is_featured: boolean;
-  featured_sort_order: number;
-  featured_badge: string | null;
-  featured_start_at: string | null;
-  featured_end_at: string | null;
   is_on_sale: boolean;
   sale_price: number | null;
   sale_start_at: string | null;

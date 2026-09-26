@@ -461,81 +461,37 @@ function AdminLayout() {
       onSwitch={handleSwitchStore}
     >
       <div
-        className="admin-shell flex min-h-screen bg-slate-50 flex-col md:flex-row"
+        className="flex min-h-screen bg-slate-50 flex-col md:flex-row"
         style={storeThemeVars(storeTheme.primary, storeTheme.secondary)}
       >
         {/* Mobile Header */}
-        <header className="admin-mobile-header md:hidden flex items-center justify-between gap-2 px-3.5 py-2.5 sticky top-0 z-50">
-          <div className="flex items-center gap-2.5 min-w-0 flex-1">
+        <header className="md:hidden flex items-center justify-between p-4 bg-slate-900 text-white sticky top-0 z-50">
+          <div className="flex items-center gap-2">
             {storeLogo ? (
-              <img
-                src={storeLogo}
-                alt={storeName}
-                className="h-8 w-8 rounded-lg object-cover ring-1 ring-white/20 shrink-0"
-              />
+              <img src={storeLogo} alt={storeName} className="h-8 w-8 rounded-full object-cover" />
             ) : (
-              <div className="admin-brand-mark h-8 w-8 rounded-lg flex items-center justify-center text-xs font-bold shrink-0">
+              <div className="h-8 w-8 rounded-full bg-pink-500 flex items-center justify-center text-xs font-bold">
                 {(storeName || "L").slice(0, 2).toUpperCase()}
               </div>
             )}
-            <div className="min-w-0 flex-1">
-              <div className="flex items-center gap-1.5">
-                <span className="block truncate text-xs font-bold leading-tight">{storeName}</span>
-                <span
-                  className={cn(
-                    "inline-block w-2 h-2 rounded-full shrink-0",
-                    storeIsOpen ? "bg-emerald-400" : "bg-slate-400",
-                  )}
-                  title={storeIsOpen ? "Aberta" : "Fechada"}
-                />
-              </div>
-              <span className="block text-[9px] font-semibold uppercase tracking-[0.14em] text-white/60">
-                {storeIsOpen ? "Aberta agora" : "Fechada"}
-              </span>
-            </div>
+            <span className="font-bold">{storeName}</span>
           </div>
-
-          <div className="flex items-center gap-1 shrink-0">
-            <Button
-              size="sm"
-              className="admin-orders-button h-8 px-2.5 text-xs gap-1.5"
-              onClick={() => navigate({ to: "/staff" })}
-            >
-              <ShoppingBag size={14} />
-              <span className="hidden xs:inline">Pedidos</span>
-            </Button>
-            <button
-              type="button"
-              aria-label={isMobileMenuOpen ? "Fechar menu" : "Abrir menu"}
-              aria-expanded={isMobileMenuOpen}
-              onClick={() => setIsMobileMenuOpen(!isMobileMenuOpen)}
-              className="admin-menu-button rounded-lg p-2"
-            >
-              {isMobileMenuOpen ? <X size={20} /> : <Menu size={20} />}
-            </button>
-          </div>
+          <button onClick={() => setIsMobileMenuOpen(!isMobileMenuOpen)}>
+            {isMobileMenuOpen ? <X size={24} /> : <Menu size={24} />}
+          </button>
         </header>
-
-        {isMobileMenuOpen && (
-          <button
-            type="button"
-            aria-label="Fechar menu"
-            className="admin-mobile-overlay md:hidden"
-            onClick={() => setIsMobileMenuOpen(false)}
-          />
-        )}
 
         {/* Sidebar */}
         <aside
           className={cn(
-            "admin-sidebar fixed inset-y-0 left-0 z-50 flex w-[min(86vw,20rem)] flex-col text-white transition-transform duration-300 transform md:translate-x-0 md:static md:inset-auto md:min-h-screen",
+            "fixed inset-0 z-40 bg-slate-900 text-white transition-all duration-300 transform md:translate-x-0 md:static md:inset-auto flex flex-col min-h-screen",
             isMobileMenuOpen ? "translate-x-0" : "-translate-x-full",
             isSidebarCollapsed ? "md:w-20" : "md:w-64",
           )}
         >
           <div
             className={cn(
-              "admin-sidebar-head hidden md:flex p-6 items-center border-b border-white/10 relative",
+              "hidden md:flex p-6 items-center border-b border-slate-800 relative",
               isSidebarCollapsed ? "justify-center px-2" : "gap-3 justify-between",
             )}
           >
@@ -544,17 +500,17 @@ function AdminLayout() {
                 <img
                   src={storeLogo}
                   alt={storeName}
-                  className="h-10 w-10 shrink-0 rounded-xl object-cover ring-2 ring-white/15"
+                  className="h-10 w-10 shrink-0 rounded-full object-cover"
                 />
               ) : (
-                <div className="admin-brand-mark h-10 w-10 shrink-0 rounded-xl flex items-center justify-center text-lg font-bold">
+                <div className="h-10 w-10 shrink-0 rounded-full bg-pink-500 flex items-center justify-center text-lg font-bold">
                   {(storeName || "L").slice(0, 2).toUpperCase()}
                 </div>
               )}
               {!isSidebarCollapsed && (
-                <div className="animate-in fade-in duration-300 min-w-0">
-                  <div className="font-bold text-base leading-tight truncate">{storeName}</div>
-                  <div className="admin-role-label text-[10px] uppercase tracking-[0.16em] font-semibold">
+                <div className="animate-in fade-in duration-300">
+                  <div className="font-bold text-lg leading-tight truncate">{storeName}</div>
+                  <div className="text-[10px] text-pink-400 uppercase tracking-wider font-semibold">
                     {userRole === "super_admin"
                       ? "Dono do Sistema"
                       : userRole === "admin"
@@ -566,40 +522,32 @@ function AdminLayout() {
             </div>
 
             <button
-              type="button"
-              aria-label={isSidebarCollapsed ? "Expandir menu" : "Recolher menu"}
               onClick={() => setIsSidebarCollapsed(!isSidebarCollapsed)}
-              className="admin-collapse-button absolute -right-3 top-7 rounded-full p-1 text-white shadow-lg hidden md:block z-50"
+              className="absolute -right-3 top-7 bg-pink-600 rounded-full p-1 text-white shadow-lg hidden md:block hover:bg-pink-700 transition-colors z-50"
             >
               {isSidebarCollapsed ? <ChevronRight size={14} /> : <ChevronLeft size={14} />}
             </button>
           </div>
 
-          <nav
-            className={cn(
-              "admin-nav flex-1 overflow-y-auto py-6 px-4 space-y-1",
-              isSidebarCollapsed && "md:px-3",
-            )}
-          >
+          <nav className="flex-1 overflow-y-auto py-6 px-4 space-y-1">
             {navItems.map((item) => (
               <Link
                 key={item.label}
                 to={item.to}
                 onClick={() => setIsMobileMenuOpen(false)}
-                activeProps={{ className: "admin-nav-item-active" }}
+                activeProps={{ className: "bg-pink-600 text-white" }}
                 className={cn(
-                  "admin-nav-item flex items-center gap-3 p-3 rounded-xl transition-all group",
-                  isSidebarCollapsed ? "md:justify-center" : "",
+                  "flex items-center gap-3 p-3 text-slate-300 hover:bg-slate-800 hover:text-white rounded-lg transition-all group",
+                  isSidebarCollapsed ? "justify-center" : "",
                 )}
                 title={isSidebarCollapsed ? item.label : undefined}
-                aria-label={item.label}
               >
                 <item.icon
                   size={20}
                   className="group-hover:scale-110 transition-transform shrink-0"
                 />
                 {!isSidebarCollapsed && (
-                  <span className="font-medium text-sm animate-in fade-in slide-in-from-left-2 duration-300">
+                  <span className="font-medium animate-in fade-in slide-in-from-left-2 duration-300">
                     {item.label}
                   </span>
                 )}
@@ -607,17 +555,12 @@ function AdminLayout() {
             ))}
           </nav>
 
-          <div
-            className={cn(
-              "p-4 border-t border-white/10 space-y-2",
-              isSidebarCollapsed && "md:px-3",
-            )}
-          >
+          <div className="p-4 border-t border-slate-800 space-y-2">
             <Button
               variant="ghost"
               className={cn(
-                "admin-logout-button w-full px-3 transition-all",
-                isSidebarCollapsed ? "md:justify-center" : "md:justify-start gap-3",
+                "w-full text-slate-400 hover:text-white hover:bg-slate-800 px-3 transition-all",
+                isSidebarCollapsed ? "justify-center" : "justify-start gap-3",
               )}
               onClick={handleLogout}
               title={isSidebarCollapsed ? "Sair" : undefined}
@@ -629,7 +572,7 @@ function AdminLayout() {
         </aside>
 
         {/* Main Content Area */}
-        <div className="flex-1 flex flex-col min-h-screen min-w-0 overflow-x-hidden">
+        <div className="flex-1 flex flex-col min-h-screen">
           {supportSession && (
             <div className="flex flex-wrap items-center justify-between gap-3 bg-amber-500 px-4 md:px-8 py-2.5 text-sm text-amber-950">
               <div className="flex items-center gap-2 font-medium">
@@ -678,30 +621,28 @@ function AdminLayout() {
           )}
 
           {/* Desktop Header */}
-          <header className="admin-topbar hidden md:flex min-h-20 items-center justify-between gap-6 px-8 sticky top-0 z-30">
-            <div className="flex items-center gap-4 min-w-0">
-              <div className="min-w-0">
-                <p className="admin-eyebrow">Central de gestão</p>
-                <h1 className="truncate text-xl font-bold text-slate-900">{storeName}</h1>
-              </div>
-              <div className="flex items-center gap-2 text-xs shrink-0">
-                <span className="admin-plan-badge rounded-full px-3 py-1.5">
-                  Plano {storePlan?.name || "Carregando..."}
+          <header className="hidden md:flex h-16 items-center justify-between px-8 bg-white border-b shadow-sm sticky top-0 z-30">
+            <div className="flex items-center gap-4">
+              <h1 className="text-xl font-semibold text-slate-800">{storeName}</h1>
+              <div className="flex items-center gap-2 text-xs">
+                <span className="rounded-full border border-slate-200 bg-slate-50 px-2.5 py-1 text-slate-600">
+                  Plano: {storePlan?.name || "Carregando..."}
                 </span>
                 <span
                   className={cn(
-                    "admin-open-badge rounded-full px-3 py-1.5 font-semibold",
-                    storeIsOpen ? "is-open" : "is-closed",
+                    "rounded-full border px-2.5 py-1 font-medium",
+                    storeIsOpen
+                      ? "border-emerald-200 bg-emerald-50 text-emerald-700"
+                      : "border-slate-200 bg-slate-100 text-slate-600",
                   )}
                 >
-                  <span className="admin-status-dot" />
-                  {storeIsOpen ? "Aberta" : "Fechada"}
+                  {storeIsOpen ? "Loja aberta" : "Loja fechada"}
                 </span>
               </div>
               {memberships.length > 1 && (
                 <Select value={activeStore.id} onValueChange={handleSwitchStore}>
-                  <SelectTrigger className="admin-store-select w-[220px] h-10">
-                    <StoreIcon size={14} className="mr-2 shrink-0" />
+                  <SelectTrigger className="w-[220px] h-9">
+                    <StoreIcon size={14} className="mr-2 text-pink-500 shrink-0" />
                     <SelectValue placeholder="Selecione a loja" />
                   </SelectTrigger>
                   <SelectContent>
@@ -714,27 +655,28 @@ function AdminLayout() {
                 </Select>
               )}
             </div>
-            <div className="flex items-center gap-2 shrink-0">
+            <div className="flex items-center gap-4">
               {userRole === "super_admin" && (
                 <Button
                   size="sm"
                   variant="ghost"
-                  className="admin-topbar-link gap-2"
+                  className="gap-2 text-pink-600 hover:text-pink-700"
                   onClick={() => (supportSession ? handleEndSupport() : navigate({ to: "/super" }))}
                 >
                   <StoreIcon size={16} />
                   {saasName}
                 </Button>
               )}
-              <div className="admin-user-chip flex items-center gap-2 rounded-xl px-3 py-2 text-sm">
-                <User size={16} />
+              <div className="flex items-center gap-2 text-sm text-slate-600 bg-slate-50 px-3 py-1.5 rounded-full border">
+                <User size={16} className="text-pink-500" />
                 <span className="max-w-[150px] truncate font-medium">
                   {userEmail || "Carregando..."}
                 </span>
               </div>
               <Button
                 size="sm"
-                className="admin-orders-button gap-2"
+                variant="ghost"
+                className="gap-2 text-slate-600"
                 onClick={() => navigate({ to: "/staff" })}
               >
                 <ShoppingBag size={16} />
@@ -742,8 +684,8 @@ function AdminLayout() {
               </Button>
               <Button
                 size="sm"
-                variant="ghost"
-                className="admin-exit-button gap-2"
+                variant="outline"
+                className="gap-2 text-slate-600 border-slate-200 hover:bg-red-50 hover:text-red-600 hover:border-red-100"
                 onClick={handleLogout}
               >
                 <LogOut size={16} />
@@ -753,7 +695,7 @@ function AdminLayout() {
           </header>
 
           {/* Content */}
-          <main className="flex-1 px-3.5 py-4 sm:px-6 md:p-8">
+          <main className="flex-1 p-4 md:p-8">
             <div className="max-w-7xl mx-auto">
               {blockedFeature ? (
                 <div className="max-w-md mx-auto bg-white rounded-2xl p-8 border text-center space-y-4 mt-8">

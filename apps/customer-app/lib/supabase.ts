@@ -3,15 +3,13 @@ import AsyncStorage from "@react-native-async-storage/async-storage";
 import { createClient } from "@supabase/supabase-js";
 import Constants from "expo-constants";
 
-const extra = Constants.expoConfig?.extra as
-  | {
-      supabaseUrl?: string;
-      supabaseAnonKey?: string;
-      storeSlug?: string;
-      primaryColor?: string;
-      secondaryColor?: string;
-    }
-  | undefined;
+const extra = Constants.expoConfig?.extra as {
+  supabaseUrl?: string;
+  supabaseAnonKey?: string;
+  storeSlug?: string;
+  primaryColor?: string;
+  secondaryColor?: string;
+} | undefined;
 
 export const STORE_SLUG = extra?.storeSlug || "quentinha-expres";
 export const PRIMARY_COLOR = extra?.primaryColor || "#ea580c";
@@ -34,7 +32,7 @@ function createSupabaseFetch(supabaseKey: string): typeof fetch {
       typeof Request !== "undefined" && input instanceof Request ? input.headers : undefined,
     );
     if (init?.headers) {
-      new Headers(init.headers).forEach((value: string, key: string) => headers.set(key, value));
+      new Headers(init.headers).forEach((value, key) => headers.set(key, value));
     }
     if (
       isPublishableSupabaseApiKey(supabaseKey) &&

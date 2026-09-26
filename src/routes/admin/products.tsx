@@ -1,5 +1,5 @@
 import { createFileRoute } from "@tanstack/react-router";
-import { useEffect, useMemo, useState } from "react";
+import { useState } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { useActiveStore } from "@/lib/active-store";
@@ -13,9 +13,6 @@ import {
   Star,
   StarOff,
   Search,
-  ChevronUp,
-  ChevronDown,
-  CalendarClock,
 } from "lucide-react";
 import { ProductForm } from "@/components/admin/products/product-form";
 import { Button } from "@/components/ui/button";
@@ -50,9 +47,6 @@ import { Badge } from "@/components/ui/badge";
 import { Switch } from "@/components/ui/switch";
 import { toast } from "sonner";
 import { getPromotionStatus, getDiscountPercent, type PromotionStatus } from "@/lib/promotions";
-import { getEligibleFeaturedProducts } from "@/lib/featured-products";
-import { Label } from "@/components/ui/label";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import type { Category, AddonGroupOption, Product } from "@/components/admin/products/types";
 import type { Database } from "@/integrations/supabase/types";
 
@@ -67,13 +61,6 @@ const formatCurrency = (value: number) =>
   new Intl.NumberFormat("pt-BR", { style: "currency", currency: "BRL" }).format(value);
 
 const fromLocalInput = (value: string) => (value ? new Date(value).toISOString() : null);
-
-const toLocalInput = (value: string | null) => {
-  if (!value) return "";
-  const date = new Date(value);
-  const pad = (part: number) => String(part).padStart(2, "0");
-  return `${date.getFullYear()}-${pad(date.getMonth() + 1)}-${pad(date.getDate())}T${pad(date.getHours())}:${pad(date.getMinutes())}`;
-};
 
 type PromoBadge = { label: string; className: string } | null;
 const PROMO_BADGE: Record<PromotionStatus, PromoBadge> = {
@@ -105,25 +92,8 @@ function ProductsPage() {
   const [editHasPromo, setEditHasPromo] = useState(false);
   const [newAddonGroups, setNewAddonGroups] = useState<string[]>([]);
   const [editAddonGroups, setEditAddonGroups] = useState<string[]>([]);
-  const [featuredSearch, setFeaturedSearch] = useState("");
-  const { data: settings } = useQuery({
-    queryKey: ["storeSettings", storeId],
-    queryFn: async () => {
-      const { data, error } = await supabase
-        .from("store_settings")
-        .select("featured_section_title")
-        .eq("store_id", storeId)
-        .maybeSingle();
-      if (error) throw error;
-      return data;
-    },
-  });
-  const [sectionTitle, setSectionTitle] = useState("Em destaque");
 
-  useEffect(() => {
-    setSectionTitle(settings?.featured_section_title || "Em destaque");
-  }, [settings?.featured_section_title, storeId]);
-
+  // Fetch Products
   const { data: products, isLoading: isLoadingProducts } = useQuery({
     queryKey: ["products", storeId],
     queryFn: async () => {
@@ -413,107 +383,6 @@ function ProductsPage() {
     updateMutation.mutate(updates);
   };
 
-  const sortedFeaturedProducts = useMemo(
-    () =>
-      [...(products || [])]
-        .filter((product) => product.is_featured)
-        .sort(
-          (first, second) =>
-            first.featured_sort_order - second.featured_sort_order ||
-            first.name.localeCompare(second.name),
-        ),
-    [products],
-  );
-
-  const featuredProducts = sortedFeaturedProducts;
-  const filteredFeaturedProducts = (products || []).filter((product) =>
-    product.name.toLocaleLowerCase("pt-BR").includes(featuredSearch.toLocaleLowerCase("pt-BR")),
-  );
-
-  const saveSectionTitle = async () => {
-    const title = sectionTitle.trim();
-    if (!title || title.length > 80) return;
-    const { data: existing, error: readError } = await supabase
-      .from("store_settings")
-      .select("id")
-      .eq("store_id", storeId)
-      .maybeSingle();
-    if (readError) {
-      toast.error("Não foi possível salvar o título da seção.");
-      return;
-    }
-    const result = existing
-      ? await supabase
-          .from("store_settings")
-          .update({ featured_section_title: title })
-          .eq("store_id", storeId)
-      : await supabase
-          .from("store_settings")
-          .insert({ store_id: storeId, featured_section_title: title });
-    if (result.error) {
-      toast.error("Não foi possível salvar o título da seção.");
-      return;
-    }
-    await queryClient.invalidateQueries({ queryKey: ["storeSettings", storeId] });
-    toast.success("Título dos destaques salvo.");
-  };
-
-  const setFeatured = (product: Product, active: boolean) => {
-    const sortOrder = active ? sortedFeaturedProducts.length : product.featured_sort_order;
-    updateMutation.mutate({
-      id: product.id,
-      is_featured: active,
-      featured_sort_order: sortOrder,
-      ...(active ? {} : { featured_badge: null, featured_start_at: null, featured_end_at: null }),
-    });
-  };
-
-  const updateFeaturedField = (
-    product: Product,
-    field: "featured_badge" | "featured_start_at" | "featured_end_at",
-    value: string | null,
-  ) => {
-    const next = { ...product, [field]: value };
-    if (
-      next.featured_start_at &&
-      next.featured_end_at &&
-      next.featured_end_at <= next.featured_start_at
-    ) {
-      toast.error("A data final precisa ser posterior à data inicial.");
-      return;
-    }
-    updateMutation.mutate({ id: product.id, [field]: value });
-  };
-
-  const moveFeaturedProduct = (productId: string, direction: -1 | 1) => {
-    const index = sortedFeaturedProducts.findIndex((product) => product.id === productId);
-    const target = index + direction;
-    if (index < 0 || target < 0 || target >= sortedFeaturedProducts.length) return;
-    const current = sortedFeaturedProducts[index];
-    const neighbor = sortedFeaturedProducts[target];
-    if (!current || !neighbor) return;
-    const updates = [
-      supabase
-        .from("products")
-        .update({ featured_sort_order: neighbor.featured_sort_order })
-        .eq("id", current.id)
-        .eq("store_id", storeId),
-      supabase
-        .from("products")
-        .update({ featured_sort_order: current.featured_sort_order })
-        .eq("id", neighbor.id)
-        .eq("store_id", storeId),
-    ];
-    void Promise.all(updates).then((results) => {
-      const error = results.find((result) => result.error)?.error;
-      if (error) {
-        toast.error("Não foi possível alterar a ordem dos destaques.");
-        return;
-      }
-      void queryClient.invalidateQueries({ queryKey: ["products", storeId] });
-    });
-  };
-
   const filteredProducts = products?.filter((p) => {
     const matchesSearch =
       p.name.toLowerCase().includes(search.toLowerCase()) ||
@@ -586,174 +455,6 @@ function ProductsPage() {
           </Dialog>
         </div>
       </div>
-
-      <Card className="border-slate-200 shadow-sm">
-        <CardHeader className="pb-4">
-          <CardTitle className="flex items-center gap-2 text-xl">
-            <Star className="h-5 w-5 fill-amber-400 text-amber-500" />
-            Produtos em destaque
-          </CardTitle>
-          <p className="text-sm text-slate-500">
-            Escolha o que aparece primeiro na vitrine. Produtos também continuam nas categorias.
-          </p>
-        </CardHeader>
-        <CardContent className="space-y-5">
-          <div className="grid gap-4 md:grid-cols-[minmax(0,1fr)_auto] md:items-end">
-            <div className="space-y-2">
-              <Label htmlFor="featured-section-title">Título da seção</Label>
-              <Input
-                id="featured-section-title"
-                maxLength={80}
-                value={sectionTitle}
-                onChange={(event) => setSectionTitle(event.target.value)}
-              />
-            </div>
-            <Button
-              type="button"
-              variant="outline"
-              disabled={sectionTitle.trim().length === 0 || sectionTitle.trim().length > 80}
-              onClick={() => void saveSectionTitle()}
-            >
-              Salvar título
-            </Button>
-          </div>
-          <div className="relative max-w-md">
-            <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" size={18} />
-            <Input
-              aria-label="Buscar produtos para destacar"
-              placeholder="Buscar produto para destacar..."
-              className="pl-10"
-              value={featuredSearch}
-              onChange={(event) => setFeaturedSearch(event.target.value)}
-            />
-          </div>
-          {!filteredFeaturedProducts.length ? (
-            <p className="rounded-lg border border-dashed p-5 text-center text-sm text-slate-500">
-              Nenhum produto encontrado. Marque um produto como destaque para preencher esta seção.
-            </p>
-          ) : (
-            <div className="divide-y rounded-lg border">
-              {filteredFeaturedProducts.map((product) => {
-                const position = featuredProducts.findIndex((item) => item.id === product.id);
-                const canShow = product.is_available && product.category?.name;
-                return (
-                  <div
-                    key={product.id}
-                    className="grid gap-4 p-4 md:grid-cols-[minmax(0,1fr)_170px_210px_auto] md:items-end"
-                  >
-                    <div className="flex items-center gap-3">
-                      <Switch
-                        checked={product.is_featured}
-                        onCheckedChange={(checked) => setFeatured(product, checked)}
-                        aria-label={`${product.is_featured ? "Remover" : "Adicionar"} ${product.name} dos destaques`}
-                      />
-                      {product.image_url ? (
-                        <img
-                          src={product.image_url}
-                          alt=""
-                          className="h-12 w-12 rounded-lg object-cover"
-                        />
-                      ) : (
-                        <div className="flex h-12 w-12 items-center justify-center rounded-lg bg-slate-100">
-                          <ImageIcon className="h-5 w-5 text-slate-400" />
-                        </div>
-                      )}
-                      <div className="min-w-0">
-                        <p className="truncate font-semibold text-slate-800">{product.name}</p>
-                        <p className="text-xs text-slate-500">
-                          {product.category?.name || "Sem categoria"} ·{" "}
-                          {formatCurrency(product.price)}
-                        </p>
-                        {!canShow && (
-                          <p className="text-xs text-amber-700">
-                            Indisponível na vitrine enquanto o produto estiver inativo.
-                          </p>
-                        )}
-                      </div>
-                    </div>
-                    <div className="space-y-2">
-                      <Label htmlFor={`featured-badge-${product.id}`}>Selo opcional</Label>
-                      <Input
-                        id={`featured-badge-${product.id}`}
-                        maxLength={30}
-                        placeholder="Ex.: Novidade"
-                        defaultValue={product.featured_badge || ""}
-                        onBlur={(event) => {
-                          const badge = event.currentTarget.value.trim() || null;
-                          if (badge !== product.featured_badge) {
-                            updateFeaturedField(product, "featured_badge", badge);
-                          }
-                        }}
-                      />
-                    </div>
-                    <div className="grid grid-cols-2 gap-2">
-                      <div className="space-y-2">
-                        <Label htmlFor={`featured-start-${product.id}`}>Exibir a partir de</Label>
-                        <Input
-                          id={`featured-start-${product.id}`}
-                          type="datetime-local"
-                          defaultValue={toLocalInput(product.featured_start_at)}
-                          onBlur={(event) => {
-                            const value = fromLocalInput(event.currentTarget.value);
-                            if (value !== product.featured_start_at)
-                              updateFeaturedField(product, "featured_start_at", value);
-                          }}
-                        />
-                      </div>
-                      <div className="space-y-2">
-                        <Label htmlFor={`featured-end-${product.id}`}>Exibir até</Label>
-                        <Input
-                          id={`featured-end-${product.id}`}
-                          type="datetime-local"
-                          defaultValue={toLocalInput(product.featured_end_at)}
-                          onBlur={(event) => {
-                            const value = fromLocalInput(event.currentTarget.value);
-                            if (value !== product.featured_end_at)
-                              updateFeaturedField(product, "featured_end_at", value);
-                          }}
-                        />
-                      </div>
-                    </div>
-                    <div className="flex items-center justify-end gap-1">
-                      <Button
-                        type="button"
-                        variant="outline"
-                        size="icon"
-                        disabled={position <= 0 || updateMutation.isPending}
-                        aria-label={`Mover ${product.name} para cima`}
-                        onClick={() => moveFeaturedProduct(product.id, -1)}
-                      >
-                        <ChevronUp className="h-4 w-4" />
-                      </Button>
-                      <Button
-                        type="button"
-                        variant="outline"
-                        size="icon"
-                        disabled={
-                          position < 0 ||
-                          position >= featuredProducts.length - 1 ||
-                          updateMutation.isPending
-                        }
-                        aria-label={`Mover ${product.name} para baixo`}
-                        onClick={() => moveFeaturedProduct(product.id, 1)}
-                      >
-                        <ChevronDown className="h-4 w-4" />
-                      </Button>
-                    </div>
-                  </div>
-                );
-              })}
-            </div>
-          )}
-          {featuredProducts.length > 0 && (
-            <p className="text-xs text-slate-500">
-              {featuredProducts.length}{" "}
-              {featuredProducts.length === 1 ? "produto aparece" : "produtos aparecem"} na vitrine
-              neste momento.
-            </p>
-          )}
-        </CardContent>
-      </Card>
 
       {canUsePromotions && (
         <div className="flex gap-2">
