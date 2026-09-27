@@ -21,6 +21,7 @@ import { Route as AdminCategoriesRouteImport } from './routes/admin/categories'
 import { Route as AdminCobrancasRouteImport } from './routes/admin/cobrancas'
 import { Route as AdminCustomersRouteImport } from './routes/admin/customers'
 import { Route as AdminDeliveryRouteImport } from './routes/admin/delivery'
+import { Route as AdminFlashOfferRouteImport } from './routes/admin/flash-offer'
 import { Route as AdminOrdersRouteImport } from './routes/admin/orders'
 import { Route as AdminProductsRouteImport } from './routes/admin/products'
 import { Route as AdminReportsRouteImport } from './routes/admin/reports'
@@ -97,6 +98,11 @@ const AdminCustomersRoute = AdminCustomersRouteImport.update({
 const AdminDeliveryRoute = AdminDeliveryRouteImport.update({
   id: '/delivery',
   path: '/delivery',
+  getParentRoute: () => AdminRouteRoute,
+} as any)
+const AdminFlashOfferRoute = AdminFlashOfferRouteImport.update({
+  id: '/flash-offer',
+  path: '/flash-offer',
   getParentRoute: () => AdminRouteRoute,
 } as any)
 const AdminOrdersRoute = AdminOrdersRouteImport.update({
@@ -197,6 +203,7 @@ export interface FileRoutesByFullPath {
   '/admin/cobrancas': typeof AdminCobrancasRoute
   '/admin/customers': typeof AdminCustomersRoute
   '/admin/delivery': typeof AdminDeliveryRoute
+  '/admin/flash-offer': typeof AdminFlashOfferRoute
   '/admin/orders': typeof AdminOrdersRoute
   '/admin/products': typeof AdminProductsRoute
   '/admin/reports': typeof AdminReportsRoute
@@ -225,6 +232,7 @@ export interface FileRoutesByTo {
   '/admin/cobrancas': typeof AdminCobrancasRoute
   '/admin/customers': typeof AdminCustomersRoute
   '/admin/delivery': typeof AdminDeliveryRoute
+  '/admin/flash-offer': typeof AdminFlashOfferRoute
   '/admin/orders': typeof AdminOrdersRoute
   '/admin/products': typeof AdminProductsRoute
   '/admin/reports': typeof AdminReportsRoute
@@ -257,6 +265,7 @@ export interface FileRoutesById {
   '/admin/cobrancas': typeof AdminCobrancasRoute
   '/admin/customers': typeof AdminCustomersRoute
   '/admin/delivery': typeof AdminDeliveryRoute
+  '/admin/flash-offer': typeof AdminFlashOfferRoute
   '/admin/orders': typeof AdminOrdersRoute
   '/admin/products': typeof AdminProductsRoute
   '/admin/reports': typeof AdminReportsRoute
@@ -290,6 +299,7 @@ export interface FileRouteTypes {
     | '/admin/cobrancas'
     | '/admin/customers'
     | '/admin/delivery'
+    | '/admin/flash-offer'
     | '/admin/orders'
     | '/admin/products'
     | '/admin/reports'
@@ -318,6 +328,7 @@ export interface FileRouteTypes {
     | '/admin/cobrancas'
     | '/admin/customers'
     | '/admin/delivery'
+    | '/admin/flash-offer'
     | '/admin/orders'
     | '/admin/products'
     | '/admin/reports'
@@ -349,6 +360,7 @@ export interface FileRouteTypes {
     | '/admin/cobrancas'
     | '/admin/customers'
     | '/admin/delivery'
+    | '/admin/flash-offer'
     | '/admin/orders'
     | '/admin/products'
     | '/admin/reports'
@@ -462,6 +474,13 @@ declare module '@tanstack/react-router' {
       path: '/delivery'
       fullPath: '/admin/delivery'
       preLoaderRoute: typeof AdminDeliveryRouteImport
+      parentRoute: typeof AdminRouteRoute
+    }
+    '/admin/flash-offer': {
+      id: '/admin/flash-offer'
+      path: '/flash-offer'
+      fullPath: '/admin/flash-offer'
+      preLoaderRoute: typeof AdminFlashOfferRouteImport
       parentRoute: typeof AdminRouteRoute
     }
     '/admin/orders': {
@@ -592,6 +611,7 @@ interface AdminRouteRouteChildren {
   AdminCobrancasRoute: typeof AdminCobrancasRoute
   AdminCustomersRoute: typeof AdminCustomersRoute
   AdminDeliveryRoute: typeof AdminDeliveryRoute
+  AdminFlashOfferRoute: typeof AdminFlashOfferRoute
   AdminOrdersRoute: typeof AdminOrdersRoute
   AdminProductsRoute: typeof AdminProductsRoute
   AdminReportsRoute: typeof AdminReportsRoute
@@ -605,6 +625,7 @@ const AdminRouteRouteChildren: AdminRouteRouteChildren = {
   AdminCobrancasRoute: AdminCobrancasRoute,
   AdminCustomersRoute: AdminCustomersRoute,
   AdminDeliveryRoute: AdminDeliveryRoute,
+  AdminFlashOfferRoute: AdminFlashOfferRoute,
   AdminOrdersRoute: AdminOrdersRoute,
   AdminProductsRoute: AdminProductsRoute,
   AdminReportsRoute: AdminReportsRoute,

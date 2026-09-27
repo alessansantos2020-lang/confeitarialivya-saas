@@ -31,6 +31,12 @@ export type CatalogProduct = {
   image_url: string | null;
   is_available: boolean | null;
   is_featured: boolean | null;
+  is_on_sale?: boolean | null;
+  sale_price?: number | null;
+  sale_start_at?: string | null;
+  sale_end_at?: string | null;
+  flash_headline?: string | null;
+  flash_message?: string | null;
   category_id: string;
   addons: Array<{ group: AddonGroup }>;
 };

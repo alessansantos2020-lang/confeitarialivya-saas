@@ -1,13 +1,21 @@
 import { fetchCatalog, fetchStore, type CatalogCategory, type StoreSettings } from "@/lib/api";
 import { PRIMARY_COLOR, SECONDARY_COLOR, STORE_SLUG } from "@/lib/supabase";
 import { useCart } from "@/lib/cart";
+import {
+  pickFlashOffer,
+  getFlashCountdown,
+  wasFlashDismissed,
+  dismissFlashOffer,
+  type FlashOfferProduct,
+} from "@/lib/flash-offer";
 import { useQuery } from "@tanstack/react-query";
-import { Link, Stack } from "expo-router";
-import { useMemo, useRef, useState } from "react";
+import { Link, router, Stack } from "expo-router";
+import { useEffect, useMemo, useRef, useState } from "react";
 import {
   ActivityIndicator,
   FlatList,
   Image,
+  Modal,
   Pressable,
   ScrollView,
   StyleSheet,
@@ -39,6 +47,31 @@ export default function StoreScreen() {
   const totalItems = cart.getTotalItems();
   const total = cart.getTotal();
   const isOpen = settings?.is_open !== false && store?.store.status === "active";
+
+  // ⚡ Oferta Relâmpago: abre automaticamente na 1ª visita da sessão.
+  const allProducts = useMemo(
+    () => (catalogQuery.data ?? []).flatMap((category) => category.products),
+    [catalogQuery.data],
+  );
+  const flashOffer = useMemo(() => pickFlashOffer(allProducts), [allProducts]);
+  const [flashOfferClosed, setFlashOfferClosed] = useState(false);
+  const [countdown, setCountdown] = useState(() => getFlashCountdown(flashOffer?.sale_end_at));
+  const showFlashOffer =
+    !!flashOffer &&
+    !flashOfferClosed &&
+    !wasFlashDismissed(flashOffer.id, flashOffer.sale_start_at);
+
+  useEffect(() => {
+    setCountdown(getFlashCountdown(flashOffer?.sale_end_at));
+    if (!showFlashOffer || !flashOffer?.sale_end_at) return;
+    const timer = setInterval(() => setCountdown(getFlashCountdown(flashOffer.sale_end_at)), 1000);
+    return () => clearInterval(timer);
+  }, [flashOffer?.sale_end_at, showFlashOffer]);
+
+  const closeFlashOffer = () => {
+    setFlashOfferClosed(true);
+    if (flashOffer) dismissFlashOffer(flashOffer.id, flashOffer.sale_start_at);
+  };
 
   if (storeQuery.isLoading || catalogQuery.isLoading) {
     return (
@@ -212,6 +245,63 @@ export default function StoreScreen() {
             </Pressable>
           </Link>
         </View>
+
+        {showFlashOffer && flashOffer && (
+          <Modal transparent animationType="fade" visible onRequestClose={closeFlashOffer}>
+            <View style={styles.flashOverlay}>
+              <View style={styles.flashCard}>
+                <Pressable onPress={closeFlashOffer} hitSlop={10} style={styles.flashClose}>
+                  <Text style={styles.flashCloseText}>✕</Text>
+                </Pressable>
+
+                <View style={[styles.flashBanner, { backgroundColor: PRIMARY_COLOR }]}>
+                  <Text style={styles.flashBannerText}>⚡ OFERTA RELÂMPAGO</Text>
+                </View>
+
+                {flashOffer.image_url ? (
+                  <Image source={{ uri: flashOffer.image_url }} style={styles.flashImage} />
+                ) : (
+                  <View style={[styles.flashImage, styles.flashImagePlaceholder]}>
+                    <Text style={{ fontSize: 40 }}>⚡</Text>
+                  </View>
+                )}
+
+                <View style={styles.flashBody}>
+                  <Text style={styles.flashHeadline} numberOfLines={2}>
+                    {flashOffer.flash_headline?.trim() || flashOffer.name}
+                  </Text>
+                  {flashOffer.flash_message?.trim() || flashOffer.description ? (
+                    <Text style={styles.flashMessage} numberOfLines={2}>
+                      {flashOffer.flash_message?.trim() || flashOffer.description}
+                    </Text>
+                  ) : null}
+
+                  <View style={styles.flashPricesRow}>
+                    <Text style={styles.flashOldPrice}>{money(flashOffer.price)}</Text>
+                    <Text style={[styles.flashNewPrice, { color: PRIMARY_COLOR }]}>
+                      {money(flashOffer.sale_price ?? flashOffer.effective_price)}
+                    </Text>
+                  </View>
+
+                  <View style={styles.flashTimerBox}>
+                    <Text style={styles.flashTimerLabel}>⏱ TERMINA EM</Text>
+                    <Text style={styles.flashTimer}>{countdown}</Text>
+                  </View>
+
+                  <Pressable
+                    onPress={() => {
+                      closeFlashOffer();
+                      router.push(`/product/${flashOffer.id}`);
+                    }}
+                    style={[styles.flashCta, { backgroundColor: PRIMARY_COLOR }]}
+                  >
+                    <Text style={styles.flashCtaText}>PEDIR AGORA</Text>
+                  </Pressable>
+                </View>
+              </View>
+            </View>
+          </Modal>
+        )}
       </View>
     </>
   );
@@ -339,4 +429,64 @@ const styles = StyleSheet.create({
     paddingHorizontal: 4,
   },
   cartBarText: { color: "#fff", fontWeight: "800", fontSize: 13 },
+  flashOverlay: {
+    flex: 1,
+    backgroundColor: "rgba(0,0,0,0.6)",
+    alignItems: "center",
+    justifyContent: "center",
+    padding: 20,
+  },
+  flashCard: {
+    width: "100%",
+    maxWidth: 380,
+    borderRadius: 18,
+    overflow: "hidden",
+    backgroundColor: "#fff",
+  },
+  flashClose: {
+    position: "absolute",
+    top: 46,
+    right: 12,
+    zIndex: 2,
+    width: 32,
+    height: 32,
+    borderRadius: 16,
+    backgroundColor: "rgba(0,0,0,0.45)",
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  flashCloseText: { color: "#fff", fontSize: 15, fontWeight: "800" },
+  flashBanner: { alignItems: "center", paddingVertical: 9 },
+  flashBannerText: { color: "#fff", fontWeight: "800", fontSize: 12, letterSpacing: 1.2 },
+  flashImage: { width: "100%", height: 190, resizeMode: "cover" },
+  flashImagePlaceholder: {
+    alignItems: "center",
+    justifyContent: "center",
+    backgroundColor: "#f1f5f9",
+  },
+  flashBody: { padding: 18, alignItems: "center" },
+  flashHeadline: { fontSize: 19, fontWeight: "800", color: "#0f172a", textAlign: "center" },
+  flashMessage: { color: "#64748b", fontSize: 12, marginTop: 4, textAlign: "center" },
+  flashPricesRow: { flexDirection: "row", alignItems: "center", gap: 10, marginTop: 10 },
+  flashOldPrice: { color: "#94a3b8", textDecorationLine: "line-through", fontSize: 14 },
+  flashNewPrice: { fontSize: 26, fontWeight: "800" },
+  flashTimerBox: {
+    alignItems: "center",
+    backgroundColor: "#f8fafc",
+    borderRadius: 12,
+    paddingHorizontal: 18,
+    paddingVertical: 8,
+    marginTop: 12,
+    alignSelf: "center",
+  },
+  flashTimerLabel: { color: "#64748b", fontSize: 10, fontWeight: "800", letterSpacing: 1 },
+  flashTimer: { fontSize: 22, fontWeight: "800", color: "#0f172a", fontVariant: ["tabular-nums"] },
+  flashCta: {
+    marginTop: 14,
+    alignSelf: "stretch",
+    paddingVertical: 15,
+    borderRadius: 12,
+    alignItems: "center",
+  },
+  flashCtaText: { color: "#fff", fontWeight: "800", fontSize: 15, letterSpacing: 0.5 },
 });

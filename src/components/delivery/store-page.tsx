@@ -70,6 +70,8 @@ import { cn } from "@/lib/utils";
 import { StorePageProductDialog } from "./store-page-product-dialog";
 import { StorePageCart } from "./store-page-cart";
 import { StorePageFooter } from "./store-page-footer";
+import { FlashOfferModal } from "./flash-offer-modal";
+import { pickFlashOffer, wasFlashDismissed, dismissFlashOffer } from "@/lib/flash-offer";
 import { supabase } from "@/integrations/supabase/client";
 
 export const storeSettingsOptions = (storeId: string) =>
@@ -135,6 +137,20 @@ export function StorePage({ storeId }: { storeId: string }) {
   const [checkoutStep, setCheckoutStep] = useState<"cart" | "info" | "success">("cart");
   const [lastCreatedOrder, setLastCreatedOrder] = useState<any>(null);
   const isHydrated = useIsHydrated();
+
+  // ⚡ Oferta Relâmpago: só abre na 1ª visita da sessão (fechar grava descarte;
+  // oferta nova reabre). Validade real é do banco, via getPromotionStatus.
+  const allProducts = useMemo(
+    () => categories.flatMap((category: any) => category.products ?? []),
+    [categories],
+  );
+  const flashOffer = useMemo(() => pickFlashOffer(allProducts), [allProducts]);
+  const [flashOfferClosed, setFlashOfferClosed] = useState(false);
+  const showFlashOffer =
+    isHydrated &&
+    !!flashOffer &&
+    !flashOfferClosed &&
+    !wasFlashDismissed(flashOffer.id, flashOffer.sale_start_at);
 
   // Real-time synchronization for store settings
   useEffect(() => {
@@ -625,6 +641,22 @@ export function StorePage({ storeId }: { storeId: string }) {
           </SheetContent>
         </Sheet>
       </div>
+
+      {showFlashOffer && (
+        <FlashOfferModal
+          offer={flashOffer}
+          formatCurrency={formatCurrency}
+          onAskNow={(offer) => {
+            setFlashOfferClosed(true);
+            dismissFlashOffer(offer.id, offer.sale_start_at);
+            setSelectedProduct(offer);
+          }}
+          onClose={() => {
+            setFlashOfferClosed(true);
+            if (flashOffer) dismissFlashOffer(flashOffer.id, flashOffer.sale_start_at);
+          }}
+        />
+      )}
 
       <StorePageProductDialog
         product={selectedProduct}

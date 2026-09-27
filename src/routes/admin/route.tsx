@@ -57,6 +57,7 @@ import {
   Wrench,
   Store as StoreIcon,
   WalletCards,
+  Zap,
 } from "lucide-react";
 import { useState, useEffect } from "react";
 import { useQuery } from "@tanstack/react-query";
@@ -68,6 +69,7 @@ const ROUTE_FEATURE: Record<string, FeatureId> = {
   "/admin/categories": "categories",
   "/admin/add-ons": "addons",
   "/admin/customers": "customers",
+  "/admin/flash-offer": "promotions",
   "/admin/delivery": "delivery",
   "/admin/reports": "reports",
   "/admin/settings": "settings",
@@ -358,6 +360,12 @@ function AdminLayout() {
     { label: "Categorias", to: "/admin/categories", icon: Tags, permission: "view_categories" },
     { label: "Adicionais", to: "/admin/add-ons", icon: PlusCircle, permission: "view_addons" },
     { label: "Clientes", to: "/admin/customers", icon: Users, permission: "view_customers" },
+    {
+      label: "Oferta Relâmpago",
+      to: "/admin/flash-offer",
+      icon: Zap,
+      permission: "view_products",
+    },
     {
       label: "Taxas de Entrega",
       to: "/admin/delivery",
