@@ -1,4 +1,10 @@
-import { fetchCatalog, fetchStore, type CatalogCategory, type StoreSettings } from "@/lib/api";
+import {
+  fetchCatalog,
+  fetchStore,
+  type CatalogCategory,
+  type CatalogProduct,
+  type StoreSettings,
+} from "@/lib/api";
 import { PRIMARY_COLOR, SECONDARY_COLOR, STORE_SLUG } from "@/lib/supabase";
 import { useCart } from "@/lib/cart";
 import {
@@ -13,6 +19,7 @@ import { Link, router, Stack } from "expo-router";
 import { useEffect, useMemo, useRef, useState } from "react";
 import {
   ActivityIndicator,
+  Alert,
   FlatList,
   Image,
   Modal,
@@ -71,6 +78,28 @@ export default function StoreScreen() {
   const closeFlashOffer = () => {
     setFlashOfferClosed(true);
     if (flashOffer) dismissFlashOffer(flashOffer.id, flashOffer.sale_start_at);
+  };
+  // ➕ Botão + do card: produto sem grupos de adicionais entra direto na
+  // sacola; com adicionais, abre a página do produto para escolher.
+  const quickAdd = (product: CatalogProduct) => {
+    const groups = (product.addons ?? [])
+      .map((entry) => entry.group)
+      .filter((group) => group.status !== "inactive" && group.items.length > 0);
+    if (groups.length > 0) {
+      router.push(`/product/${product.id}`);
+      return;
+    }
+    cart.addItem({
+      product_id: product.id,
+      name: product.name,
+      unit_price: product.effective_price,
+      image_url: product.image_url,
+      quantity: 1,
+      observation: "",
+      addon_ids: [],
+      addons: [],
+    });
+    Alert.alert("Adicionado", `1x ${product.name} foi adicionado à sacola.`);
   };
 
   if (storeQuery.isLoading || catalogQuery.isLoading) {
@@ -221,6 +250,13 @@ export default function StoreScreen() {
                         ) : null}
                         <Text style={styles.productPrice}>{money(product.effective_price)}</Text>
                       </View>
+                      <Pressable
+                        onPress={() => quickAdd(product)}
+                        hitSlop={8}
+                        style={styles.productAddButton}
+                      >
+                        <Text style={styles.productAddButtonText}>+</Text>
+                      </Pressable>
                       {product.image_url ? (
                         <Image source={{ uri: product.image_url }} style={styles.productImage} />
                       ) : null}
@@ -368,6 +404,17 @@ const styles = StyleSheet.create({
   productName: { fontWeight: "700", color: "#0f172a" },
   productDescription: { color: "#64748b", fontSize: 12, marginTop: 4 },
   productPrice: { color: PRIMARY_COLOR, fontWeight: "800", marginTop: 6 },
+  productAddButton: {
+    width: 30,
+    height: 30,
+    borderRadius: 15,
+    alignItems: "center",
+    justifyContent: "center",
+    backgroundColor: PRIMARY_COLOR,
+    alignSelf: "flex-end",
+    marginLeft: 8,
+  },
+  productAddButtonText: { color: "#fff", fontSize: 20, fontWeight: "800", lineHeight: 22 },
   productImage: {
     width: 88,
     height: 88,
