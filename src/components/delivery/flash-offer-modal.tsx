@@ -44,7 +44,7 @@ export function FlashOfferModal({
   return (
     <Dialog open onOpenChange={(open) => !open && onClose()}>
       <DialogContent
-        className="w-[92vw] max-w-md rounded-2xl gap-0 border-none overflow-hidden bg-white p-0 animate-in fade-in zoom-in-95 duration-300"
+        className="w-[88vw] max-w-sm max-h-[78dvh] overflow-y-auto gap-0 rounded-2xl border-none bg-white p-0 animate-in fade-in zoom-in-90 duration-500"
         hideClose
       >
         <DialogTitle className="sr-only">Oferta Relâmpago — {headline}</DialogTitle>
@@ -59,7 +59,7 @@ export function FlashOfferModal({
         </button>
 
         <div
-          className="flex items-center justify-center gap-2 py-2.5 text-xs font-black uppercase tracking-[0.14em] text-white"
+          className="flex origin-center animate-pulse items-center justify-center gap-2 py-2 text-xs font-black tracking-wide text-white"
           style={{ background: "var(--primary-color, #1d4ed8)" }}
         >
           <Zap size={15} fill="currentColor" />
@@ -71,7 +71,7 @@ export function FlashOfferModal({
             <img
               src={offer.image_url}
               alt={headline}
-              className="h-52 w-full object-cover sm:h-60"
+              className="h-36 w-full object-cover sm:h-40"
               onError={(e) => {
                 e.currentTarget.style.display = "none";
               }}
@@ -118,7 +118,7 @@ export function FlashOfferModal({
           </div>
 
           <Button
-            className="h-12 w-full rounded-xl text-base font-black shadow-lg transition-transform active:scale-[0.98]"
+            className="h-12 w-full animate-pulse rounded-xl text-base font-black shadow-lg transition-transform active:scale-[0.98] motion-reduce:animate-none"
             style={{ background: "var(--primary-color, #1d4ed8)" }}
             onClick={() => onAskNow(offer)}
           >
