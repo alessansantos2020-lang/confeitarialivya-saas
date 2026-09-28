@@ -14,12 +14,14 @@ import {
   dismissFlashOffer,
   type FlashOfferProduct,
 } from "@/lib/flash-offer";
+import { getDiscountPercent } from "@/lib/promotions";
 import { useQuery } from "@tanstack/react-query";
 import { Link, router, Stack } from "expo-router";
 import { useEffect, useMemo, useRef, useState } from "react";
 import {
   ActivityIndicator,
   Alert,
+  Animated,
   FlatList,
   Image,
   Modal,
@@ -68,12 +70,36 @@ export default function StoreScreen() {
     !flashOfferClosed &&
     !wasFlashDismissed(flashOffer.id, flashOffer.sale_start_at);
 
+  const flashScale = useRef(new Animated.Value(0.88)).current;
+  const flashPulse = useRef(new Animated.Value(1)).current;
+  const flashDiscount = flashOffer
+    ? getDiscountPercent(flashOffer.price, flashOffer.sale_price ?? flashOffer.effective_price)
+    : 0;
+
   useEffect(() => {
     setCountdown(getFlashCountdown(flashOffer?.sale_end_at));
-    if (!showFlashOffer || !flashOffer?.sale_end_at) return;
+    if (!showFlashOffer) return;
+    flashScale.setValue(0.88);
+    Animated.spring(flashScale, {
+      toValue: 1,
+      useNativeDriver: true,
+      damping: 13,
+      stiffness: 170,
+    }).start();
+    const pulse = Animated.loop(
+      Animated.sequence([
+        Animated.timing(flashPulse, { toValue: 1.035, duration: 850, useNativeDriver: true }),
+        Animated.timing(flashPulse, { toValue: 1, duration: 850, useNativeDriver: true }),
+      ]),
+    );
+    pulse.start();
+    if (!flashOffer?.sale_end_at) return () => pulse.stop();
     const timer = setInterval(() => setCountdown(getFlashCountdown(flashOffer.sale_end_at)), 1000);
-    return () => clearInterval(timer);
-  }, [flashOffer?.sale_end_at, showFlashOffer]);
+    return () => {
+      clearInterval(timer);
+      pulse.stop();
+    };
+  }, [flashOffer?.sale_end_at, showFlashOffer, flashScale, flashPulse]);
 
   const closeFlashOffer = () => {
     setFlashOfferClosed(true);
@@ -285,22 +311,29 @@ export default function StoreScreen() {
         {showFlashOffer && flashOffer && (
           <Modal transparent animationType="fade" visible onRequestClose={closeFlashOffer}>
             <View style={styles.flashOverlay}>
-              <View style={styles.flashCard}>
+              <Animated.View style={[styles.flashCard, { transform: [{ scale: flashScale }] }]}>
                 <Pressable onPress={closeFlashOffer} hitSlop={10} style={styles.flashClose}>
                   <Text style={styles.flashCloseText}>✕</Text>
                 </Pressable>
 
-                <View style={[styles.flashBanner, { backgroundColor: PRIMARY_COLOR }]}>
-                  <Text style={styles.flashBannerText}>⚡ OFERTA RELÂMPAGO</Text>
+                <View style={styles.flashBanner}>
+                  <Animated.Text
+                    style={[styles.flashBannerText, { transform: [{ scale: flashPulse }] }]}
+                  >
+                    ⚡ OFERTA RELÂMPAGO
+                  </Animated.Text>
+                  <Text style={styles.flashBannerSub}>APROVEITE, É POR TEMPO LIMITADO!</Text>
                 </View>
 
-                {flashOffer.image_url ? (
-                  <Image source={{ uri: flashOffer.image_url }} style={styles.flashImage} />
-                ) : (
-                  <View style={[styles.flashImage, styles.flashImagePlaceholder]}>
-                    <Text style={{ fontSize: 40 }}>⚡</Text>
-                  </View>
-                )}
+                <View style={styles.flashImageContainer}>
+                  {flashOffer.image_url ? (
+                    <Image source={{ uri: flashOffer.image_url }} style={styles.flashImage} />
+                  ) : (
+                    <View style={[styles.flashImage, styles.flashImagePlaceholder]}>
+                      <Text style={{ fontSize: 40 }}>⚡</Text>
+                    </View>
+                  )}
+                </View>
 
                 <View style={styles.flashBody}>
                   <Text style={styles.flashHeadline} numberOfLines={2}>
@@ -317,6 +350,11 @@ export default function StoreScreen() {
                     <Text style={[styles.flashNewPrice, { color: PRIMARY_COLOR }]}>
                       {money(flashOffer.sale_price ?? flashOffer.effective_price)}
                     </Text>
+                    {flashDiscount > 0 && (
+                      <View style={styles.flashDiscountBadge}>
+                        <Text style={styles.flashDiscountText}>-{flashDiscount}%</Text>
+                      </View>
+                    )}
                   </View>
 
                   <View style={styles.flashTimerBox}>
@@ -324,17 +362,21 @@ export default function StoreScreen() {
                     <Text style={styles.flashTimer}>{countdown}</Text>
                   </View>
 
-                  <Pressable
-                    onPress={() => {
-                      closeFlashOffer();
-                      router.push(`/product/${flashOffer.id}`);
-                    }}
-                    style={[styles.flashCta, { backgroundColor: PRIMARY_COLOR }]}
+                  <Animated.View
+                    style={{ alignSelf: "stretch", transform: [{ scale: flashPulse }] }}
                   >
-                    <Text style={styles.flashCtaText}>PEDIR AGORA</Text>
-                  </Pressable>
+                    <Pressable
+                      onPress={() => {
+                        closeFlashOffer();
+                        router.push(`/product/${flashOffer.id}`);
+                      }}
+                      style={styles.flashCta}
+                    >
+                      <Text style={styles.flashCtaText}>🛒 PEDIR AGORA →</Text>
+                    </Pressable>
+                  </Animated.View>
                 </View>
-              </View>
+              </Animated.View>
             </View>
           </Modal>
         )}
@@ -478,62 +520,91 @@ const styles = StyleSheet.create({
   cartBarText: { color: "#fff", fontWeight: "800", fontSize: 13 },
   flashOverlay: {
     flex: 1,
-    backgroundColor: "rgba(0,0,0,0.6)",
+    backgroundColor: "rgba(0,0,0,0.65)",
     alignItems: "center",
     justifyContent: "center",
-    padding: 20,
+    paddingHorizontal: 16,
+    paddingVertical: 24,
   },
   flashCard: {
     width: "100%",
-    maxWidth: 380,
-    borderRadius: 18,
+    maxWidth: 400,
+    maxHeight: "75%",
+    borderRadius: 24,
     overflow: "hidden",
     backgroundColor: "#fff",
+    elevation: 24,
+    shadowColor: "#000",
+    shadowOpacity: 0.35,
+    shadowRadius: 30,
+    shadowOffset: { width: 0, height: 25 },
   },
   flashClose: {
     position: "absolute",
-    top: 46,
+    top: 8,
     right: 12,
     zIndex: 2,
-    width: 32,
-    height: 32,
-    borderRadius: 16,
-    backgroundColor: "rgba(0,0,0,0.45)",
+    width: 36,
+    height: 36,
+    borderRadius: 18,
+    backgroundColor: "rgba(0,0,0,0.3)",
     alignItems: "center",
     justifyContent: "center",
   },
-  flashCloseText: { color: "#fff", fontSize: 15, fontWeight: "800" },
-  flashBanner: { alignItems: "center", paddingVertical: 9 },
-  flashBannerText: { color: "#fff", fontWeight: "800", fontSize: 12, letterSpacing: 1.2 },
-  flashImage: { width: "100%", height: 190, resizeMode: "cover" },
+  flashCloseText: { color: "#fff", fontSize: 16, fontWeight: "800" },
+  flashBanner: {
+    alignItems: "center",
+    paddingVertical: 10,
+    backgroundColor: "#dc2626",
+  },
+  flashBannerText: { color: "#fff", fontWeight: "800", fontSize: 14, letterSpacing: 1.2 },
+  flashBannerSub: {
+    color: "rgba(255,255,255,0.85)",
+    fontWeight: "700",
+    fontSize: 10,
+    letterSpacing: 0.8,
+    marginTop: 2,
+  },
+  flashImage: { width: "100%", height: 170, resizeMode: "cover" },
+  flashImageContainer: { paddingHorizontal: 16, paddingTop: 14 },
   flashImagePlaceholder: {
     alignItems: "center",
     justifyContent: "center",
-    backgroundColor: "#f1f5f9",
+    backgroundColor: "#fff7ed",
+    borderRadius: 18,
+    overflow: "hidden",
   },
-  flashBody: { padding: 18, alignItems: "center" },
-  flashHeadline: { fontSize: 19, fontWeight: "800", color: "#0f172a", textAlign: "center" },
-  flashMessage: { color: "#64748b", fontSize: 12, marginTop: 4, textAlign: "center" },
-  flashPricesRow: { flexDirection: "row", alignItems: "center", gap: 10, marginTop: 10 },
-  flashOldPrice: { color: "#94a3b8", textDecorationLine: "line-through", fontSize: 14 },
-  flashNewPrice: { fontSize: 26, fontWeight: "800" },
+  flashBody: { paddingHorizontal: 16, paddingTop: 14, paddingBottom: 16, alignItems: "center" },
+  flashHeadline: { fontSize: 22, fontWeight: "800", color: "#0f172a", textAlign: "center" },
+  flashMessage: { color: "#64748b", fontSize: 13, marginTop: 4, textAlign: "center" },
+  flashPricesRow: { flexDirection: "row", alignItems: "center", gap: 10, marginTop: 12 },
+  flashOldPrice: { color: "#94a3b8", textDecorationLine: "line-through", fontSize: 15 },
+  flashNewPrice: { fontSize: 34, fontWeight: "800" },
+  flashDiscountBadge: {
+    backgroundColor: "#dc2626",
+    borderRadius: 999,
+    paddingHorizontal: 10,
+    paddingVertical: 4,
+  },
+  flashDiscountText: { color: "#fff", fontWeight: "800", fontSize: 12 },
   flashTimerBox: {
     alignItems: "center",
-    backgroundColor: "#f8fafc",
-    borderRadius: 12,
-    paddingHorizontal: 18,
-    paddingVertical: 8,
-    marginTop: 12,
-    alignSelf: "center",
-  },
-  flashTimerLabel: { color: "#64748b", fontSize: 10, fontWeight: "800", letterSpacing: 1 },
-  flashTimer: { fontSize: 22, fontWeight: "800", color: "#0f172a", fontVariant: ["tabular-nums"] },
-  flashCta: {
+    backgroundColor: "#fef2f2",
+    borderRadius: 18,
+    paddingHorizontal: 22,
+    paddingVertical: 10,
     marginTop: 14,
     alignSelf: "stretch",
-    paddingVertical: 15,
-    borderRadius: 12,
-    alignItems: "center",
   },
-  flashCtaText: { color: "#fff", fontWeight: "800", fontSize: 15, letterSpacing: 0.5 },
+  flashTimerLabel: { color: "#ef4444", fontSize: 11, fontWeight: "800", letterSpacing: 1 },
+  flashTimer: { fontSize: 26, fontWeight: "800", color: "#dc2626", fontVariant: ["tabular-nums"] },
+  flashCta: {
+    marginTop: 16,
+    alignSelf: "stretch",
+    paddingVertical: 17,
+    borderRadius: 18,
+    alignItems: "center",
+    backgroundColor: "#dc2626",
+  },
+  flashCtaText: { color: "#fff", fontWeight: "800", fontSize: 16, letterSpacing: 0.5 },
 });
