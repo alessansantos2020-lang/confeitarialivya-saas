@@ -1,8 +1,7 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
 import { useEffect, useState } from "react";
 import { Dialog, DialogContent, DialogTitle } from "@/components/ui/dialog";
-import { Button } from "@/components/ui/button";
-import { X, Zap, Timer } from "lucide-react";
+import { X, Zap, Timer, ShoppingCart, ArrowRight } from "lucide-react";
 import { getDiscountPercent } from "@/lib/promotions";
 import { getFlashCountdown } from "@/lib/flash-offer";
 
@@ -44,86 +43,97 @@ export function FlashOfferModal({
   return (
     <Dialog open onOpenChange={(open) => !open && onClose()}>
       <DialogContent
-        className="w-[88vw] max-w-sm max-h-[78dvh] overflow-y-auto gap-0 rounded-2xl border-none bg-white p-0 animate-in fade-in zoom-in-90 duration-500"
+        className="w-[92vw] max-w-[400px] max-h-[75dvh] overflow-y-auto gap-0 rounded-[24px] border-none bg-white p-0 animate-in fade-in zoom-in-[0.94] duration-300 shadow-[0_25px_60px_-12px_rgba(0,0,0,0.55)]"
         hideClose
       >
         <DialogTitle className="sr-only">Oferta Relâmpago — {headline}</DialogTitle>
 
-        <button
-          type="button"
-          onClick={onClose}
-          aria-label="Fechar oferta"
-          className="absolute right-3 top-3 z-10 rounded-full bg-black/45 p-1.5 text-white backdrop-blur-sm transition-colors hover:bg-black/70 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white"
-        >
-          <X size={18} />
-        </button>
-
+        {/* Cabeçalho gradiente */}
         <div
-          className="flex origin-center animate-pulse items-center justify-center gap-2 py-2 text-xs font-black tracking-wide text-white"
-          style={{ background: "var(--primary-color, #1d4ed8)" }}
+          className="relative bg-gradient-to-r from-red-600 via-red-500 to-orange-500 px-5 py-3 text-white"
+          style={{ borderRadius: "24px 24px 0 0" }}
         >
-          <Zap size={15} fill="currentColor" />
-          Oferta Relâmpago
+          <button
+            type="button"
+            onClick={onClose}
+            aria-label="Fechar oferta"
+            className="absolute right-3 top-3 z-10 flex h-9 w-9 items-center justify-center rounded-full bg-black/30 text-white backdrop-blur-sm transition-colors hover:bg-black/50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white"
+          >
+            <X size={18} />
+          </button>
+          <div className="flex items-center gap-2">
+            <Zap size={18} fill="currentColor" className="shrink-0" />
+            <span className="text-sm font-black uppercase tracking-wider drop-shadow-sm">
+              Oferta Relâmpago
+            </span>
+          </div>
+          <p className="mt-0.5 pl-[26px] text-[11px] font-semibold uppercase tracking-wide text-white/85">
+            Aproveite, é por tempo limitado!
+          </p>
         </div>
 
-        <div className="bg-slate-100">
+        {/* Imagem do produto */}
+        <div className="px-4 pt-4">
           {offer.image_url ? (
             <img
               src={offer.image_url}
               alt={headline}
-              className="h-36 w-full object-cover sm:h-40"
+              className="h-44 w-full rounded-[18px] object-cover sm:h-52"
               onError={(e) => {
                 e.currentTarget.style.display = "none";
               }}
             />
           ) : (
-            <div className="flex h-40 items-center justify-center bg-[var(--secondary-color)] text-4xl">
+            <div className="flex h-44 items-center justify-center rounded-[18px] bg-orange-50 text-5xl sm:h-52">
               ⚡
             </div>
           )}
         </div>
 
-        <div className="space-y-3 p-5 text-center">
-          <h2 className="text-xl font-black leading-tight text-slate-900">{headline}</h2>
+        {/* Produto, preço e contador */}
+        <div className="flex flex-col items-center gap-3 px-5 pb-5 pt-4 text-center">
+          <h2 className="text-2xl font-extrabold leading-tight text-slate-900">{headline}</h2>
           {message ? <p className="text-sm text-slate-500 line-clamp-2">{message}</p> : null}
 
-          <div className="flex items-center justify-center gap-2.5">
+          <div className="flex flex-wrap items-center justify-center gap-x-3 gap-y-1">
             <span className="text-base font-semibold text-slate-400 line-through">
               {formatCurrency(offer.price)}
             </span>
             <span
-              className="text-3xl font-black"
+              className="text-4xl font-extrabold tracking-tight"
               style={{ color: "var(--primary-color, #1d4ed8)" }}
             >
               {formatCurrency(salePrice)}
             </span>
             {discount > 0 && (
-              <span className="rounded-full bg-red-600 px-2 py-0.5 text-[11px] font-black text-white">
+              <span className="rounded-full bg-red-600 px-2.5 py-1 text-xs font-black text-white shadow-sm">
                 -{discount}%
               </span>
             )}
           </div>
 
-          <div className="flex flex-col items-center gap-1 rounded-xl bg-slate-50 px-4 py-2.5">
-            <span className="flex items-center gap-1.5 text-[11px] font-bold uppercase tracking-wider text-slate-500">
+          <div
+            className="flex w-full flex-col items-center gap-0.5 rounded-[18px] bg-gradient-to-r from-red-50 to-orange-50 px-4 py-2.5"
+            data-testid="flash-countdown"
+          >
+            <span className="flex items-center gap-1.5 text-[11px] font-bold uppercase tracking-wider text-red-500">
               <Timer size={13} />
               Termina em
             </span>
-            <span
-              data-testid="flash-countdown"
-              className="font-mono text-2xl font-black tabular-nums text-slate-900"
-            >
+            <span className="font-mono text-2xl font-black tabular-nums text-red-600">
               {countdown}
             </span>
           </div>
 
-          <Button
-            className="h-12 w-full animate-pulse rounded-xl text-base font-black shadow-lg transition-transform active:scale-[0.98] motion-reduce:animate-none"
-            style={{ background: "var(--primary-color, #1d4ed8)" }}
+          <button
+            type="button"
             onClick={() => onAskNow(offer)}
+            className="flex h-14 w-full items-center justify-center gap-2 rounded-[18px] bg-gradient-to-r from-red-600 to-orange-500 text-base font-extrabold uppercase tracking-wide text-white shadow-lg shadow-red-500/30 transition-transform active:scale-[0.97]"
           >
-            PEDIR AGORA
-          </Button>
+            <ShoppingCart size={18} />
+            Pedir agora
+            <ArrowRight size={18} />
+          </button>
         </div>
       </DialogContent>
     </Dialog>
