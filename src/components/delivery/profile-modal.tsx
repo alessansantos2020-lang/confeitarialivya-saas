@@ -54,7 +54,16 @@ type ProfileModalProps = {
 };
 
 type Section =
-  null | "orders" | "addresses" | "favorites" | "payments" | "coupons" | "edit" | "signout";
+  | null
+  | "orders"
+  | "addresses"
+  | "favorites"
+  | "payments"
+  | "notifications"
+  | "coupons"
+  | "settings"
+  | "edit"
+  | "signout";
 
 export function ProfileModal({
   open,
@@ -95,9 +104,9 @@ export function ProfileModal({
     },
   ];
   const prefRows: { key: Section; icon: any; label: string; hint?: string }[] = [
-    { key: "orders", icon: Bell, label: "Notificações", hint: "Em breve" },
+    { key: "notifications", icon: Bell, label: "Notificações", hint: "Preferências de avisos" },
     { key: "coupons", icon: Gift, label: "Cupons e benefícios", hint: "Seus descontos" },
-    { key: "favorites", icon: Settings, label: "Configurações", hint: "Em breve" },
+    { key: "settings", icon: Settings, label: "Configurações", hint: "Conta e privacidade" },
   ];
 
   return (
@@ -302,6 +311,22 @@ function SignedInView({
         title="Favoritos"
         icon={Heart}
         emptyText="Em breve você poderá favoritar produtos."
+        items={[]}
+        onClose={() => setSection(null)}
+      />
+      <SimpleListSection
+        open={section === "notifications"}
+        title="Notificações"
+        icon={Bell}
+        emptyText="As notificações da loja são exibidas nesta página quando disponíveis."
+        items={[]}
+        onClose={() => setSection(null)}
+      />
+      <SimpleListSection
+        open={section === "settings"}
+        title="Configurações"
+        icon={Settings}
+        emptyText="As configurações da conta ficam disponíveis ao editar seu perfil ou sair da conta."
         items={[]}
         onClose={() => setSection(null)}
       />
