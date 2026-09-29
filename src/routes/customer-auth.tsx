@@ -5,7 +5,6 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
-import { supabase } from "@/integrations/supabase/client";
 import { signInCustomer, signUpCustomer } from "@/lib/customer-auth.functions";
 import { toast } from "sonner";
 
@@ -28,10 +27,9 @@ function CustomerAuthPage() {
   const [showPassword, setShowPassword] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
 
-  const finish = async () => {
-    const { data } = await supabase.from("stores").select("slug").eq("id", store).maybeSingle();
-    if (data?.slug) {
-      void navigate({ to: "/$slug", params: { slug: data.slug } });
+  const finish = () => {
+    if (store) {
+      void navigate({ to: "/$slug", params: { slug: store } });
     } else {
       void navigate({ to: "/" });
     }
