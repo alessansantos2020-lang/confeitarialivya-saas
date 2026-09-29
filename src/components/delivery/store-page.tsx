@@ -27,7 +27,7 @@ import {
   getCategoriesWithProducts,
   type StoreSettings,
 } from "@/lib/delivery.functions";
-import { getCatalogPricing } from "@/lib/promotions";
+import { getCatalogPricing, getPromotionStatus } from "@/lib/promotions";
 import { createOrder } from "@/lib/orders.functions";
 import { getActiveDeliveryFees } from "@/lib/delivery-fees.functions";
 import { getPublicStorePaymentMethods } from "@/lib/store-payments";
@@ -71,6 +71,8 @@ import { StorePageProductDialog } from "./store-page-product-dialog";
 import { StorePageCart } from "./store-page-cart";
 import { StorePageFooter } from "./store-page-footer";
 import { FlashOfferModal } from "./flash-offer-modal";
+import { PromotionsModal } from "./promotions-modal";
+import { BottomNav } from "./bottom-nav";
 import { pickFlashOffer, wasFlashDismissed, dismissFlashOffer } from "@/lib/flash-offer";
 import { supabase } from "@/integrations/supabase/client";
 
@@ -134,6 +136,7 @@ export function StorePage({ storeId }: { storeId: string }) {
   const [productObservation, setProductObservation] = useState("");
   const [selectedAddons, setSelectedAddons] = useState<Record<string, string[]>>({});
   const [isCartOpen, setIsCartOpen] = useState(false);
+  const [promotionsOpen, setPromotionsOpen] = useState(false);
   const [checkoutStep, setCheckoutStep] = useState<"cart" | "info" | "success">("cart");
   const [lastCreatedOrder, setLastCreatedOrder] = useState<any>(null);
   const isHydrated = useIsHydrated();
@@ -145,6 +148,14 @@ export function StorePage({ storeId }: { storeId: string }) {
     [categories],
   );
   const flashOffer = useMemo(() => pickFlashOffer(allProducts), [allProducts]);
+  const promotions = useMemo(
+    () =>
+      allProducts.filter((product: any) => {
+        const status = getPromotionStatus(product);
+        return status === "active";
+      }),
+    [allProducts],
+  );
   const [flashOfferClosed, setFlashOfferClosed] = useState(false);
   const showFlashOffer =
     isHydrated &&
@@ -671,6 +682,38 @@ export function StorePage({ storeId }: { storeId: string }) {
           setProductObservation("");
           setSelectedAddons({});
         }}
+      />
+
+      {/* Bottom Navigation (mobile) */}
+      <BottomNav
+        activeTab="cardapio"
+        cartCount={isHydrated ? cartTotalItems : 0}
+        onCardapio={() => {
+          window.scrollTo({ top: 0, behavior: "smooth" });
+        }}
+        onPromocoes={() => setPromotionsOpen(true)}
+        onPedidos={() => {
+          if (cartTotalItems > 0) {
+            setIsCartOpen(true);
+          } else {
+            toast("Nenhum pedido em andamento. Adicione itens à sacola!");
+          }
+        }}
+        onPerfil={() => {
+          toast("Em breve: área do cliente.");
+        }}
+      />
+
+      {/* Modal de Promoções (mobile) */}
+      <PromotionsModal
+        open={promotionsOpen}
+        promotions={promotions}
+        formatCurrency={formatCurrency}
+        onSelect={(product) => {
+          setPromotionsOpen(false);
+          setSelectedProduct(product);
+        }}
+        onClose={() => setPromotionsOpen(false)}
       />
     </div>
   );
