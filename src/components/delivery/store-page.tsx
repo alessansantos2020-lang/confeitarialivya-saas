@@ -783,7 +783,6 @@ export function StorePage({ storeId }: { storeId: string }) {
       <ProfileModal
         open={profileOpen}
         storeId={storeId}
-        storeName={settings.name}
         paymentMethodsLabel={(() => {
           const acceptPix = paymentMethods
             ? paymentMethods.accept_manual_pix !== false ||
@@ -802,7 +801,7 @@ export function StorePage({ storeId }: { storeId: string }) {
         formatCurrency={formatCurrency}
         onLogin={() => {
           setProfileOpen(false);
-          window.location.href = `/customer-auth?store=${storeId}`;
+          window.location.href = `/customer-auth?store=${encodeURIComponent(window.location.pathname.split("/").filter(Boolean)[0] ?? "")}`;
         }}
         onClose={() => setProfileOpen(false)}
       />

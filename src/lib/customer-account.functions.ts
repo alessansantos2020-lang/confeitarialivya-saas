@@ -11,7 +11,7 @@ export type CustomerOrder = {
   status: string;
   total_amount: number;
   created_at: string | null;
-  order_items: { id: string; product_name: string; quantity: number }[];
+  order_items: { id: string; product_name: string | null; quantity: number }[];
 };
 
 export const getMyOrders = async (storeId: string): Promise<CustomerOrder[]> => {

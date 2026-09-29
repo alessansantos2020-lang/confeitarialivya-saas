@@ -47,7 +47,6 @@ import {
 type ProfileModalProps = {
   open: boolean;
   storeId: string;
-  storeName: string;
   paymentMethodsLabel: string[];
   formatCurrency: (value: number) => string;
   onLogin: () => void;
@@ -60,7 +59,6 @@ type Section =
 export function ProfileModal({
   open,
   storeId,
-  storeName,
   paymentMethodsLabel,
   formatCurrency,
   onLogin,
@@ -136,7 +134,6 @@ export function ProfileModal({
             <SignedInView
               session={session}
               storeId={storeId}
-              storeName={storeName}
               paymentMethodsLabel={paymentMethodsLabel}
               formatCurrency={formatCurrency}
               accountRows={accountRows}
@@ -178,7 +175,6 @@ function SignedOutView({ onLogin }: { onLogin: () => void }) {
 function SignedInView({
   session,
   storeId,
-  storeName,
   paymentMethodsLabel,
   formatCurrency,
   accountRows,
@@ -190,7 +186,6 @@ function SignedInView({
 }: {
   session: CustomerSession;
   storeId: string;
-  storeName: string;
   paymentMethodsLabel: string[];
   formatCurrency: (value: number) => string;
   accountRows: { key: Section; icon: any; label: string; hint?: string }[];

@@ -468,13 +468,6 @@ export type Database = {
             referencedRelation: "stores";
             referencedColumns: ["id"];
           },
-          {
-            foreignKeyName: "customer_orders_user_id_fkey";
-            columns: ["user_id"];
-            isOneToOne: false;
-            referencedRelation: "users";
-            referencedColumns: ["id"];
-          },
         ];
       };
       features: {
