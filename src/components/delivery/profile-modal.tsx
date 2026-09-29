@@ -1,7 +1,6 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
 import { useEffect, useMemo, useState } from "react";
 import {
-  X,
   Package,
   MapPin,
   Heart,
@@ -11,6 +10,7 @@ import {
   Settings,
   LogOut,
   ChevronRight,
+  ArrowLeft,
   Pencil,
   UserRound,
   Ticket,
@@ -26,7 +26,6 @@ import { Label } from "@/components/ui/label";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Dialog, DialogContent, DialogTitle } from "@/components/ui/dialog";
 import {
-  getCustomerSession,
   onCustomerAuthChange,
   signOutCustomer,
   updateCustomerProfile,
@@ -51,6 +50,7 @@ type ProfileModalProps = {
   formatCurrency: (value: number) => string;
   onLogin: () => void;
   onClose: () => void;
+  onInternalPageChange: (isInternal: boolean) => void;
 };
 
 type Section =
@@ -62,8 +62,30 @@ type Section =
   | "notifications"
   | "coupons"
   | "settings"
+  | "account-switch"
   | "edit"
   | "signout";
+
+const profileSections: Exclude<Section, null>[] = [
+  "orders",
+  "addresses",
+  "favorites",
+  "payments",
+  "notifications",
+  "coupons",
+  "settings",
+  "account-switch",
+  "edit",
+  "signout",
+];
+
+function sectionFromHash(): Section {
+  if (typeof window === "undefined") return null;
+  const value = window.location.hash.replace(/^#perfil\/?/, "");
+  return profileSections.includes(value as Exclude<Section, null>)
+    ? (value as Exclude<Section, null>)
+    : null;
+}
 
 export function ProfileModal({
   open,
@@ -72,10 +94,37 @@ export function ProfileModal({
   formatCurrency,
   onLogin,
   onClose,
+  onInternalPageChange,
 }: ProfileModalProps) {
   const [session, setSession] = useState<CustomerSession | null>(null);
   const [authReady, setAuthReady] = useState(false);
-  const [section, setSection] = useState<Section>(null);
+  const [section, setSectionState] = useState<Section>(sectionFromHash);
+
+  const setSection = (next: Section) => {
+    if (typeof window === "undefined") {
+      setSectionState(next);
+      return;
+    }
+    if (next === null) {
+      if (window.history.state?.profileView && window.history.state?.profileSection) {
+        window.history.back();
+      } else {
+        setSectionState(null);
+        window.history.replaceState(
+          { profileView: true, profileSection: null },
+          "",
+          `${window.location.pathname}${window.location.search}#perfil`,
+        );
+      }
+      return;
+    }
+    window.history.pushState(
+      { profileView: true, profileSection: next },
+      "",
+      `${window.location.pathname}${window.location.search}#perfil/${next}`,
+    );
+    setSectionState(next);
+  };
 
   useEffect(
     () =>
@@ -87,15 +136,64 @@ export function ProfileModal({
   );
 
   useEffect(() => {
-    if (open) setSection(null);
+    if (open) {
+      setSectionState(sectionFromHash());
+      if (!window.history.state?.profileView) {
+        window.history.pushState(
+          { profileView: true, profileSection: null },
+          "",
+          `${window.location.pathname}${window.location.search}#perfil`,
+        );
+      }
+    }
   }, [open]);
+
+  useEffect(() => {
+    onInternalPageChange(open && section !== null);
+  }, [open, section, onInternalPageChange]);
+
+  useEffect(() => {
+    const onPopState = () => {
+      if (window.history.state?.profileView) {
+        setSectionState(window.history.state.profileSection ?? null);
+      } else {
+        setSectionState(null);
+        onClose();
+      }
+    };
+    window.addEventListener("popstate", onPopState);
+    return () => window.removeEventListener("popstate", onPopState);
+  }, [onClose]);
+
+  const pageTitle: Record<Exclude<Section, null>, string> = {
+    orders: "Meus pedidos",
+    addresses: "Meus endereços",
+    favorites: "Favoritos",
+    payments: "Formas de pagamento",
+    notifications: "Notificações",
+    coupons: "Cupons e benefícios",
+    settings: "Configurações",
+    "account-switch": "Trocar conta",
+    edit: "Editar perfil",
+    signout: "Sair da conta",
+  };
+
+  const goBack = () => {
+    if (section) {
+      setSection(null);
+    } else if (window.history.state?.profileView) {
+      window.history.back();
+    } else {
+      onClose();
+    }
+  };
 
   if (!open) return null;
 
   const accountRows: { key: Section; icon: any; label: string; hint?: string }[] = [
     { key: "orders", icon: Package, label: "Meus pedidos", hint: "Histórico nesta loja" },
     { key: "addresses", icon: MapPin, label: "Meus endereços", hint: "Entrega rápida" },
-    { key: "favorites", icon: Heart, label: "Favoritos", hint: "Em breve" },
+    { key: "favorites", icon: Heart, label: "Favoritos", hint: "Seus produtos favoritos" },
     {
       key: "payments",
       icon: CreditCard,
@@ -105,58 +203,75 @@ export function ProfileModal({
   ];
   const prefRows: { key: Section; icon: any; label: string; hint?: string }[] = [
     { key: "notifications", icon: Bell, label: "Notificações", hint: "Preferências de avisos" },
-    { key: "coupons", icon: Gift, label: "Cupons e benefícios", hint: "Seus descontos" },
-    { key: "settings", icon: Settings, label: "Configurações", hint: "Conta e privacidade" },
+    { key: "coupons", icon: Gift, label: "Cupons e benefícios", hint: "Ofertas e benefícios" },
   ];
 
   return (
     <div
-      className="fixed inset-0 z-[60] flex items-center justify-center bg-black/45 p-4 animate-in fade-in duration-200"
-      onClick={onClose}
+      className="fixed inset-0 z-[60] flex flex-col bg-white pt-[env(safe-area-inset-top)] animate-in slide-in-from-right-2 duration-200"
+      role="dialog"
+      aria-modal="true"
+      aria-label={section ? pageTitle[section] : "Perfil"}
     >
-      <div
-        className="flex max-h-[75vh] w-[calc(100%-32px)] max-w-sm flex-col overflow-hidden rounded-[20px] bg-white shadow-2xl animate-in fade-in zoom-in-95 duration-200"
-        onClick={(event) => event.stopPropagation()}
-      >
-        <div className="flex shrink-0 items-center justify-between border-b border-slate-100 px-5 py-3.5">
-          <h2 className="flex items-center gap-2 text-xl font-black tracking-tight text-slate-900">
-            <UserRound size={20} /> Perfil
-          </h2>
+      {!section && (
+        <header className="flex h-14 shrink-0 items-center gap-3 border-b border-slate-100 px-4">
           <button
             type="button"
-            onClick={onClose}
+            onClick={goBack}
             aria-label="Fechar perfil"
-            className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-slate-100 text-slate-500 transition-colors hover:bg-slate-200"
+            className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full text-slate-600 transition-colors hover:bg-slate-100"
           >
-            <X size={18} />
+            <ArrowLeft size={20} />
           </button>
-        </div>
-
-        <div className="overflow-y-auto">
-          {!authReady ? (
-            <div className="flex items-center justify-center gap-2 py-10 text-sm text-slate-400">
-              <Loader2 className="h-4 w-4 animate-spin" /> Carregando…
-            </div>
-          ) : !session ? (
-            <SignedOutView onLogin={onLogin} />
-          ) : (
-            <SignedInView
-              session={session}
-              storeId={storeId}
-              paymentMethodsLabel={paymentMethodsLabel}
-              formatCurrency={formatCurrency}
-              accountRows={accountRows}
-              prefRows={prefRows}
-              section={section}
-              setSection={setSection}
-              onSessionUpdate={setSession}
-              onSignOut={async () => {
-                await signOutCustomer();
-                setSection(null);
-              }}
-            />
+          <h2 className="min-w-0 flex-1 truncate text-lg font-black text-slate-900">Perfil</h2>
+          {session && (
+            <button
+              type="button"
+              onClick={() => setSection("edit")}
+              aria-label="Editar perfil"
+              className="flex h-10 w-10 items-center justify-center rounded-full text-slate-600 hover:bg-slate-100"
+            >
+              <Pencil size={17} />
+            </button>
           )}
-        </div>
+        </header>
+      )}
+      <div className="min-h-0 flex-1 overflow-y-auto overscroll-contain pb-[env(safe-area-inset-bottom)]">
+        {!authReady ? (
+          <div className="flex items-center justify-center gap-2 py-10 text-sm text-slate-400">
+            <Loader2 className="h-4 w-4 animate-spin" /> Carregando…
+          </div>
+        ) : !session ? (
+          <SignedOutView onLogin={onLogin} />
+        ) : section ? (
+          <ProfileSubpage
+            section={section}
+            session={session}
+            storeId={storeId}
+            paymentMethodsLabel={paymentMethodsLabel}
+            formatCurrency={formatCurrency}
+            onBack={goBack}
+            onLogin={onLogin}
+            onSessionUpdate={setSession}
+            onSignOut={async () => {
+              await signOutCustomer();
+              setSectionState(null);
+              window.history.replaceState(
+                null,
+                "",
+                window.location.pathname + window.location.search,
+              );
+              onClose();
+            }}
+          />
+        ) : (
+          <SignedInView
+            session={session}
+            accountRows={accountRows}
+            prefRows={prefRows}
+            setSection={setSection}
+          />
+        )}
       </div>
     </div>
   );
@@ -174,7 +289,7 @@ function SignedOutView({ onLogin }: { onLogin: () => void }) {
           Acompanhe pedidos, salve endereços e use cupons exclusivos.
         </p>
       </div>
-      <Button className="h-11 w-full font-bold" onClick={onLogin}>
+      <Button className="h-11 w-full max-w-sm font-bold" onClick={onLogin}>
         Entrar ou criar conta
       </Button>
     </div>
@@ -183,32 +298,19 @@ function SignedOutView({ onLogin }: { onLogin: () => void }) {
 
 function SignedInView({
   session,
-  storeId,
-  paymentMethodsLabel,
-  formatCurrency,
   accountRows,
   prefRows,
-  section,
   setSection,
-  onSessionUpdate,
-  onSignOut,
 }: {
   session: CustomerSession;
-  storeId: string;
-  paymentMethodsLabel: string[];
-  formatCurrency: (value: number) => string;
   accountRows: { key: Section; icon: any; label: string; hint?: string }[];
   prefRows: { key: Section; icon: any; label: string; hint?: string }[];
-  section: Section;
-  setSection: (value: Section) => void;
-  onSessionUpdate: (session: CustomerSession) => void;
-  onSignOut: () => Promise<void>;
+  setSection: (section: Section) => void;
 }) {
   return (
-    <>
-      {/* Topo do perfil */}
-      <div className="flex items-center gap-3 px-5 py-4">
-        <div className="flex h-12 w-12 shrink-0 items-center justify-center overflow-hidden rounded-full bg-slate-100 text-xl font-black text-slate-400">
+    <div className="mx-auto w-full max-w-xl pb-5">
+      <div className="flex items-center gap-3 px-5 py-5">
+        <div className="flex h-14 w-14 shrink-0 items-center justify-center overflow-hidden rounded-full bg-slate-100 text-xl font-black text-slate-500">
           {session.avatarUrl ? (
             <img src={session.avatarUrl} alt="" className="h-full w-full object-cover" />
           ) : (
@@ -216,181 +318,428 @@ function SignedInView({
           )}
         </div>
         <div className="min-w-0 flex-1">
-          <p className="truncate font-bold text-slate-900">{session.name}</p>
-          <p className="truncate text-sm text-slate-500">{session.phone || session.email}</p>
+          <p className="truncate text-base font-bold text-slate-900">{session.name}</p>
+          <p className="truncate text-sm text-slate-500">{session.email || session.phone}</p>
+          {session.email && session.phone && (
+            <p className="truncate text-xs text-slate-400">{session.phone}</p>
+          )}
         </div>
-        <button
-          type="button"
+        <Button
+          variant="outline"
+          className="h-10 gap-1.5 rounded-full px-3 text-xs font-bold"
           onClick={() => setSection("edit")}
-          className="flex h-9 shrink-0 items-center gap-1 rounded-full bg-slate-100 px-3 text-xs font-bold text-slate-600 transition-colors hover:bg-slate-200"
         >
-          <Pencil size={13} /> Editar
-        </button>
+          <Pencil size={14} /> Editar
+        </Button>
       </div>
 
-      <div className="px-5">
-        <p className="pb-1.5 text-[11px] font-black uppercase tracking-wider text-slate-400">
-          Minha conta
-        </p>
-      </div>
+      <SectionHeading>Minha conta</SectionHeading>
+      <NavRows rows={accountRows} setSection={setSection} />
+
+      <SectionHeading>Preferências</SectionHeading>
+      <NavRows rows={prefRows} setSection={setSection} />
+
+      <SectionHeading>Conta</SectionHeading>
       <div className="mx-4 mb-3 divide-y divide-slate-100 overflow-hidden rounded-2xl border border-slate-100">
-        {accountRows.map((row) => (
-          <button
-            key={row.label}
-            type="button"
-            onClick={() => setSection(row.key)}
-            className="flex w-full items-center gap-3 px-3.5 py-3 text-left transition-colors hover:bg-slate-50 active:bg-slate-100"
-          >
-            <row.icon size={18} className="shrink-0 text-[var(--primary-color)]" />
-            <span className="min-w-0 flex-1">
-              <span className="block text-sm font-bold text-slate-800">{row.label}</span>
-              {row.hint && <span className="block text-xs text-slate-400">{row.hint}</span>}
-            </span>
-            <ChevronRight size={16} className="shrink-0 text-slate-300" />
-          </button>
-        ))}
+        <NavRow
+          icon={UserRound}
+          label="Trocar conta"
+          hint="Alternar entre contas"
+          onClick={() => setSection("account-switch")}
+        />
+        <NavRow
+          icon={Settings}
+          label="Configurações"
+          hint="Dados da conta e privacidade"
+          onClick={() => setSection("settings")}
+        />
+        <NavRow
+          icon={LogOut}
+          label="Sair"
+          hint="Sair da conta"
+          onClick={() => setSection("signout")}
+          danger
+        />
       </div>
+    </div>
+  );
+}
 
-      <div className="px-5">
-        <p className="pb-1.5 text-[11px] font-black uppercase tracking-wider text-slate-400">
-          Preferências
-        </p>
-      </div>
-      <div className="mx-4 divide-y divide-slate-100 overflow-hidden rounded-2xl border border-slate-100">
-        {prefRows.map((row) => (
-          <button
-            key={row.label}
-            type="button"
-            onClick={() => setSection(row.key)}
-            className="flex w-full items-center gap-3 px-3.5 py-3 text-left transition-colors hover:bg-slate-50 active:bg-slate-100"
-          >
-            <row.icon size={18} className="shrink-0 text-[var(--primary-color)]" />
-            <span className="min-w-0 flex-1">
-              <span className="block text-sm font-bold text-slate-800">{row.label}</span>
-              {row.hint && <span className="block text-xs text-slate-400">{row.hint}</span>}
-            </span>
-            <ChevronRight size={16} className="shrink-0 text-slate-300" />
-          </button>
-        ))}
-      </div>
+function SectionHeading({ children }: { children: React.ReactNode }) {
+  return (
+    <h3 className="px-5 pb-2 pt-4 text-[11px] font-black uppercase tracking-wider text-slate-400">
+      {children}
+    </h3>
+  );
+}
 
-      <div className="p-4">
+function NavRows({
+  rows,
+  setSection,
+}: {
+  rows: { key: Section; icon: any; label: string; hint?: string }[];
+  setSection: (section: Section) => void;
+}) {
+  return (
+    <div className="mx-4 divide-y divide-slate-100 overflow-hidden rounded-2xl border border-slate-100">
+      {rows.map((row) => (
+        <NavRow
+          key={row.label}
+          icon={row.icon}
+          label={row.label}
+          hint={row.hint}
+          onClick={() => setSection(row.key)}
+        />
+      ))}
+    </div>
+  );
+}
+
+function NavRow({
+  icon: Icon,
+  label,
+  hint,
+  onClick,
+  danger = false,
+}: {
+  icon: any;
+  label: string;
+  hint?: string | undefined;
+  onClick: () => void;
+  danger?: boolean;
+}) {
+  return (
+    <button
+      type="button"
+      onClick={onClick}
+      className="flex min-h-14 w-full items-center gap-3 px-3.5 py-2.5 text-left transition-colors hover:bg-slate-50 active:bg-slate-100"
+    >
+      <Icon
+        size={19}
+        className={"shrink-0 " + (danger ? "text-red-500" : "text-[var(--primary-color)]")}
+      />
+      <span className="min-w-0 flex-1">
+        <span className={"block text-sm font-bold " + (danger ? "text-red-600" : "text-slate-800")}>
+          {label}
+        </span>
+        {hint && <span className="block text-xs text-slate-400">{hint}</span>}
+      </span>
+      <ChevronRight size={16} className="shrink-0 text-slate-300" />
+    </button>
+  );
+}
+
+function FullScreenPage({
+  title,
+  onBack,
+  children,
+}: {
+  title: string;
+  onBack: () => void;
+  children: React.ReactNode;
+}) {
+  return (
+    <section className="min-h-full animate-in slide-in-from-right-2 duration-200">
+      <header className="sticky top-0 z-10 flex h-12 items-center gap-2 border-b border-slate-100 bg-white/95 px-4 backdrop-blur">
         <button
           type="button"
-          onClick={() => setSection("signout")}
-          className="flex w-full items-center justify-center gap-2 rounded-2xl border border-red-100 bg-red-50 py-3 text-sm font-bold text-red-600 transition-colors hover:bg-red-100"
+          onClick={onBack}
+          aria-label="Voltar"
+          className="flex h-10 w-10 items-center justify-center rounded-full text-slate-600 hover:bg-slate-100"
         >
-          <LogOut size={16} /> Sair da conta
+          <ArrowLeft size={19} />
         </button>
-      </div>
+        <h3 className="text-base font-black text-slate-900">{title}</h3>
+      </header>
+      <div className="mx-auto w-full max-w-xl p-4">{children}</div>
+    </section>
+  );
+}
 
-      {/* Sub-diálogos */}
-      <OrdersSection
-        open={section === "orders"}
-        storeId={storeId}
-        formatCurrency={formatCurrency}
-        onClose={() => setSection(null)}
-      />
-      <AddressesSection open={section === "addresses"} onClose={() => setSection(null)} />
-      <CouponsSection
-        open={section === "coupons"}
-        storeId={storeId}
-        formatCurrency={formatCurrency}
-        onClose={() => setSection(null)}
-      />
+function ProfileSubpage({
+  section,
+  session,
+  storeId,
+  paymentMethodsLabel,
+  formatCurrency,
+  onBack,
+  onLogin,
+  onSessionUpdate,
+  onSignOut,
+}: {
+  section: Exclude<Section, null>;
+  session: CustomerSession;
+  storeId: string;
+  paymentMethodsLabel: string[];
+  formatCurrency: (value: number) => string;
+  onBack: () => void;
+  onLogin: () => void;
+  onSessionUpdate: (session: CustomerSession) => void;
+  onSignOut: () => Promise<void>;
+}) {
+  const [confirmSignOut, setConfirmSignOut] = useState(false);
+
+  if (section === "orders")
+    return (
+      <OrdersSection open storeId={storeId} formatCurrency={formatCurrency} onClose={onBack} />
+    );
+  if (section === "addresses") return <AddressesSection open onClose={onBack} />;
+  if (section === "coupons")
+    return (
+      <CouponsSection open storeId={storeId} formatCurrency={formatCurrency} onClose={onBack} />
+    );
+  if (section === "payments") {
+    return (
       <SimpleListSection
-        open={section === "payments"}
+        open
         title="Formas de pagamento"
         icon={CreditCard}
         emptyText="A loja ainda não configurou formas de pagamento."
         items={paymentMethodsLabel.map((label) => ({ id: label, label }))}
-        onClose={() => setSection(null)}
+        onClose={onBack}
       />
+    );
+  }
+  if (section === "favorites") {
+    return (
       <SimpleListSection
-        open={section === "favorites"}
+        open
         title="Favoritos"
         icon={Heart}
-        emptyText="Em breve você poderá favoritar produtos."
+        emptyText="Você ainda não adicionou produtos aos favoritos."
         items={[]}
-        onClose={() => setSection(null)}
+        onClose={onBack}
       />
+    );
+  }
+  if (section === "notifications") {
+    return (
       <SimpleListSection
-        open={section === "notifications"}
+        open
         title="Notificações"
         icon={Bell}
-        emptyText="As notificações da loja são exibidas nesta página quando disponíveis."
+        emptyText="As preferências de notificações ainda não estão disponíveis."
         items={[]}
-        onClose={() => setSection(null)}
+        onClose={onBack}
       />
+    );
+  }
+  if (section === "settings") {
+    return (
       <SimpleListSection
-        open={section === "settings"}
+        open
         title="Configurações"
         icon={Settings}
-        emptyText="As configurações da conta ficam disponíveis ao editar seu perfil ou sair da conta."
+        emptyText="As configurações da conta ficam disponíveis ao editar seu perfil."
         items={[]}
-        onClose={() => setSection(null)}
+        onClose={onBack}
       />
-
-      <EditProfileDialog
-        open={section === "edit"}
+    );
+  }
+  if (section === "edit") {
+    return (
+      <EditProfilePage
         session={session}
+        onClose={onBack}
         onSave={async (name, phone) => {
           await updateCustomerProfile({ name, phone });
           onSessionUpdate({ ...session, name, phone });
-          setSection(null);
+          onBack();
         }}
-        onClose={() => setSection(null)}
       />
-
-      <Dialog open={section === "signout"} onOpenChange={(value) => !value && setSection(null)}>
-        <DialogContent className="max-w-[320px] gap-0 rounded-2xl p-5" hideClose>
-          <DialogTitle className="text-lg font-black">Sair da conta?</DialogTitle>
-          <p className="mt-1 text-sm text-slate-500">Você poderá entrar novamente quando quiser.</p>
-          <div className="mt-4 flex gap-2">
+    );
+  }
+  if (section === "account-switch") {
+    return (
+      <AccountSwitchPage
+        session={session}
+        onClose={onBack}
+        onSwitch={async () => {
+          await onSignOut();
+          onLogin();
+        }}
+      />
+    );
+  }
+  if (section === "signout") {
+    return (
+      <FullScreenPage title="Sair da conta" onBack={onBack}>
+        {!confirmSignOut ? (
+          <div className="space-y-4 py-4">
+            <p className="text-sm text-slate-600">
+              Deseja encerrar a sessão de <strong>{session.email}</strong>?
+            </p>
             <Button
-              variant="outline"
-              className="h-10 flex-1 font-bold"
-              onClick={() => setSection(null)}
+              className="h-11 w-full bg-red-600 font-bold text-white hover:bg-red-700"
+              onClick={() => setConfirmSignOut(true)}
             >
-              Cancelar
-            </Button>
-            <Button
-              className="h-10 flex-1 bg-red-600 font-bold text-white hover:bg-red-700"
-              onClick={() => void onSignOut()}
-            >
-              Sair
+              Sair da conta
             </Button>
           </div>
-        </DialogContent>
-      </Dialog>
-    </>
+        ) : (
+          <ConfirmSignOut onCancel={() => setConfirmSignOut(false)} onConfirm={onSignOut} />
+        )}
+      </FullScreenPage>
+    );
+  }
+  return null;
+}
+
+function ConfirmSignOut({
+  onCancel,
+  onConfirm,
+}: {
+  onCancel: () => void;
+  onConfirm: () => Promise<void>;
+}) {
+  return (
+    <div className="space-y-4 py-4">
+      <p className="text-sm font-semibold text-slate-700">Sair da conta?</p>
+      <div className="flex gap-2">
+        <Button variant="outline" className="h-11 flex-1" onClick={onCancel}>
+          Cancelar
+        </Button>
+        <Button
+          className="h-11 flex-1 bg-red-600 text-white hover:bg-red-700"
+          onClick={() => void onConfirm()}
+        >
+          Sair
+        </Button>
+      </div>
+    </div>
   );
 }
 
-function SectionShell({
-  title,
+function AccountSwitchPage({
+  session,
   onClose,
-  children,
+  onSwitch,
 }: {
-  title: string;
+  session: CustomerSession;
   onClose: () => void;
-  children: React.ReactNode;
+  onSwitch: () => Promise<void>;
 }) {
+  const [switching, setSwitching] = useState(false);
   return (
-    <div className="flex min-h-[280px] flex-col">
-      <div className="flex shrink-0 items-center justify-between px-5 py-3">
-        <h3 className="font-black text-slate-900">{title}</h3>
-        <button
-          type="button"
-          onClick={onClose}
-          aria-label="Voltar"
-          className="flex h-8 w-8 items-center justify-center rounded-full bg-slate-100 text-slate-500 hover:bg-slate-200"
+    <FullScreenPage title="Trocar conta" onBack={onClose}>
+      <div className="space-y-4 py-2">
+        <p className="text-sm text-slate-600">
+          Para usar outra conta, encerre a sessão atual e entre com outro e-mail.
+        </p>
+        <div className="flex items-center gap-3 rounded-2xl border border-slate-200 p-4">
+          <div className="flex h-11 w-11 items-center justify-center rounded-full bg-slate-100 font-black text-slate-500">
+            {(session.name[0] ?? "?").toUpperCase()}
+          </div>
+          <div className="min-w-0 flex-1">
+            <p className="truncate font-bold text-slate-900">{session.name}</p>
+            <p className="truncate text-sm text-slate-500">{session.email}</p>
+          </div>
+          <span className="flex items-center gap-1 text-xs font-bold text-emerald-600">
+            <Check size={14} /> Atual
+          </span>
+        </div>
+        <Button
+          className="h-11 w-full font-bold"
+          disabled={switching}
+          onClick={async () => {
+            setSwitching(true);
+            try {
+              await onSwitch();
+            } finally {
+              setSwitching(false);
+            }
+          }}
         >
-          <X size={16} />
-        </button>
+          {switching && <Loader2 className="mr-2 h-4 w-4 animate-spin" />} Entrar com outra conta
+        </Button>
       </div>
-      <div className="flex-1 overflow-y-auto px-4 pb-4">{children}</div>
-    </div>
+    </FullScreenPage>
+  );
+}
+
+function EditProfilePage({
+  session,
+  onSave,
+  onClose,
+}: {
+  session: CustomerSession;
+  onSave: (name: string, phone: string) => Promise<void>;
+  onClose: () => void;
+}) {
+  const [name, setName] = useState(session.name);
+  const [phone, setPhone] = useState(session.phone);
+  const [saving, setSaving] = useState(false);
+  const [error, setError] = useState("");
+  const [saved, setSaved] = useState(false);
+  return (
+    <FullScreenPage title="Editar perfil" onBack={onClose}>
+      <form
+        className="space-y-4 py-2"
+        onSubmit={async (event) => {
+          event.preventDefault();
+          if (name.trim().length < 2) {
+            setError("Informe seu nome.");
+            return;
+          }
+          if (phone.replace(/\D/g, "").length < 10) {
+            setError("Informe um telefone válido.");
+            return;
+          }
+          setSaving(true);
+          setError("");
+          try {
+            await onSave(name.trim(), phone.trim());
+            setSaved(true);
+          } catch {
+            setError("Não foi possível salvar as alterações.");
+          } finally {
+            setSaving(false);
+          }
+        }}
+      >
+        <div className="flex flex-col items-center gap-3 py-3">
+          <div className="flex h-20 w-20 items-center justify-center overflow-hidden rounded-full bg-slate-100 text-2xl font-black text-slate-500">
+            {session.avatarUrl ? (
+              <img src={session.avatarUrl} alt="Avatar" className="h-full w-full object-cover" />
+            ) : (
+              (name[0] ?? "?").toUpperCase()
+            )}
+          </div>
+          <p className="text-xs text-slate-500">Avatar vinculado à conta</p>
+        </div>
+        <div className="space-y-1.5">
+          <Label htmlFor="profile-name">Nome</Label>
+          <Input
+            id="profile-name"
+            value={name}
+            onChange={(e) => setName(e.target.value)}
+            required
+          />
+        </div>
+        <div className="space-y-1.5">
+          <Label htmlFor="profile-phone">Telefone</Label>
+          <Input
+            id="profile-phone"
+            type="tel"
+            value={phone}
+            onChange={(e) => setPhone(e.target.value)}
+            required
+          />
+        </div>
+        <div className="space-y-1.5">
+          <Label htmlFor="profile-email">E-mail</Label>
+          <Input id="profile-email" type="email" value={session.email} readOnly disabled />
+          <p className="text-xs text-slate-400">
+            Para alterar o e-mail, entre em contato com o suporte da conta.
+          </p>
+        </div>
+        {error && <p className="text-sm font-semibold text-red-600">{error}</p>}
+        {saved && <p className="text-sm font-semibold text-emerald-600">Perfil atualizado.</p>}
+        <Button type="submit" className="h-11 w-full font-bold" disabled={saving}>
+          {saving && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}Salvar alterações
+        </Button>
+      </form>
+    </FullScreenPage>
   );
 }
 
@@ -407,7 +756,8 @@ function OrdersSection({
 }) {
   const [orders, setOrders] = useState<CustomerOrder[] | null>(null);
   const [error, setError] = useState("");
-
+  const [filter, setFilter] = useState<"all" | "active" | "done" | "canceled">("all");
+  const [selectedOrder, setSelectedOrder] = useState<CustomerOrder | null>(null);
   useEffect(() => {
     if (!open) return;
     setOrders(null);
@@ -416,9 +766,7 @@ function OrdersSection({
       .then(setOrders)
       .catch((err: Error) => setError(err.message));
   }, [open, storeId]);
-
   if (!open) return null;
-
   const statusLabel: Record<string, string> = {
     pending: "Aguardando confirmação",
     confirmed: "Confirmado",
@@ -427,9 +775,44 @@ function OrdersSection({
     completed: "Concluído",
     canceled: "Cancelado",
   };
-
+  const filteredOrders = (orders ?? []).filter((order) => {
+    if (filter === "active") return !["completed", "canceled"].includes(order.status);
+    if (filter === "done") return order.status === "completed";
+    if (filter === "canceled") return order.status === "canceled";
+    return true;
+  });
+  if (selectedOrder) {
+    return (
+      <FullScreenPage
+        title={`Pedido #${selectedOrder.id.slice(0, 8).toUpperCase()}`}
+        onBack={() => setSelectedOrder(null)}
+      >
+        <div className="space-y-3 p-4">
+          <p className="font-bold text-slate-800">
+            {statusLabel[selectedOrder.status] ?? selectedOrder.status}
+          </p>
+          <p className="text-sm text-slate-500">
+            {selectedOrder.created_at
+              ? new Date(selectedOrder.created_at).toLocaleString("pt-BR")
+              : ""}
+          </p>
+          {(selectedOrder.order_items ?? []).map((item) => (
+            <div
+              key={item.id}
+              className="flex justify-between gap-3 border-b border-slate-100 py-2 text-sm"
+            >
+              <span>
+                {item.quantity}× {item.product_name}
+              </span>
+            </div>
+          ))}
+          <p className="pt-2 text-lg font-black">{formatCurrency(selectedOrder.total_amount)}</p>
+        </div>
+      </FullScreenPage>
+    );
+  }
   return (
-    <SectionShell title="Meus pedidos" onClose={onClose}>
+    <FullScreenPage title="Meus pedidos" onBack={onClose}>
       {error ? (
         <p className="px-1 py-6 text-center text-sm text-slate-500">{error}</p>
       ) : orders === null ? (
@@ -442,11 +825,37 @@ function OrdersSection({
           <p className="text-sm text-slate-500">Você ainda não fez pedidos nesta loja.</p>
         </div>
       ) : (
-        <div className="space-y-2.5">
-          {orders.map((order) => (
-            <div
+        <div className="space-y-3">
+          <div className="flex gap-2 overflow-x-auto pb-1">
+            {(["all", "active", "done", "canceled"] as const).map((value) => (
+              <button
+                key={value}
+                type="button"
+                onClick={() => setFilter(value)}
+                className={
+                  "shrink-0 rounded-full px-3 py-2 text-xs font-bold " +
+                  (filter === value
+                    ? "bg-[var(--primary-color)] text-white"
+                    : "bg-slate-100 text-slate-600")
+                }
+              >
+                {
+                  {
+                    all: "Todos",
+                    active: "Em andamento",
+                    done: "Concluídos",
+                    canceled: "Cancelados",
+                  }[value]
+                }
+              </button>
+            ))}
+          </div>
+          {filteredOrders.map((order) => (
+            <button
+              type="button"
               key={order.id}
-              className="rounded-2xl border border-slate-100 bg-white p-3.5 shadow-sm"
+              onClick={() => setSelectedOrder(order)}
+              className="w-full rounded-2xl border border-slate-100 bg-white p-3.5 text-left shadow-sm"
             >
               <div className="flex items-center justify-between gap-2">
                 <span className="text-xs font-black text-slate-400">
@@ -464,11 +873,11 @@ function OrdersSection({
               <p className="mt-1.5 text-base font-black text-slate-900">
                 {formatCurrency(order.total_amount)}
               </p>
-            </div>
+            </button>
           ))}
         </div>
       )}
-    </SectionShell>
+    </FullScreenPage>
   );
 }
 
@@ -476,13 +885,10 @@ function AddressesSection({ open, onClose }: { open: boolean; onClose: () => voi
   const [addresses, setAddresses] = useState<CustomerAddress[] | null>(null);
   const [editing, setEditing] = useState<CustomerAddress | "new" | null>(null);
   const [error, setError] = useState("");
-
-  const load = () => {
+  const load = () =>
     getMyAddresses()
       .then(setAddresses)
       .catch((err: Error) => setError(err.message));
-  };
-
   useEffect(() => {
     if (open) {
       setEditing(null);
@@ -491,10 +897,8 @@ function AddressesSection({ open, onClose }: { open: boolean; onClose: () => voi
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [open]);
-
   if (!open) return null;
-
-  if (editing) {
+  if (editing)
     return (
       <AddressForm
         address={editing === "new" ? null : editing}
@@ -506,10 +910,8 @@ function AddressesSection({ open, onClose }: { open: boolean; onClose: () => voi
         }}
       />
     );
-  }
-
   return (
-    <SectionShell title="Meus endereços" onClose={onClose}>
+    <FullScreenPage title="Meus endereços" onBack={onClose}>
       {error ? (
         <p className="px-1 py-6 text-center text-sm text-slate-500">{error}</p>
       ) : addresses === null ? (
@@ -518,40 +920,53 @@ function AddressesSection({ open, onClose }: { open: boolean; onClose: () => voi
         </div>
       ) : (
         <>
-          <div className="space-y-2.5">
-            {addresses.map((address) => (
-              <div
-                key={address.id}
-                className="flex items-center gap-2 rounded-2xl border border-slate-100 bg-white p-3.5 shadow-sm"
-              >
-                <div className="min-w-0 flex-1">
-                  <p className="text-sm font-bold text-slate-800">
-                    {address.street}, {address.number}
-                    {address.is_default && (
-                      <span className="ml-2 rounded-full bg-emerald-100 px-2 py-0.5 text-[10px] font-black text-emerald-700">
-                        Padrão
-                      </span>
-                    )}
-                  </p>
-                  <p className="truncate text-xs text-slate-500">
-                    {address.neighborhood}
-                    {address.complement ? ` - ${address.complement}` : ""}
-                  </p>
-                </div>
-                <button
-                  type="button"
-                  aria-label="Excluir endereço"
-                  className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full text-slate-400 hover:bg-red-50 hover:text-red-500"
-                  onClick={async () => {
-                    await deleteMyAddress(address.id);
-                    load();
-                  }}
+          {addresses.length === 0 ? (
+            <div className="flex flex-col items-center gap-2 py-10 text-center">
+              <MapPin size={32} className="text-slate-300" />
+              <p className="text-sm text-slate-500">Você ainda não cadastrou endereços.</p>
+            </div>
+          ) : (
+            <div className="space-y-2.5">
+              {addresses.map((address) => (
+                <div
+                  key={address.id}
+                  className="flex items-center gap-2 rounded-2xl border border-slate-100 bg-white p-3.5"
                 >
-                  <Trash2 size={15} />
-                </button>
-              </div>
-            ))}
-          </div>
+                  <button
+                    type="button"
+                    className="min-w-0 flex-1 text-left"
+                    onClick={() => setEditing(address)}
+                  >
+                    <p className="text-sm font-bold text-slate-800">
+                      {address.label || `${address.street}, ${address.number}`}{" "}
+                      {address.is_default && (
+                        <span className="ml-1 rounded-full bg-emerald-100 px-2 py-0.5 text-[10px] font-black text-emerald-700">
+                          Padrão
+                        </span>
+                      )}
+                    </p>
+                    <p className="truncate text-xs text-slate-500">
+                      {address.street}, {address.number} · {address.neighborhood}
+                      {address.complement ? ` - ${address.complement}` : ""}
+                    </p>
+                  </button>
+                  <button
+                    type="button"
+                    aria-label="Excluir endereço"
+                    className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full text-slate-400 hover:bg-red-50 hover:text-red-500"
+                    onClick={async () => {
+                      if (window.confirm("Excluir este endereço?")) {
+                        await deleteMyAddress(address.id);
+                        load();
+                      }
+                    }}
+                  >
+                    <Trash2 size={16} />
+                  </button>
+                </div>
+              ))}
+            </div>
+          )}
           <Button
             variant="outline"
             className="mt-3 h-11 w-full font-bold"
@@ -561,7 +976,7 @@ function AddressesSection({ open, onClose }: { open: boolean; onClose: () => voi
           </Button>
         </>
       )}
-    </SectionShell>
+    </FullScreenPage>
   );
 }
 
@@ -582,9 +997,8 @@ function AddressForm({
   const [reference, setReference] = useState(address?.reference ?? "");
   const [isDefault, setIsDefault] = useState(address?.is_default ?? false);
   const [saving, setSaving] = useState(false);
-
   return (
-    <SectionShell title={address ? "Editar endereço" : "Novo endereço"} onClose={onCancel}>
+    <FullScreenPage title={address ? "Editar endereço" : "Novo endereço"} onBack={onCancel}>
       <form
         className="space-y-3"
         onSubmit={async (event) => {
@@ -665,10 +1079,10 @@ function AddressForm({
           Definir como endereço padrão
         </label>
         <Button type="submit" className="h-11 w-full font-bold" disabled={saving}>
-          {saving && <Loader2 className="mr-2 h-4 w-4 animate-spin" />} Salvar endereço
+          {saving && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}Salvar endereço
         </Button>
       </form>
-    </SectionShell>
+    </FullScreenPage>
   );
 }
 
@@ -683,11 +1097,10 @@ function CouponsSection({
   formatCurrency: (value: number) => string;
   onClose: () => void;
 }) {
-  const [tab, setTab] = useState<"available" | "used">("available");
+  const [tab, setTab] = useState<"available" | "used" | "expired">("available");
   const [coupons, setCoupons] = useState<MyCoupon[] | null>(null);
   const [error, setError] = useState("");
   const [copied, setCopied] = useState<string | null>(null);
-
   const load = useMemo(
     () => () => {
       getMyCoupons(storeId)
@@ -696,7 +1109,6 @@ function CouponsSection({
     },
     [storeId],
   );
-
   useEffect(() => {
     if (open) {
       setError("");
@@ -704,41 +1116,38 @@ function CouponsSection({
       load();
     }
   }, [open, load]);
-
   if (!open) return null;
-
   const isExpired = (coupon: MyCoupon) =>
     coupon.expires_at !== null && new Date(coupon.expires_at) <= new Date();
   const isUsedUp = (coupon: MyCoupon) => coupon.times_used > 0;
-
-  const visible =
+  const visible = (coupons ?? []).filter((coupon) =>
     tab === "available"
-      ? (coupons ?? []).filter((coupon) => !isExpired(coupon) && !isUsedUp(coupon))
-      : (coupons ?? []).filter((coupon) => isExpired(coupon) || isUsedUp(coupon));
-
+      ? !isExpired(coupon) && !isUsedUp(coupon)
+      : tab === "expired"
+        ? isExpired(coupon)
+        : !isExpired(coupon) && isUsedUp(coupon),
+  );
   const discountLabel = (coupon: MyCoupon) =>
     coupon.discount_type === "percent"
       ? `${Number(coupon.discount_value).toFixed(0)}% OFF`
       : `${formatCurrency(Number(coupon.discount_value))} OFF`;
-
   return (
-    <SectionShell title="Cupons e benefícios" onClose={onClose}>
-      <div className="mb-3 grid grid-cols-2 gap-1 rounded-xl bg-slate-100 p-1">
-        {(["available", "used"] as const).map((value) => (
+    <FullScreenPage title="Cupons e benefícios" onBack={onClose}>
+      <div className="mb-3 grid grid-cols-3 gap-1 rounded-xl bg-slate-100 p-1">
+        {(["available", "used", "expired"] as const).map((value) => (
           <button
             key={value}
             type="button"
             onClick={() => setTab(value)}
             className={
-              "rounded-lg py-1.5 text-xs font-black uppercase tracking-wide transition-colors " +
+              "rounded-lg py-2 text-[10px] font-black uppercase tracking-wide transition-colors " +
               (tab === value ? "bg-white text-slate-900 shadow-sm" : "text-slate-500")
             }
           >
-            {value === "available" ? "Disponíveis" : "Utilizados"}
+            {{ available: "Disponíveis", used: "Utilizados", expired: "Expirados" }[value]}
           </button>
         ))}
       </div>
-
       {error ? (
         <p className="px-1 py-6 text-center text-sm text-slate-500">{error}</p>
       ) : coupons === null ? (
@@ -751,7 +1160,9 @@ function CouponsSection({
           <p className="text-sm font-semibold text-slate-500">
             {tab === "available"
               ? "Você ainda não possui cupons disponíveis."
-              : "Nenhum cupom utilizado ainda."}
+              : tab === "expired"
+                ? "Você não possui cupons expirados."
+                : "Nenhum cupom utilizado ainda."}
           </p>
           <p className="text-xs text-slate-400">Os novos cupons aparecerão aqui.</p>
         </div>
@@ -762,7 +1173,7 @@ function CouponsSection({
               key={coupon.coupon_id}
               className={
                 "rounded-2xl border p-3.5 shadow-sm " +
-                (tab === "used"
+                (tab !== "available"
                   ? "border-slate-100 bg-slate-50 opacity-75"
                   : "border-slate-100 bg-white")
               }
@@ -804,29 +1215,21 @@ function CouponsSection({
                 {Number(coupon.min_order_amount) > 0 && (
                   <p>Pedido mínimo: {formatCurrency(Number(coupon.min_order_amount))}</p>
                 )}
-                {coupon.expires_at && !isExpired(coupon) && (
-                  <p>Válido até: {new Date(coupon.expires_at).toLocaleDateString("pt-BR")}</p>
-                )}
-                {isExpired(coupon) && <p className="font-bold text-slate-400">Expirado</p>}
-                {isUsedUp(coupon) && (
-                  <p className="font-bold text-slate-400">
-                    Utilizado {coupon.times_used}x
-                    {coupon.last_used_at
-                      ? ` · ${new Date(coupon.last_used_at).toLocaleDateString("pt-BR")}`
-                      : ""}
+                {coupon.expires_at && (
+                  <p>
+                    {isExpired(coupon) ? "Expirado em: " : "Válido até: "}
+                    {new Date(coupon.expires_at).toLocaleDateString("pt-BR")}
                   </p>
+                )}
+                {isUsedUp(coupon) && (
+                  <p className="font-bold text-slate-400">Utilizado {coupon.times_used}x</p>
                 )}
               </div>
             </div>
           ))}
-          {tab === "available" && (
-            <p className="px-1 pt-1 text-center text-xs text-slate-400">
-              Informe o código no checkout para aplicar o desconto.
-            </p>
-          )}
         </div>
       )}
-    </SectionShell>
+    </FullScreenPage>
   );
 }
 
@@ -847,7 +1250,7 @@ function SimpleListSection({
 }) {
   if (!open) return null;
   return (
-    <SectionShell title={title} onClose={onClose}>
+    <FullScreenPage title={title} onBack={onClose}>
       {items.length === 0 ? (
         <div className="flex flex-col items-center gap-2 py-10 text-center">
           <Icon size={32} className="text-slate-300" />
@@ -863,83 +1266,33 @@ function SimpleListSection({
           ))}
         </div>
       )}
-    </SectionShell>
+    </FullScreenPage>
   );
 }
 
-function EditProfileDialog({
-  open,
-  session,
-  onSave,
-  onClose,
+function ConfirmSignOutDialog({
+  onCancel,
+  onConfirm,
 }: {
-  open: boolean;
-  session: CustomerSession;
-  onSave: (name: string, phone: string) => Promise<void>;
-  onClose: () => void;
+  onCancel: () => void;
+  onConfirm: () => void;
 }) {
-  const [name, setName] = useState(session.name);
-  const [phone, setPhone] = useState(session.phone);
-  const [saving, setSaving] = useState(false);
-
-  useEffect(() => {
-    if (open) {
-      setName(session.name);
-      setPhone(session.phone);
-    }
-  }, [open, session]);
-
   return (
-    <Dialog open={open} onOpenChange={(value) => !value && onClose()}>
-      <DialogContent className="max-w-[340px] gap-0 rounded-2xl p-5" hideClose>
-        <div className="flex items-center justify-between">
-          <DialogTitle className="text-lg font-black">Editar perfil</DialogTitle>
-          <button
-            type="button"
-            onClick={onClose}
-            aria-label="Fechar"
-            className="flex h-8 w-8 items-center justify-center rounded-full bg-slate-100 text-slate-500 hover:bg-slate-200"
-          >
-            <X size={16} />
-          </button>
-        </div>
-        <form
-          className="mt-4 space-y-3"
-          onSubmit={async (event) => {
-            event.preventDefault();
-            setSaving(true);
-            try {
-              await onSave(name.trim(), phone.trim());
-            } catch {
-              // erro já sinalizado via toast pelo chamador
-            } finally {
-              setSaving(false);
-            }
-          }}
-        >
-          <div className="space-y-1.5">
-            <Label htmlFor="profile-name">Nome</Label>
-            <Input
-              id="profile-name"
-              value={name}
-              onChange={(event) => setName(event.target.value)}
-              required
-            />
-          </div>
-          <div className="space-y-1.5">
-            <Label htmlFor="profile-phone">Telefone</Label>
-            <Input
-              id="profile-phone"
-              type="tel"
-              value={phone}
-              onChange={(event) => setPhone(event.target.value)}
-              required
-            />
-          </div>
-          <Button type="submit" className="h-11 w-full font-bold" disabled={saving}>
-            {saving && <Loader2 className="mr-2 h-4 w-4 animate-spin" />} Salvar
+    <Dialog open onOpenChange={(value) => !value && onCancel()}>
+      <DialogContent className="max-w-[320px] gap-0 rounded-2xl p-5">
+        <DialogTitle className="text-lg font-black">Sair da conta?</DialogTitle>
+        <p className="mt-1 text-sm text-slate-500">Você poderá entrar novamente quando quiser.</p>
+        <div className="mt-4 flex gap-2">
+          <Button variant="outline" className="h-10 flex-1 font-bold" onClick={onCancel}>
+            Cancelar
           </Button>
-        </form>
+          <Button
+            className="h-10 flex-1 bg-red-600 font-bold text-white hover:bg-red-700"
+            onClick={onConfirm}
+          >
+            Sair
+          </Button>
+        </div>
       </DialogContent>
     </Dialog>
   );

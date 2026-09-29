@@ -141,6 +141,7 @@ export function StorePage({ storeId }: { storeId: string }) {
   const [isCartOpen, setIsCartOpen] = useState(false);
   const [promotionsOpen, setPromotionsOpen] = useState(false);
   const [profileOpen, setProfileOpen] = useState(false);
+  const [profileSubpageOpen, setProfileSubpageOpen] = useState(false);
   const [customerSession, setCustomerSession] = useState<CustomerSession | null>(null);
   const [couponCode, setCouponCode] = useState("");
   const [couponApplied, setCouponApplied] = useState<{
@@ -762,22 +763,27 @@ export function StorePage({ storeId }: { storeId: string }) {
       />
 
       {/* Bottom Navigation (mobile) */}
-      <BottomNav
-        activeTab="cardapio"
-        cartCount={isHydrated ? cartTotalItems : 0}
-        onCardapio={() => {
-          window.scrollTo({ top: 0, behavior: "smooth" });
-        }}
-        onPromocoes={() => setPromotionsOpen(true)}
-        onPedidos={() => {
-          if (cartTotalItems > 0) {
-            setIsCartOpen(true);
-          } else {
-            toast("Nenhum pedido em andamento. Adicione itens à sacola!");
-          }
-        }}
-        onPerfil={() => setProfileOpen(true)}
-      />
+      {!profileSubpageOpen && (
+        <BottomNav
+          activeTab="cardapio"
+          cartCount={isHydrated ? cartTotalItems : 0}
+          onCardapio={() => {
+            window.scrollTo({ top: 0, behavior: "smooth" });
+          }}
+          onPromocoes={() => setPromotionsOpen(true)}
+          onPedidos={() => {
+            if (cartTotalItems > 0) {
+              setIsCartOpen(true);
+            } else {
+              toast("Nenhum pedido em andamento. Adicione itens à sacola!");
+            }
+          }}
+          onPerfil={() => {
+            setProfileSubpageOpen(false);
+            setProfileOpen(true);
+          }}
+        />
+      )}
 
       {/* Perfil do cliente */}
       <ProfileModal
@@ -803,7 +809,11 @@ export function StorePage({ storeId }: { storeId: string }) {
           setProfileOpen(false);
           window.location.href = `/customer-auth?store=${encodeURIComponent(window.location.pathname.split("/").filter(Boolean)[0] ?? "")}`;
         }}
-        onClose={() => setProfileOpen(false)}
+        onInternalPageChange={setProfileSubpageOpen}
+        onClose={() => {
+          setProfileOpen(false);
+          setProfileSubpageOpen(false);
+        }}
       />
 
       {/* Modal de Promoções (mobile) */}
