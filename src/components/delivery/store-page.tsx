@@ -73,7 +73,10 @@ import { StorePageFooter } from "./store-page-footer";
 import { FlashOfferModal } from "./flash-offer-modal";
 import { PromotionsModal } from "./promotions-modal";
 import { BottomNav } from "./bottom-nav";
+import { ProfileModal } from "./profile-modal";
 import { pickFlashOffer, wasFlashDismissed, dismissFlashOffer } from "@/lib/flash-offer";
+import { getCustomerSession, type CustomerSession } from "@/lib/customer-auth.functions";
+import { validateCoupon } from "@/lib/customer-account.functions";
 import { supabase } from "@/integrations/supabase/client";
 
 export const storeSettingsOptions = (storeId: string) =>
@@ -137,6 +140,15 @@ export function StorePage({ storeId }: { storeId: string }) {
   const [selectedAddons, setSelectedAddons] = useState<Record<string, string[]>>({});
   const [isCartOpen, setIsCartOpen] = useState(false);
   const [promotionsOpen, setPromotionsOpen] = useState(false);
+  const [profileOpen, setProfileOpen] = useState(false);
+  const [customerSession, setCustomerSession] = useState<CustomerSession | null>(null);
+  const [couponCode, setCouponCode] = useState("");
+  const [couponApplied, setCouponApplied] = useState<{
+    code: string;
+    discount_amount: number;
+  } | null>(null);
+  const [couponError, setCouponError] = useState("");
+  const [isCheckingCoupon, setIsCheckingCoupon] = useState(false);
   const [checkoutStep, setCheckoutStep] = useState<"cart" | "info" | "success">("cart");
   const [lastCreatedOrder, setLastCreatedOrder] = useState<any>(null);
   const isHydrated = useIsHydrated();
@@ -229,6 +241,36 @@ export function StorePage({ storeId }: { storeId: string }) {
   });
 
   const [isSubmitting, setIsSubmitting] = useState(false);
+
+  // Conta do cliente (vitrine): preenche nome/telefone do checkout quando logado.
+  useEffect(() => {
+    getCustomerSession().then(setCustomerSession);
+  }, []);
+  useEffect(() => {
+    if (!customerSession) return;
+    setOrderInfo((current) => ({
+      ...current,
+      name: current.name || customerSession.name,
+      phone: current.phone || customerSession.phone,
+    }));
+  }, [customerSession]);
+
+  const handleApplyCoupon = async () => {
+    const code = couponCode.trim();
+    if (!code) return;
+    setIsCheckingCoupon(true);
+    setCouponError("");
+    try {
+      const result = await validateCoupon(storeId, code, scopedGetSubtotal());
+      setCouponApplied(result);
+      toast.success(`Cupom ${result.code} aplicado!`);
+    } catch (error) {
+      setCouponApplied(null);
+      setCouponError(error instanceof Error ? error.message : "Cupom inválido.");
+    } finally {
+      setIsCheckingCoupon(false);
+    }
+  };
 
   useEffect(() => {
     setOrderInfo((current) => ({
@@ -323,6 +365,7 @@ export function StorePage({ storeId }: { storeId: string }) {
         reference: orderInfo.reference || null,
         payment_method: orderInfo.payment_method,
         change_for: changeForNum,
+        coupon_code: couponApplied?.code ?? null,
         observation: orderInfo.observation || null,
         items: items.map((item) => ({
           product_id: item.product_id,
@@ -335,6 +378,8 @@ export function StorePage({ storeId }: { storeId: string }) {
       const response = await createOrder(orderData);
 
       setLastCreatedOrder(response);
+      setCouponApplied(null);
+      setCouponCode("");
       clearCart();
       setCheckoutStep("success");
       toast.success("Pedido realizado com sucesso!");
@@ -596,6 +641,22 @@ export function StorePage({ storeId }: { storeId: string }) {
               lastCreatedOrder={lastCreatedOrder}
               isHydrated={isHydrated}
               paymentMethods={paymentMethods}
+              couponProps={{
+                code: couponCode,
+                setCode: (value: string) => {
+                  setCouponCode(value);
+                  setCouponError("");
+                },
+                applied: couponApplied,
+                error: couponError,
+                isChecking: isCheckingCoupon,
+                onApply: handleApplyCoupon,
+                onRemove: () => {
+                  setCouponApplied(null);
+                  setCouponCode("");
+                  setCouponError("");
+                },
+              }}
             />
           </SheetContent>
         </Sheet>
@@ -648,6 +709,22 @@ export function StorePage({ storeId }: { storeId: string }) {
               lastCreatedOrder={lastCreatedOrder}
               isHydrated={isHydrated}
               paymentMethods={paymentMethods}
+              couponProps={{
+                code: couponCode,
+                setCode: (value: string) => {
+                  setCouponCode(value);
+                  setCouponError("");
+                },
+                applied: couponApplied,
+                error: couponError,
+                isChecking: isCheckingCoupon,
+                onApply: handleApplyCoupon,
+                onRemove: () => {
+                  setCouponApplied(null);
+                  setCouponCode("");
+                  setCouponError("");
+                },
+              }}
             />
           </SheetContent>
         </Sheet>
@@ -699,9 +776,35 @@ export function StorePage({ storeId }: { storeId: string }) {
             toast("Nenhum pedido em andamento. Adicione itens à sacola!");
           }
         }}
-        onPerfil={() => {
-          toast("Em breve: área do cliente.");
+        onPerfil={() => setProfileOpen(true)}
+      />
+
+      {/* Perfil do cliente */}
+      <ProfileModal
+        open={profileOpen}
+        storeId={storeId}
+        storeName={settings.name}
+        paymentMethodsLabel={(() => {
+          const acceptPix = paymentMethods
+            ? paymentMethods.accept_manual_pix !== false ||
+              paymentMethods.online_pix_available === true ||
+              paymentMethods.mp_enabled === true ||
+              paymentMethods.asaas_enabled === true
+            : true;
+          const acceptCash = paymentMethods ? paymentMethods.accept_cash !== false : true;
+          const acceptCard = paymentMethods ? paymentMethods.accept_card_delivery !== false : true;
+          const labels: string[] = [];
+          if (acceptPix) labels.push("Pix");
+          if (acceptCash) labels.push("Dinheiro na entrega");
+          if (acceptCard) labels.push("Cartão na entrega");
+          return labels;
+        })()}
+        formatCurrency={formatCurrency}
+        onLogin={() => {
+          setProfileOpen(false);
+          window.location.href = `/customer-auth?store=${storeId}`;
         }}
+        onClose={() => setProfileOpen(false)}
       />
 
       {/* Modal de Promoções (mobile) */}

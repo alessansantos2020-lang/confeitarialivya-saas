@@ -50,6 +50,7 @@ export function StorePageCart({
   lastCreatedOrder,
   isHydrated,
   paymentMethods,
+  couponProps,
 }: any) {
   const acceptCash = paymentMethods ? paymentMethods.accept_cash !== false : true;
   const acceptCard = paymentMethods ? paymentMethods.accept_card_delivery !== false : true;
@@ -592,14 +593,69 @@ _Pedido realizado via Delivery Online._`;
               <span className="text-xs italic">Selecione o bairro</span>
             )}
           </div>
+          {couponProps?.applied && (
+            <div className="flex justify-between text-sm font-bold text-emerald-600">
+              <span className="flex items-center gap-1">
+                Cupom {couponProps.applied.code}
+                <button
+                  type="button"
+                  aria-label="Remover cupom"
+                  className="text-slate-400 hover:text-red-500"
+                  onClick={couponProps.onRemove}
+                >
+                  <X size={13} />
+                </button>
+              </span>
+              <span>-{formatCurrency(couponProps.applied.discount_amount)}</span>
+            </div>
+          )}
           <Separator />
           <div className="flex justify-between text-lg font-bold text-slate-900">
             <span>Total</span>
             <span className="text-[var(--primary-color)]">
-              {isHydrated ? formatCurrency(getTotal()) : formatCurrency(0)}
+              {isHydrated
+                ? formatCurrency(
+                    Math.max(getTotal() - (couponProps?.applied?.discount_amount ?? 0), 0),
+                  )
+                : formatCurrency(0)}
             </span>
           </div>
         </div>
+
+        {couponProps && checkoutStep === "info" && (
+          <div className="space-y-1.5">
+            {couponProps.applied ? (
+              <p className="text-xs font-bold text-emerald-600">
+                ✓ Cupom {couponProps.applied.code} será validado ao confirmar o pedido.
+              </p>
+            ) : (
+              <div className="flex gap-2">
+                <Input
+                  value={couponProps.code}
+                  onChange={(event) => couponProps.setCode(event.target.value.toUpperCase())}
+                  placeholder="Código do cupom"
+                  className="h-10 font-mono text-sm uppercase"
+                />
+                <Button
+                  type="button"
+                  variant="outline"
+                  className="h-10 shrink-0 font-bold"
+                  disabled={couponProps.isChecking || !couponProps.code.trim()}
+                  onClick={couponProps.onApply}
+                >
+                  {couponProps.isChecking ? (
+                    <Loader2 className="h-4 w-4 animate-spin" />
+                  ) : (
+                    "Aplicar"
+                  )}
+                </Button>
+              </div>
+            )}
+            {couponProps.error && (
+              <p className="text-xs font-semibold text-red-500">{couponProps.error}</p>
+            )}
+          </div>
+        )}
 
         {checkoutStep === "cart" ? (
           <Button

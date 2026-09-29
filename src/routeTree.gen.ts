@@ -13,12 +13,14 @@ import { Route as IndexRouteImport } from './routes/index'
 import { Route as SlugRouteImport } from './routes/$slug'
 import { Route as AdminRouteRouteImport } from './routes/admin/route'
 import { Route as AuthRouteImport } from './routes/auth'
+import { Route as CustomerAuthRouteImport } from './routes/customer-auth'
 import { Route as StaffRouteRouteImport } from './routes/staff/route'
 import { Route as SuperRouteRouteImport } from './routes/super/route'
 import { Route as AdminIndexRouteImport } from './routes/admin/index'
 import { Route as AdminAddOnsRouteImport } from './routes/admin/add-ons'
 import { Route as AdminCategoriesRouteImport } from './routes/admin/categories'
 import { Route as AdminCobrancasRouteImport } from './routes/admin/cobrancas'
+import { Route as AdminCouponsRouteImport } from './routes/admin/coupons'
 import { Route as AdminCustomersRouteImport } from './routes/admin/customers'
 import { Route as AdminDeliveryRouteImport } from './routes/admin/delivery'
 import { Route as AdminFlashOfferRouteImport } from './routes/admin/flash-offer'
@@ -60,6 +62,11 @@ const AuthRoute = AuthRouteImport.update({
   path: '/auth',
   getParentRoute: () => rootRouteImport,
 } as any)
+const CustomerAuthRoute = CustomerAuthRouteImport.update({
+  id: '/customer-auth',
+  path: '/customer-auth',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const StaffRouteRoute = StaffRouteRouteImport.update({
   id: '/staff',
   path: '/staff',
@@ -88,6 +95,11 @@ const AdminCategoriesRoute = AdminCategoriesRouteImport.update({
 const AdminCobrancasRoute = AdminCobrancasRouteImport.update({
   id: '/cobrancas',
   path: '/cobrancas',
+  getParentRoute: () => AdminRouteRoute,
+} as any)
+const AdminCouponsRoute = AdminCouponsRouteImport.update({
+  id: '/coupons',
+  path: '/coupons',
   getParentRoute: () => AdminRouteRoute,
 } as any)
 const AdminCustomersRoute = AdminCustomersRouteImport.update({
@@ -198,9 +210,11 @@ export interface FileRoutesByFullPath {
   '/super': typeof SuperRouteRouteWithChildren
   '/$slug': typeof SlugRoute
   '/auth': typeof AuthRouteWithChildren
+  '/customer-auth': typeof CustomerAuthRoute
   '/admin/add-ons': typeof AdminAddOnsRoute
   '/admin/categories': typeof AdminCategoriesRoute
   '/admin/cobrancas': typeof AdminCobrancasRoute
+  '/admin/coupons': typeof AdminCouponsRoute
   '/admin/customers': typeof AdminCustomersRoute
   '/admin/delivery': typeof AdminDeliveryRoute
   '/admin/flash-offer': typeof AdminFlashOfferRoute
@@ -227,9 +241,11 @@ export interface FileRoutesByTo {
   '/': typeof IndexRoute
   '/$slug': typeof SlugRoute
   '/auth': typeof AuthRouteWithChildren
+  '/customer-auth': typeof CustomerAuthRoute
   '/admin/add-ons': typeof AdminAddOnsRoute
   '/admin/categories': typeof AdminCategoriesRoute
   '/admin/cobrancas': typeof AdminCobrancasRoute
+  '/admin/coupons': typeof AdminCouponsRoute
   '/admin/customers': typeof AdminCustomersRoute
   '/admin/delivery': typeof AdminDeliveryRoute
   '/admin/flash-offer': typeof AdminFlashOfferRoute
@@ -260,9 +276,11 @@ export interface FileRoutesById {
   '/super': typeof SuperRouteRouteWithChildren
   '/$slug': typeof SlugRoute
   '/auth': typeof AuthRouteWithChildren
+  '/customer-auth': typeof CustomerAuthRoute
   '/admin/add-ons': typeof AdminAddOnsRoute
   '/admin/categories': typeof AdminCategoriesRoute
   '/admin/cobrancas': typeof AdminCobrancasRoute
+  '/admin/coupons': typeof AdminCouponsRoute
   '/admin/customers': typeof AdminCustomersRoute
   '/admin/delivery': typeof AdminDeliveryRoute
   '/admin/flash-offer': typeof AdminFlashOfferRoute
@@ -294,9 +312,11 @@ export interface FileRouteTypes {
     | '/super'
     | '/$slug'
     | '/auth'
+    | '/customer-auth'
     | '/admin/add-ons'
     | '/admin/categories'
     | '/admin/cobrancas'
+    | '/admin/coupons'
     | '/admin/customers'
     | '/admin/delivery'
     | '/admin/flash-offer'
@@ -323,9 +343,11 @@ export interface FileRouteTypes {
     | '/'
     | '/$slug'
     | '/auth'
+    | '/customer-auth'
     | '/admin/add-ons'
     | '/admin/categories'
     | '/admin/cobrancas'
+    | '/admin/coupons'
     | '/admin/customers'
     | '/admin/delivery'
     | '/admin/flash-offer'
@@ -355,9 +377,11 @@ export interface FileRouteTypes {
     | '/super'
     | '/$slug'
     | '/auth'
+    | '/customer-auth'
     | '/admin/add-ons'
     | '/admin/categories'
     | '/admin/cobrancas'
+    | '/admin/coupons'
     | '/admin/customers'
     | '/admin/delivery'
     | '/admin/flash-offer'
@@ -388,6 +412,7 @@ export interface RootRouteChildren {
   SuperRouteRoute: typeof SuperRouteRouteWithChildren
   SlugRoute: typeof SlugRoute
   AuthRoute: typeof AuthRouteWithChildren
+  CustomerAuthRoute: typeof CustomerAuthRoute
 }
 
 declare module '@tanstack/react-router' {
@@ -418,6 +443,13 @@ declare module '@tanstack/react-router' {
       path: '/auth'
       fullPath: '/auth'
       preLoaderRoute: typeof AuthRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/customer-auth': {
+      id: '/customer-auth'
+      path: '/customer-auth'
+      fullPath: '/customer-auth'
+      preLoaderRoute: typeof CustomerAuthRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/staff': {
@@ -460,6 +492,13 @@ declare module '@tanstack/react-router' {
       path: '/cobrancas'
       fullPath: '/admin/cobrancas'
       preLoaderRoute: typeof AdminCobrancasRouteImport
+      parentRoute: typeof AdminRouteRoute
+    }
+    '/admin/coupons': {
+      id: '/admin/coupons'
+      path: '/coupons'
+      fullPath: '/admin/coupons'
+      preLoaderRoute: typeof AdminCouponsRouteImport
       parentRoute: typeof AdminRouteRoute
     }
     '/admin/customers': {
@@ -609,6 +648,7 @@ interface AdminRouteRouteChildren {
   AdminAddOnsRoute: typeof AdminAddOnsRoute
   AdminCategoriesRoute: typeof AdminCategoriesRoute
   AdminCobrancasRoute: typeof AdminCobrancasRoute
+  AdminCouponsRoute: typeof AdminCouponsRoute
   AdminCustomersRoute: typeof AdminCustomersRoute
   AdminDeliveryRoute: typeof AdminDeliveryRoute
   AdminFlashOfferRoute: typeof AdminFlashOfferRoute
@@ -623,6 +663,7 @@ const AdminRouteRouteChildren: AdminRouteRouteChildren = {
   AdminAddOnsRoute: AdminAddOnsRoute,
   AdminCategoriesRoute: AdminCategoriesRoute,
   AdminCobrancasRoute: AdminCobrancasRoute,
+  AdminCouponsRoute: AdminCouponsRoute,
   AdminCustomersRoute: AdminCustomersRoute,
   AdminDeliveryRoute: AdminDeliveryRoute,
   AdminFlashOfferRoute: AdminFlashOfferRoute,
@@ -698,6 +739,7 @@ const rootRouteChildren: RootRouteChildren = {
   SuperRouteRoute: SuperRouteRouteWithChildren,
   SlugRoute: SlugRoute,
   AuthRoute: AuthRouteWithChildren,
+  CustomerAuthRoute: CustomerAuthRoute,
 }
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)

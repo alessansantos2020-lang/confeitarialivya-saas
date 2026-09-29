@@ -273,6 +273,210 @@ export type Database = {
           },
         ];
       };
+      coupon_redemptions: {
+        Row: {
+          id: string;
+          coupon_id: string;
+          order_id: string;
+          user_id: string;
+          store_id: string;
+          discount_amount: number;
+          created_at: string;
+        };
+        Insert: {
+          id?: string;
+          coupon_id: string;
+          order_id: string;
+          user_id: string;
+          store_id: string;
+          discount_amount: number;
+          created_at?: string;
+        };
+        Update: {
+          id?: string;
+          coupon_id?: string;
+          order_id?: string;
+          user_id?: string;
+          store_id?: string;
+          discount_amount?: number;
+          created_at?: string;
+        };
+        Relationships: [
+          {
+            foreignKeyName: "coupon_redemptions_coupon_id_fkey";
+            columns: ["coupon_id"];
+            isOneToOne: false;
+            referencedRelation: "coupons";
+            referencedColumns: ["id"];
+          },
+          {
+            foreignKeyName: "coupon_redemptions_order_id_fkey";
+            columns: ["order_id"];
+            isOneToOne: false;
+            referencedRelation: "orders";
+            referencedColumns: ["id"];
+          },
+          {
+            foreignKeyName: "coupon_redemptions_store_id_fkey";
+            columns: ["store_id"];
+            isOneToOne: false;
+            referencedRelation: "stores";
+            referencedColumns: ["id"];
+          },
+        ];
+      };
+      coupons: {
+        Row: {
+          id: string;
+          store_id: string;
+          code: string;
+          description: string | null;
+          discount_type: string;
+          discount_value: number;
+          min_order_amount: number;
+          max_redemptions: number | null;
+          max_redemptions_per_user: number;
+          starts_at: string;
+          expires_at: string | null;
+          is_active: boolean;
+          created_at: string;
+          updated_at: string;
+        };
+        Insert: {
+          id?: string;
+          store_id?: string;
+          code: string;
+          description?: string | null;
+          discount_type?: string;
+          discount_value: number;
+          min_order_amount?: number;
+          max_redemptions?: number | null;
+          max_redemptions_per_user?: number;
+          starts_at?: string;
+          expires_at?: string | null;
+          is_active?: boolean;
+          created_at?: string;
+          updated_at?: string;
+        };
+        Update: {
+          id?: string;
+          store_id?: string;
+          code?: string;
+          description?: string | null;
+          discount_type?: string;
+          discount_value?: number;
+          min_order_amount?: number;
+          max_redemptions?: number | null;
+          max_redemptions_per_user?: number;
+          starts_at?: string;
+          expires_at?: string | null;
+          is_active?: boolean;
+          created_at?: string;
+          updated_at?: string;
+        };
+        Relationships: [
+          {
+            foreignKeyName: "coupons_store_id_fkey";
+            columns: ["store_id"];
+            isOneToOne: false;
+            referencedRelation: "stores";
+            referencedColumns: ["id"];
+          },
+        ];
+      };
+      customer_addresses: {
+        Row: {
+          id: string;
+          user_id: string;
+          label: string | null;
+          neighborhood: string;
+          street: string;
+          number: string;
+          complement: string | null;
+          reference: string | null;
+          is_default: boolean;
+          created_at: string;
+          updated_at: string;
+        };
+        Insert: {
+          id?: string;
+          user_id?: string;
+          label?: string | null;
+          neighborhood: string;
+          street: string;
+          number: string;
+          complement?: string | null;
+          reference?: string | null;
+          is_default?: boolean;
+          created_at?: string;
+          updated_at?: string;
+        };
+        Update: {
+          id?: string;
+          user_id?: string;
+          label?: string | null;
+          neighborhood?: string;
+          street?: string;
+          number?: string;
+          complement?: string | null;
+          reference?: string | null;
+          is_default?: boolean;
+          created_at?: string;
+          updated_at?: string;
+        };
+        Relationships: [
+          {
+            foreignKeyName: "customer_addresses_user_id_fkey";
+            columns: ["user_id"];
+            isOneToOne: false;
+            referencedRelation: "users";
+            referencedColumns: ["id"];
+          },
+        ];
+      };
+      customer_orders: {
+        Row: {
+          user_id: string;
+          order_id: string;
+          store_id: string;
+          created_at: string;
+        };
+        Insert: {
+          user_id?: string;
+          order_id: string;
+          store_id?: string;
+          created_at?: string;
+        };
+        Update: {
+          user_id?: string;
+          order_id?: string;
+          store_id?: string;
+          created_at?: string;
+        };
+        Relationships: [
+          {
+            foreignKeyName: "customer_orders_order_id_fkey";
+            columns: ["order_id"];
+            isOneToOne: false;
+            referencedRelation: "orders";
+            referencedColumns: ["id"];
+          },
+          {
+            foreignKeyName: "customer_orders_store_id_fkey";
+            columns: ["store_id"];
+            isOneToOne: false;
+            referencedRelation: "stores";
+            referencedColumns: ["id"];
+          },
+          {
+            foreignKeyName: "customer_orders_user_id_fkey";
+            columns: ["user_id"];
+            isOneToOne: false;
+            referencedRelation: "users";
+            referencedColumns: ["id"];
+          },
+        ];
+      };
       features: {
         Row: {
           created_at: string;
@@ -1696,6 +1900,24 @@ export type Database = {
         Returns: Json;
       };
       create_order: { Args: { _payload: Json }; Returns: Json };
+      validate_coupon: {
+        Args: { _store_id: string; _code: string; _subtotal: number };
+        Returns: Json;
+      };
+      get_my_coupons: {
+        Args: { _store_id: string };
+        Returns: {
+          coupon_id: string;
+          code: string;
+          description: string | null;
+          discount_type: string;
+          discount_value: number;
+          min_order_amount: number;
+          expires_at: string | null;
+          times_used: number;
+          last_used_at: string | null;
+        }[];
+      };
       effective_price: {
         Args: { product: Database["public"]["Tables"]["products"]["Row"] };
         Returns: number;

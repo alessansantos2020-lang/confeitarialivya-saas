@@ -26,6 +26,7 @@ export type CreateOrderInput = {
   payment_method: string;
   change_for?: number | null;
   observation?: string | null;
+  coupon_code?: string | null;
   items: Array<{
     product_id: string;
     quantity: number;
@@ -75,6 +76,7 @@ export const createOrder = async (data: CreateOrderInput): Promise<CreatedOrder>
       payment_method: data.payment_method,
       change_for: data.change_for !== undefined ? data.change_for : null,
       observation: data.observation || null,
+      coupon_code: data.coupon_code || null,
       items: data.items,
     },
   });

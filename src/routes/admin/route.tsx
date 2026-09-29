@@ -58,6 +58,7 @@ import {
   Store as StoreIcon,
   WalletCards,
   Zap,
+  TicketPercent,
 } from "lucide-react";
 import { useState, useEffect } from "react";
 import { useQuery } from "@tanstack/react-query";
@@ -70,6 +71,7 @@ const ROUTE_FEATURE: Record<string, FeatureId> = {
   "/admin/add-ons": "addons",
   "/admin/customers": "customers",
   "/admin/flash-offer": "promotions",
+  "/admin/coupons": "promotions",
   "/admin/delivery": "delivery",
   "/admin/reports": "reports",
   "/admin/settings": "settings",
@@ -364,6 +366,12 @@ function AdminLayout() {
       label: "Oferta Relâmpago",
       to: "/admin/flash-offer",
       icon: Zap,
+      permission: "view_products",
+    },
+    {
+      label: "Cupons",
+      to: "/admin/coupons",
+      icon: TicketPercent,
       permission: "view_products",
     },
     {
