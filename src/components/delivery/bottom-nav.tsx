@@ -40,7 +40,7 @@ export function BottomNav({
       style={{ paddingBottom: "env(safe-area-inset-bottom)" }}
       aria-label="Navegação principal"
     >
-      <div className="grid h-[72px] grid-cols-4">
+      <div className="grid h-16 grid-cols-4">
         {items.map(({ key, label, Icon, action, badge }) => {
           const active = activeTab === key;
           return (

@@ -25,7 +25,12 @@ export const getMyStores = async (): Promise<StoreMembership[]> => {
 
   const [membershipsResult, roleResult] = await Promise.all([
     supabase.from("store_members").select("store_id, role, store:stores(*)").eq("user_id", userId),
-    supabase.from("user_roles").select("role").eq("user_id", userId).maybeSingle(),
+    supabase
+      .from("user_roles")
+      .select("role")
+      .eq("user_id", userId)
+      .eq("role", "super_admin")
+      .maybeSingle(),
   ]);
   if (membershipsResult.error) throw membershipsResult.error;
   if (roleResult.error) throw roleResult.error;

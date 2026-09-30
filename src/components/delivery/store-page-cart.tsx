@@ -1,5 +1,5 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
-import { useEffect } from "react";
+import { useEffect, useState } from "react";
 import { Button } from "@/components/ui/button";
 import {
   CheckCircle2,
@@ -54,6 +54,7 @@ export function StorePageCart({
 }: any) {
   const acceptCash = paymentMethods ? paymentMethods.accept_cash !== false : true;
   const acceptCard = paymentMethods ? paymentMethods.accept_card_delivery !== false : true;
+  const [couponExpanded, setCouponExpanded] = useState(false);
   const acceptPix = paymentMethods
     ? paymentMethods.accept_manual_pix !== false ||
       paymentMethods.online_pix_available === true ||
@@ -65,6 +66,10 @@ export function StorePageCart({
     ...(acceptCash ? ["money"] : []),
     ...(acceptCard ? ["card"] : []),
   ];
+
+  useEffect(() => {
+    if (checkoutStep === "cart" || !couponProps?.applied) setCouponExpanded(false);
+  }, [checkoutStep, couponProps?.applied]);
 
   // Garante um método válido selecionado quando a loja desativa o atual.
   useEffect(() => {
@@ -623,36 +628,64 @@ _Pedido realizado via Delivery Online._`;
         </div>
 
         {couponProps && checkoutStep === "info" && (
-          <div className="space-y-1.5">
+          <div className="rounded-xl border border-slate-200 bg-white">
             {couponProps.applied ? (
-              <p className="text-xs font-bold text-emerald-600">
-                ✓ Cupom {couponProps.applied.code} será validado ao confirmar o pedido.
-              </p>
-            ) : (
-              <div className="flex gap-2">
-                <Input
-                  value={couponProps.code}
-                  onChange={(event) => couponProps.setCode(event.target.value.toUpperCase())}
-                  placeholder="Código do cupom"
-                  className="h-10 font-mono text-sm uppercase"
-                />
-                <Button
+              <div className="flex min-h-11 items-center justify-between gap-2 px-3 py-2">
+                <p className="min-w-0 truncate text-xs font-bold text-emerald-700">
+                  ✓ Cupom {couponProps.applied.code} aplicado
+                </p>
+                <button
                   type="button"
-                  variant="outline"
-                  className="h-10 shrink-0 font-bold"
-                  disabled={couponProps.isChecking || !couponProps.code.trim()}
-                  onClick={couponProps.onApply}
+                  aria-label="Remover cupom"
+                  className="shrink-0 px-2 py-1 text-xs font-bold text-slate-500 hover:text-red-600"
+                  onClick={couponProps.onRemove}
                 >
-                  {couponProps.isChecking ? (
-                    <Loader2 className="h-4 w-4 animate-spin" />
-                  ) : (
-                    "Aplicar"
-                  )}
-                </Button>
+                  Remover
+                </button>
               </div>
-            )}
-            {couponProps.error && (
-              <p className="text-xs font-semibold text-red-500">{couponProps.error}</p>
+            ) : (
+              <>
+                <button
+                  type="button"
+                  aria-expanded={couponExpanded}
+                  onClick={() => setCouponExpanded((expanded) => !expanded)}
+                  className="flex min-h-11 w-full items-center justify-between gap-2 px-3 py-2 text-left text-sm font-semibold text-slate-700"
+                >
+                  <span>🎟 Você tem um cupom?</span>
+                  <span className="text-lg leading-none text-slate-400">
+                    {couponExpanded ? "−" : "›"}
+                  </span>
+                </button>
+                {couponExpanded && (
+                  <div className="space-y-1.5 border-t border-slate-100 p-3">
+                    <div className="flex gap-2">
+                      <Input
+                        value={couponProps.code}
+                        onChange={(event) => couponProps.setCode(event.target.value.toUpperCase())}
+                        placeholder="Código do cupom"
+                        aria-label="Código do cupom"
+                        className="h-10 min-w-0 font-mono text-sm uppercase"
+                      />
+                      <Button
+                        type="button"
+                        variant="outline"
+                        className="h-10 shrink-0 font-bold"
+                        disabled={couponProps.isChecking || !couponProps.code.trim()}
+                        onClick={couponProps.onApply}
+                      >
+                        {couponProps.isChecking ? (
+                          <Loader2 className="h-4 w-4 animate-spin" />
+                        ) : (
+                          "Aplicar"
+                        )}
+                      </Button>
+                    </div>
+                    {couponProps.error && (
+                      <p className="text-xs font-semibold text-red-500">{couponProps.error}</p>
+                    )}
+                  </div>
+                )}
+              </>
             )}
           </div>
         )}

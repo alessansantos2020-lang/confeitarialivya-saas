@@ -72,6 +72,7 @@ import { StorePageCart } from "./store-page-cart";
 import { StorePageFooter } from "./store-page-footer";
 import { FlashOfferModal } from "./flash-offer-modal";
 import { PromotionsModal } from "./promotions-modal";
+import { StorePageOrders } from "./store-page-orders";
 import { BottomNav } from "./bottom-nav";
 import { ProfileModal } from "./profile-modal";
 import { pickFlashOffer, wasFlashDismissed, dismissFlashOffer } from "@/lib/flash-offer";
@@ -139,7 +140,9 @@ export function StorePage({ storeId }: { storeId: string }) {
   const [productObservation, setProductObservation] = useState("");
   const [selectedAddons, setSelectedAddons] = useState<Record<string, string[]>>({});
   const [isCartOpen, setIsCartOpen] = useState(false);
+  const [ordersOpen, setOrdersOpen] = useState(false);
   const [promotionsOpen, setPromotionsOpen] = useState(false);
+  const [activeCategory, setActiveCategory] = useState<string>("main");
   const [profileOpen, setProfileOpen] = useState(false);
   const [profileSubpageOpen, setProfileSubpageOpen] = useState(false);
   const [customerSession, setCustomerSession] = useState<CustomerSession | null>(null);
@@ -247,6 +250,19 @@ export function StorePage({ storeId }: { storeId: string }) {
   useEffect(() => {
     getCustomerSession().then(setCustomerSession);
   }, []);
+  useEffect(() => {
+    const sections = Array.from(document.querySelectorAll<HTMLElement>("main section[id^='cat-']"));
+    if (!sections.length) return;
+    const updateActiveCategory = () => {
+      const current = [...sections]
+        .reverse()
+        .find((section) => section.getBoundingClientRect().top <= 150);
+      setActiveCategory(current?.id ?? "main");
+    };
+    updateActiveCategory();
+    window.addEventListener("scroll", updateActiveCategory, { passive: true });
+    return () => window.removeEventListener("scroll", updateActiveCategory);
+  }, [categories]);
   useEffect(() => {
     if (!customerSession) return;
     setOrderInfo((current) => ({
@@ -392,11 +408,11 @@ export function StorePage({ storeId }: { storeId: string }) {
   };
 
   return (
-    <div className="min-h-screen bg-white flex flex-col pb-24 md:pb-0 font-sans">
+    <div className="min-h-screen bg-white flex flex-col pb-[calc(9.5rem+env(safe-area-inset-bottom))] md:pb-0 font-sans">
       {/* Header Section */}
       <header className="relative w-full bg-white overflow-hidden shadow-sm">
         {/* Cover Image */}
-        <div className="relative h-56 md:h-80 w-full overflow-hidden">
+        <div className="relative h-28 sm:h-36 md:h-80 w-full overflow-hidden">
           {settings.cover_url ? (
             <img
               src={settings.cover_url}
@@ -412,13 +428,13 @@ export function StorePage({ storeId }: { storeId: string }) {
           )}
 
           {/* Logo overlay on cover for mobile, or floating for desktop */}
-          <div className="absolute -bottom-10 left-4 md:left-8 z-10">
-            <div className="w-24 h-24 md:w-32 md:h-32 rounded-2xl bg-white p-1 shadow-xl overflow-hidden border-2 border-white">
+          <div className="absolute -bottom-6 left-4 md:-bottom-10 md:left-8 z-10">
+            <div className="w-14 h-14 sm:w-16 sm:h-16 md:w-32 md:h-32 rounded-xl md:rounded-2xl bg-white p-1 shadow-lg md:shadow-xl overflow-hidden border-2 border-white">
               {settings.logo_url ? (
                 <img
                   src={settings.logo_url}
                   alt={settings.name}
-                  className="w-full h-full object-cover rounded-xl"
+                  className="w-full h-full object-contain rounded-xl"
                   onError={(e) => {
                     (e.target as HTMLImageElement).src = "https://placehold.co/200x200?text=Logo";
                   }}
@@ -433,11 +449,11 @@ export function StorePage({ storeId }: { storeId: string }) {
         </div>
 
         {/* Store Info Container */}
-        <div className="container mx-auto px-4 pt-12 pb-6 md:pt-16">
-          <div className="flex flex-col md:flex-row md:items-start justify-between gap-4">
+        <div className="container mx-auto px-4 pt-8 pb-4 sm:pt-9 md:pt-16 md:pb-6">
+          <div className="flex flex-col md:flex-row md:items-start justify-between gap-2 md:gap-4">
             <div className="space-y-1">
-              <div className="flex items-center gap-3">
-                <h1 className="text-2xl md:text-3xl font-black text-slate-900 tracking-tight">
+              <div className="flex min-w-0 items-center gap-2 sm:gap-3">
+                <h1 className="min-w-0 truncate text-xl sm:text-2xl md:text-3xl font-black text-slate-900 tracking-tight">
                   {settings.name}
                 </h1>
                 <Badge
@@ -448,16 +464,20 @@ export function StorePage({ storeId }: { storeId: string }) {
                   {settings.is_open ? "ABERTO" : "FECHADO"}
                 </Badge>
               </div>
-              <p className="text-slate-500 text-sm md:text-base font-medium line-clamp-2 max-w-2xl">
-                {settings.description}
-              </p>
+              {settings.description && (
+                <p className="text-slate-500 text-xs md:text-base font-medium line-clamp-2 max-w-2xl">
+                  {settings.description}
+                </p>
+              )}
             </div>
 
-            <div className="flex flex-col gap-2 shrink-0 md:text-right">
-              <div className="flex items-center md:justify-end gap-2 text-xs font-bold text-slate-400 uppercase tracking-wider">
-                <Clock className="w-3.5 h-3.5 text-[var(--primary-color)]" />
-                <span>{settings.opening_hours}</span>
-              </div>
+            <div className="flex flex-col gap-1.5 shrink-0 md:text-right">
+              {settings.opening_hours && (
+                <div className="flex items-center md:justify-end gap-2 text-[10px] md:text-xs font-bold text-slate-400 uppercase tracking-wider">
+                  <Clock className="w-3.5 h-3.5 text-[var(--primary-color)]" />
+                  <span>{settings.opening_hours}</span>
+                </div>
+              )}
               {settings.address && (
                 <div className="flex items-center md:justify-end gap-2 text-xs font-bold text-slate-400 uppercase tracking-wider">
                   <MapPin className="w-3.5 h-3.5 text-[var(--primary-color)]" />
@@ -472,10 +492,22 @@ export function StorePage({ storeId }: { storeId: string }) {
       {/* Categories Navigation (Sticky) */}
       <nav className="sticky top-0 z-40 bg-white/95 backdrop-blur-md border-b border-slate-100 shadow-sm">
         <div className="container mx-auto px-4">
-          <div className="flex gap-2 py-3 overflow-x-auto no-scrollbar scroll-smooth items-center">
+          <div className="flex gap-2 py-2 overflow-x-auto no-scrollbar scroll-smooth items-center">
             <a
               href="#main"
-              className="px-4 py-2 rounded-full text-slate-900 font-bold text-sm whitespace-nowrap bg-slate-100 transition-colors"
+              aria-current={activeCategory === "main" ? "location" : undefined}
+              onClick={() => {
+                setActiveCategory("main");
+                document
+                  .getElementById("main")
+                  ?.scrollIntoView({ behavior: "smooth", block: "start" });
+              }}
+              className={
+                "min-h-10 px-4 py-2 rounded-full font-bold text-sm whitespace-nowrap transition-colors " +
+                (activeCategory === "main"
+                  ? "bg-[var(--primary-color)] text-white"
+                  : "bg-slate-100 text-slate-600 hover:bg-slate-200")
+              }
             >
               Todos
             </a>
@@ -483,7 +515,19 @@ export function StorePage({ storeId }: { storeId: string }) {
               <a
                 key={category.id}
                 href={`#cat-${category.id}`}
-                className="px-4 py-2 rounded-full text-slate-500 font-bold text-sm whitespace-nowrap transition-all hover:bg-slate-50 hover:text-slate-900"
+                aria-current={activeCategory === `cat-${category.id}` ? "location" : undefined}
+                onClick={() => {
+                  setActiveCategory(`cat-${category.id}`);
+                  document
+                    .getElementById(`cat-${category.id}`)
+                    ?.scrollIntoView({ behavior: "smooth", block: "start" });
+                }}
+                className={
+                  "min-h-10 max-w-[11rem] overflow-hidden text-ellipsis px-4 py-2 rounded-full font-bold text-sm whitespace-nowrap transition-all " +
+                  (activeCategory === `cat-${category.id}`
+                    ? "bg-[var(--primary-color)] text-white"
+                    : "text-slate-600 hover:bg-slate-100")
+                }
               >
                 {category.name}
               </a>
@@ -493,10 +537,13 @@ export function StorePage({ storeId }: { storeId: string }) {
       </nav>
 
       {/* Main Content: Products List */}
-      <main id="main" className="container mx-auto px-4 py-8 space-y-12 max-w-7xl">
+      <main
+        id="main"
+        className="container mx-auto px-4 py-5 md:py-8 space-y-8 md:space-y-12 max-w-7xl scroll-mt-20"
+      >
         {categories.map((category) => (
-          <section key={category.id} id={`cat-${category.id}`} className="scroll-mt-24">
-            <h2 className="text-xl md:text-2xl font-black text-slate-900 tracking-tight mb-6 flex items-center gap-2">
+          <section key={category.id} id={`cat-${category.id}`} className="scroll-mt-20">
+            <h2 className="text-lg md:text-2xl font-black text-slate-900 tracking-tight mb-3 md:mb-6 flex items-center gap-2">
               {category.name}
               <span className="text-xs font-bold text-slate-400 bg-slate-100 px-2 py-0.5 rounded-md">
                 {category.products.length}
@@ -509,7 +556,7 @@ export function StorePage({ storeId }: { storeId: string }) {
                 return (
                   <Card
                     key={product.id}
-                    className="group relative overflow-hidden rounded-2xl border-slate-100 bg-white hover:border-[var(--primary-color)]/20 transition-all duration-300 cursor-pointer flex p-3 md:p-4 gap-4"
+                    className="group relative overflow-hidden rounded-2xl border-slate-100 bg-white hover:border-[var(--primary-color)]/20 transition-all duration-300 cursor-pointer flex p-2.5 sm:p-3 md:p-4 gap-3 md:gap-4"
                     onClick={isCartReady ? () => setSelectedProduct(product) : undefined}
                     aria-disabled={!isCartReady}
                   >
@@ -551,7 +598,7 @@ export function StorePage({ storeId }: { storeId: string }) {
                         </div>
                         <Button
                           size="sm"
-                          className="h-8 w-8 md:h-10 md:w-10 rounded-xl text-white transition-all active:scale-90 hover:text-white hover:brightness-110"
+                          className="h-11 w-11 md:h-10 md:w-10 rounded-xl text-white transition-all active:scale-95 hover:text-white hover:brightness-110"
                           style={{ backgroundColor: "var(--primary-color)" }}
                         >
                           <Plus className="w-4 h-4 md:w-5 md:h-5 text-white" />
@@ -559,7 +606,7 @@ export function StorePage({ storeId }: { storeId: string }) {
                       </div>
                     </div>
 
-                    <div className="relative w-28 h-28 md:w-36 md:h-36 rounded-xl overflow-hidden bg-slate-50 shrink-0 shadow-sm">
+                    <div className="relative h-24 w-24 sm:h-28 sm:w-28 md:h-36 md:w-36 rounded-xl overflow-hidden bg-slate-50 shrink-0 shadow-sm">
                       {product.image_url ? (
                         <img
                           src={product.image_url}
@@ -587,8 +634,14 @@ export function StorePage({ storeId }: { storeId: string }) {
       <StorePageFooter settings={settings} />
 
       {/* Mobile Footer (Cart) */}
-      <div className="fixed bottom-0 left-0 right-0 p-4 bg-white border-t border-slate-100 md:hidden z-50">
-        <Sheet open={isCartOpen} onOpenChange={setIsCartOpen}>
+      <div className="fixed bottom-[calc(4.5rem+env(safe-area-inset-bottom))] left-0 right-0 px-4 pb-2 md:hidden z-40">
+        <Sheet
+          open={isCartOpen}
+          onOpenChange={(open) => {
+            setIsCartOpen(open);
+            if (!open) setCheckoutStep("cart");
+          }}
+        >
           <SheetTrigger asChild>
             <Button
               className="w-full h-14 text-lg font-black rounded-2xl flex items-center justify-between px-6 border-none shadow-none text-white hover:text-white hover:brightness-110"
@@ -665,7 +718,13 @@ export function StorePage({ storeId }: { storeId: string }) {
 
       {/* Desktop Floating Cart Button */}
       <div className="fixed bottom-8 right-8 hidden md:block z-50">
-        <Sheet open={isCartOpen} onOpenChange={setIsCartOpen}>
+        <Sheet
+          open={isCartOpen}
+          onOpenChange={(open) => {
+            setIsCartOpen(open);
+            if (!open) setCheckoutStep("cart");
+          }}
+        >
           <SheetTrigger asChild>
             <Button
               size="lg"
@@ -765,21 +824,39 @@ export function StorePage({ storeId }: { storeId: string }) {
       {/* Bottom Navigation (mobile) */}
       {!profileSubpageOpen && (
         <BottomNav
-          activeTab="cardapio"
+          activeTab={
+            profileOpen
+              ? "perfil"
+              : promotionsOpen
+                ? "promocoes"
+                : ordersOpen
+                  ? "pedidos"
+                  : "cardapio"
+          }
           cartCount={isHydrated ? cartTotalItems : 0}
           onCardapio={() => {
+            setPromotionsOpen(false);
+            setOrdersOpen(false);
+            setProfileOpen(false);
+            setProfileSubpageOpen(false);
             window.scrollTo({ top: 0, behavior: "smooth" });
           }}
-          onPromocoes={() => setPromotionsOpen(true)}
+          onPromocoes={() => {
+            setOrdersOpen(false);
+            setProfileOpen(false);
+            setProfileSubpageOpen(false);
+            setPromotionsOpen(true);
+          }}
           onPedidos={() => {
-            if (cartTotalItems > 0) {
-              setIsCartOpen(true);
-            } else {
-              toast("Nenhum pedido em andamento. Adicione itens à sacola!");
-            }
+            setPromotionsOpen(false);
+            setProfileOpen(false);
+            setProfileSubpageOpen(false);
+            setOrdersOpen(true);
           }}
           onPerfil={() => {
             setProfileSubpageOpen(false);
+            setPromotionsOpen(false);
+            setOrdersOpen(false);
             setProfileOpen(true);
           }}
         />
@@ -816,7 +893,6 @@ export function StorePage({ storeId }: { storeId: string }) {
         }}
       />
 
-      {/* Modal de Promoções (mobile) */}
       <PromotionsModal
         open={promotionsOpen}
         promotions={promotions}
@@ -826,6 +902,19 @@ export function StorePage({ storeId }: { storeId: string }) {
           setSelectedProduct(product);
         }}
         onClose={() => setPromotionsOpen(false)}
+      />
+
+      <StorePageOrders
+        open={ordersOpen}
+        storeId={storeId}
+        formatCurrency={formatCurrency}
+        onClose={() => setOrdersOpen(false)}
+        onLogin={() => {
+          setOrdersOpen(false);
+          const routeSegments = window.location.pathname.split("/").filter(Boolean);
+          const storeSlug = routeSegments[0] ?? "";
+          window.location.href = `/customer-auth?store=${encodeURIComponent(storeSlug)}`;
+        }}
       />
     </div>
   );

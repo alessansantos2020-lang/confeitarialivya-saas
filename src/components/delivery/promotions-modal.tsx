@@ -1,4 +1,5 @@
-import { X } from "lucide-react";
+/* eslint-disable @typescript-eslint/no-explicit-any */
+import { ArrowLeft, Ticket } from "lucide-react";
 import { getDiscountPercent } from "@/lib/promotions";
 
 type PromotionsModalProps = {
@@ -7,6 +8,8 @@ type PromotionsModalProps = {
   formatCurrency: (value: number) => string;
   onSelect: (product: any) => void;
   onClose: () => void;
+  title?: string;
+  emptyText?: string;
 };
 
 export function PromotionsModal({
@@ -15,41 +18,40 @@ export function PromotionsModal({
   formatCurrency,
   onSelect,
   onClose,
+  title = "Promoções",
+  emptyText = "Não há promoções disponíveis no momento.",
 }: PromotionsModalProps) {
   if (!open) return null;
 
   return (
-    <div
-      className="fixed inset-0 z-[60] flex items-center justify-center bg-black/45 p-4 animate-in fade-in duration-200"
-      onClick={onClose}
+    <section
+      className="fixed inset-0 z-[60] flex flex-col bg-white pt-[env(safe-area-inset-top)] animate-in slide-in-from-right-2 duration-200"
+      role="dialog"
+      aria-modal="true"
+      aria-label={title}
     >
-      <div
-        className="w-[calc(100%-32px)] max-w-md max-h-[75vh] rounded-[20px] bg-white shadow-2xl overflow-hidden animate-in fade-in zoom-in-95 duration-200 flex flex-col"
-        onClick={(e) => e.stopPropagation()}
-      >
-        <div className="flex items-center justify-between px-6 py-4 border-b border-slate-100 shrink-0">
-          <h2 className="text-2xl font-black tracking-tight text-slate-900">Promoções</h2>
-          <button
-            type="button"
-            onClick={onClose}
-            aria-label="Fechar promoções"
-            className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-slate-100 text-slate-500 transition-colors hover:bg-slate-200 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-slate-300"
-          >
-            <X size={20} />
-          </button>
-        </div>
+      <header className="flex h-14 shrink-0 items-center gap-3 border-b border-slate-100 px-4">
+        <button
+          type="button"
+          onClick={onClose}
+          aria-label="Voltar ao cardápio"
+          className="flex h-10 w-10 items-center justify-center rounded-full text-slate-600 hover:bg-slate-100"
+        >
+          <ArrowLeft size={20} />
+        </button>
+        <h2 className="flex-1 text-lg font-black text-slate-900">{title}</h2>
+      </header>
 
-        {promotions.length === 0 ? (
-          <div className="flex flex-col items-center gap-3 px-6 py-12 text-center">
-            <div className="flex h-16 w-16 items-center justify-center rounded-full bg-slate-100 text-3xl">
-              🎟️
-            </div>
-            <p className="text-sm font-semibold text-slate-500">
-              Não há promoções disponíveis no momento.
-            </p>
+      {promotions.length === 0 ? (
+        <div className="flex flex-1 flex-col items-center justify-center gap-3 px-6 text-center">
+          <div className="flex h-16 w-16 items-center justify-center rounded-full bg-slate-100 text-3xl">
+            <Ticket className="h-7 w-7 text-slate-400" />
           </div>
-        ) : (
-          <div className="overflow-y-auto p-4 space-y-3">
+          <p className="text-sm font-semibold text-slate-500">{emptyText}</p>
+        </div>
+      ) : (
+        <div className="min-h-0 flex-1 overflow-y-auto overscroll-contain pb-[env(safe-area-inset-bottom)]">
+          <div className="mx-auto grid w-full max-w-3xl grid-cols-1 gap-3 p-4 sm:grid-cols-2">
             {promotions.map((product: any) => {
               const salePrice = product.sale_price ?? product.effective_price;
               const discount = getDiscountPercent(product.price, salePrice);
@@ -58,20 +60,20 @@ export function PromotionsModal({
                   key={product.id}
                   type="button"
                   onClick={() => onSelect(product)}
-                  className="flex w-full items-center gap-4 rounded-2xl border border-slate-100 bg-white p-3 text-left shadow-sm transition-all hover:border-[var(--primary-color)]/30 hover:shadow-md active:scale-[0.99]"
+                  className="flex min-h-28 w-full items-center gap-3 rounded-2xl border border-slate-100 bg-white p-3 text-left shadow-sm transition-colors hover:border-[var(--primary-color)]/30 active:bg-slate-50"
                 >
-                  <div className="flex-1 min-w-0 space-y-1.5">
-                    <h3 className="text-sm font-bold text-slate-900 leading-snug line-clamp-2">
+                  <div className="min-w-0 flex-1 space-y-1.5">
+                    <h3 className="line-clamp-2 text-sm font-bold leading-snug text-slate-900">
                       {product.name}
                     </h3>
+                    {product.description && (
+                      <p className="line-clamp-2 text-xs text-slate-500">{product.description}</p>
+                    )}
                     <div className="flex flex-wrap items-center gap-x-2 gap-y-1">
-                      <span
-                        className="text-lg font-black"
-                        style={{ color: "var(--primary-color, #1d4ed8)" }}
-                      >
+                      <span className="text-base font-black text-[var(--primary-color)]">
                         {formatCurrency(salePrice)}
                       </span>
-                      <span className="text-sm text-slate-400 line-through">
+                      <span className="text-xs text-slate-400 line-through">
                         {formatCurrency(product.price)}
                       </span>
                       {discount > 0 && (
@@ -86,8 +88,8 @@ export function PromotionsModal({
                       src={product.image_url}
                       alt={product.name}
                       className="h-20 w-20 shrink-0 rounded-xl object-cover"
-                      onError={(e) => {
-                        e.currentTarget.style.visibility = "hidden";
+                      onError={(event) => {
+                        event.currentTarget.style.visibility = "hidden";
                       }}
                     />
                   ) : (
@@ -99,8 +101,8 @@ export function PromotionsModal({
               );
             })}
           </div>
-        )}
-      </div>
-    </div>
+        </div>
+      )}
+    </section>
   );
 }
